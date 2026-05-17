@@ -1,0 +1,56 @@
+# git-cliff configuration used by release-plz to generate release notes.
+# The structure follows daktilo's conventional-commit grouping while keeping
+# links repository-relative because this checkout has no configured git remote.
+
+[changelog]
+header = """
+# Changelog
+
+All notable changes to this project will be documented in this file.
+
+"""
+body = """
+{% if version %}\
+## [{{ version | trim_start_matches(pat="v") }}]{% if previous.version %} - {{ timestamp | date(format="%Y-%m-%d") }}{% endif %}
+{% else %}\
+## [Unreleased]
+{% endif %}\
+{% for group, commits in commits | group_by(attribute="group") %}
+
+### {{ group | striptags | trim | upper_first }}
+{% for commit in commits %}
+- {% if commit.scope %}**{{ commit.scope }}:** {% endif %}{{ commit.message | upper_first }}{% if commit.remote.pr_number %} (#{{ commit.remote.pr_number }}){% endif %}
+{% endfor %}\
+{% endfor %}
+{% if version and previous.version %}
+
+Full changes: {{ previous.version }}...{{ version }}
+{% endif %}
+"""
+trim = true
+
+[git]
+conventional_commits = true
+filter_unconventional = true
+split_commits = false
+tag_pattern = "v[0-9]*"
+sort_commits = "oldest"
+
+commit_preprocessors = [
+    { pattern = "\\(#(\\d+)\\)", replace = "(#$1)" },
+]
+
+commit_parsers = [
+    { message = "^feat", group = "Features" },
+    { message = "^fix", group = "Bug Fixes" },
+    { message = "^doc", group = "Documentation" },
+    { message = "^perf", group = "Performance" },
+    { message = "^refactor", group = "Refactoring" },
+    { message = "^style", group = "Styling" },
+    { message = "^test", group = "Testing" },
+    { message = "^build", group = "Build" },
+    { message = "^ci", group = "Continuous Integration" },
+    { message = "^chore\\(release\\):", skip = true },
+    { message = "^chore", group = "Miscellaneous" },
+    { body = ".*security", group = "Security" },
+]

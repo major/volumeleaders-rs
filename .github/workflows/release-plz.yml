@@ -1,0 +1,23 @@
+name: Release
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  id-token: write
+  pull-requests: write
+
+jobs:
+  release-plz:
+    name: Release-plz
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          fetch-depth: 0
+      - uses: release-plz/action@4a08fbe6cb1bb0e4d066058e6efcf50f352db236 # v0.5.129
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

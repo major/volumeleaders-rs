@@ -1,0 +1,49 @@
+{
+  "draw": 1,
+  "recordsTotal": 18,
+  "recordsFiltered": 18,
+  "data": [
+    {
+      "Ticker": "AMD",
+      "Sector": "Technology",
+      "Industry": "Semiconductors",
+      "Name": "Advanced Micro Devices Inc.",
+      "Date": "/Date(1777593600000)/",
+      "MinDate": "/Date(1777507200000)/",
+      "MaxDate": "/Date(1777593600000)/",
+      "FullDateTime": "2026-05-01T10:15:00",
+      "FullTimeString24": "10:15:00",
+      "Dates": "05/01/2026",
+      "Price": 185.30,
+      "Dollars": 46325000.0,
+      "Volume": 250000,
+      "Trades": 21,
+      "CumulativeDistribution": 0.18,
+      "TradeLevelRank": 6,
+      "TotalRows": 18,
+      "TradeLevelTouches": 1,
+      "RelativeSize": 1.85
+    },
+    {
+      "Ticker": "NVDA",
+      "Sector": "Technology",
+      "Industry": "Semiconductors",
+      "Name": "NVIDIA Corporation",
+      "Date": "/Date(1777593600000)/",
+      "MinDate": "/Date(1777507200000)/",
+      "MaxDate": "/Date(1777593600000)/",
+      "FullDateTime": "2026-05-01T11:45:00",
+      "FullTimeString24": "11:45:00",
+      "Dates": "05/01/2026",
+      "Price": 950.75,
+      "Dollars": 285225000.0,
+      "Volume": 300000,
+      "Trades": 55,
+      "CumulativeDistribution": 0.28,
+      "TradeLevelRank": 2,
+      "TotalRows": 18,
+      "TradeLevelTouches": 4,
+      "RelativeSize": 4.10
+    }
+  ]
+}

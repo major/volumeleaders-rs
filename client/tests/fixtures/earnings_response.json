@@ -1,0 +1,35 @@
+{
+  "draw": 6,
+  "recordsTotal": 2,
+  "recordsFiltered": 2,
+  "data": [
+    {
+      "Date": "/Date(1746662400000)/",
+      "EarningsDate": "/Date(1746662400000)/",
+      "Ticker": "AMD",
+      "Name": "Advanced Micro Devices",
+      "Current": 220.25,
+      "Sector": "Technology",
+      "Industry": "Semiconductors",
+      "AfterMarketClose": true,
+      "TradeCount": 9,
+      "TradeClusterCount": 5,
+      "TradeClusterBombCount": 2,
+      "TotalRows": 42
+    },
+    {
+      "Date": "/Date(1746662400000)/",
+      "EarningsDate": "/Date(1746748800000)/",
+      "Ticker": "NVDA",
+      "Name": "NVIDIA Corporation",
+      "Current": 135.50,
+      "Sector": null,
+      "Industry": null,
+      "AfterMarketClose": false,
+      "TradeCount": 15,
+      "TradeClusterCount": 8,
+      "TradeClusterBombCount": 3,
+      "TotalRows": 42
+    }
+  ]
+}

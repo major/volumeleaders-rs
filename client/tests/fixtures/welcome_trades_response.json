@@ -1,0 +1,21 @@
+{
+  "draw": 7,
+  "recordsTotal": 2,
+  "recordsFiltered": 2,
+  "data": [
+    {
+      "Ticker": "AMD",
+      "TradeRank": 11,
+      "DollarsMultiplier": 3.5,
+      "CumulativeDistribution": 0.92,
+      "LastComparibleTradeDate": "/Date(1766102400000)/"
+    },
+    {
+      "Ticker": "NVDA",
+      "TradeRank": 5,
+      "DollarsMultiplier": 2.1,
+      "CumulativeDistribution": 0.85,
+      "LastComparibleTradeDate": "/Date(1765497600000)/"
+    }
+  ]
+}

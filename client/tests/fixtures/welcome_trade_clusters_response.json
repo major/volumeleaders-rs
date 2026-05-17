@@ -1,0 +1,21 @@
+{
+  "draw": 8,
+  "recordsTotal": 2,
+  "recordsFiltered": 2,
+  "data": [
+    {
+      "Ticker": "AMD",
+      "TradeClusterRank": 7,
+      "DollarsMultiplier": 4.2,
+      "CumulativeDistribution": 0.95,
+      "LastComparibleTradeClusterDate": "/Date(1766102400000)/"
+    },
+    {
+      "Ticker": "MSFT",
+      "TradeClusterRank": 3,
+      "DollarsMultiplier": 1.8,
+      "CumulativeDistribution": 0.78,
+      "LastComparibleTradeClusterDate": "/Date(1765497600000)/"
+    }
+  ]
+}

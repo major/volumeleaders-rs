@@ -1,0 +1,49 @@
+{
+  "draw": 1,
+  "recordsTotal": 25,
+  "recordsFiltered": 25,
+  "data": [
+    {
+      "Ticker": "AMD",
+      "Sector": "Technology",
+      "Industry": "Semiconductors",
+      "Name": "Advanced Micro Devices Inc.",
+      "Date": "/Date(1777593600000)/",
+      "MinDate": "/Date(1777507200000)/",
+      "MaxDate": "/Date(1777593600000)/",
+      "FullDateTime": "2026-05-01T14:30:00",
+      "FullTimeString24": "14:30:00",
+      "Dates": "05/01/2026 - 05/02/2026",
+      "Price": 185.30,
+      "Dollars": 92650000.0,
+      "Volume": 500000,
+      "Trades": 42,
+      "CumulativeDistribution": 0.32,
+      "TradeLevelRank": 6,
+      "TotalRows": 25,
+      "TradeLevelTouches": 3,
+      "RelativeSize": 2.15
+    },
+    {
+      "Ticker": "AAPL",
+      "Sector": "Technology",
+      "Industry": "Consumer Electronics",
+      "Name": "Apple Inc.",
+      "Date": "/Date(1777593600000)/",
+      "MinDate": "/Date(1777420800000)/",
+      "MaxDate": "/Date(1777593600000)/",
+      "FullDateTime": null,
+      "FullTimeString24": null,
+      "Dates": "04/30/2026 - 05/02/2026",
+      "Price": 245.50,
+      "Dollars": 368250000.0,
+      "Volume": 1500000,
+      "Trades": 85,
+      "CumulativeDistribution": 0.45,
+      "TradeLevelRank": 3,
+      "TotalRows": 25,
+      "TradeLevelTouches": 7,
+      "RelativeSize": 3.42
+    }
+  ]
+}

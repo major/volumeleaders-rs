@@ -1,0 +1,39 @@
+{
+  "draw": 1,
+  "recordsTotal": 120,
+  "recordsFiltered": 120,
+  "data": [
+    {
+      "Ticker": "AAPL",
+      "Sector": "Technology",
+      "Industry": "Consumer Electronics",
+      "Price": 245.50,
+      "TotalInstitutionalVolume": 1500000,
+      "TotalInstitutionalDollars": 368250000.0,
+      "TotalInstitutionalDollarsRank": 1,
+      "AHInstitutionalVolume": 250000,
+      "AHInstitutionalDollars": 61375000.0,
+      "AHInstitutionalDollarsRank": 3,
+      "TotalVolume": 5000000,
+      "TotalDollars": 1227500000.0,
+      "TotalDollarsRank": 2,
+      "LastComparibleTradeDate": "/Date(1777593600000)/"
+    },
+    {
+      "Ticker": "MSFT",
+      "Sector": "Technology",
+      "Industry": "Software",
+      "Price": 480.25,
+      "TotalInstitutionalVolume": 900000,
+      "TotalInstitutionalDollars": 432225000.0,
+      "TotalInstitutionalDollarsRank": 2,
+      "AHInstitutionalVolume": 150000,
+      "AHInstitutionalDollars": 72037500.0,
+      "AHInstitutionalDollarsRank": 5,
+      "TotalVolume": 3200000,
+      "TotalDollars": 1536800000.0,
+      "TotalDollarsRank": 1,
+      "LastComparibleTradeDate": "/Date(1777507200000)/"
+    }
+  ]
+}
