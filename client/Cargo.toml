@@ -21,4 +21,4 @@ tracing = "0.1"
 url = "2"
 
 [dev-dependencies]
-mockito = "1"
+mockito = "=1.7.2"
