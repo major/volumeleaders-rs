@@ -3,7 +3,11 @@ name = "volumeleaders-client"
 version = "0.1.0"
 edition = "2024"
 rust-version = "1.95.0"
-publish = false
+publish = true
+description = "Browser-session API client for VolumeLeaders data"
+license = "Apache-2.0"
+repository = "https://github.com/major/volumeleaders-rs"
+readme = "../README.md"
 
 [features]
 test-support = []

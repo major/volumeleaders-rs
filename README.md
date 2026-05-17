@@ -17,11 +17,13 @@ Rust workspace for working with VolumeLeaders data from an authenticated browser
 .
 ├── client/                  # Library crate
 ├── agent/                   # CLI crate
-├── .github/workflows/       # CI, audit, release-plz
+├── .github/workflows/       # CI, audit, release-plz, cargo-dist releases
 ├── AGENTS.md                # Workspace knowledge base for coding agents
+├── dist-workspace.toml      # cargo-dist release artifact configuration
 ├── Makefile                 # Local development commands
 ├── cliff.toml               # Changelog grouping
-└── release-plz.toml         # Release tag automation
+├── LICENSE                  # Apache-2.0 license
+└── release-plz.toml         # Release PR, crates.io publish, and tag automation
 ```
 
 ## Requirements
@@ -75,6 +77,14 @@ The `rookie_spike` example checks whether required VolumeLeaders cookies can be 
 - Client fixtures live in `client/tests/fixtures/*.json` and represent server payload contracts.
 - Client HTTP tests use `mockito`.
 - There are no standalone Rust integration test files or benchmarks today.
+
+## Release automation
+
+- `cd.yml` runs release-plz on pushes to `main` and on manual dispatch. It uses the `RELEASE_PLZ_TOKEN` secret so release PR branch updates and release tags can trigger normal GitHub Actions workflows.
+- `release-plz.toml` keeps the changelog current, opens release PRs, publishes publishable workspace crates to crates.io, and creates git tags. GitHub Releases are disabled there because cargo-dist owns artifact releases.
+- `dist-workspace.toml` configures cargo-dist for the `volumeleaders-agent` binary installers and generated GitHub Release workflow.
+- The first crates.io release for each crate must be published manually with a crates.io API token. After that, configure crates.io Trusted Publishing for `major/volumeleaders-rs` with workflow file `cd.yml`; release-plz can then publish through GitHub OIDC without storing a `CARGO_REGISTRY_TOKEN` secret.
+- Publish workspace crates in dependency order: `volumeleaders-client` first, then `volumeleaders-agent` after the client version is available in the crates.io index.
 
 ## Documentation freshness
 
