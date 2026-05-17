@@ -1,5 +1,7 @@
 # volumeleaders-rs
 
+> **Disclaimer:** This project is unofficial and is not affiliated with, endorsed by, or sponsored by [volumeleaders.com](https://www.volumeleaders.com).
+
 Rust workspace for working with VolumeLeaders data from an authenticated browser session. The workspace has a reusable API client crate and a CLI agent crate built on top of it.
 
 ## Crates

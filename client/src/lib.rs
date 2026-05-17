@@ -1,4 +1,7 @@
 //! VolumeLeaders API client library.
+//!
+//! This project is unofficial and is not affiliated with, endorsed by, or
+//! sponsored by [volumeleaders.com](https://www.volumeleaders.com).
 
 pub mod alerts;
 pub mod auth;

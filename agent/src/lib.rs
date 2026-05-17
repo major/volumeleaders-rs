@@ -1,3 +1,8 @@
+//! VolumeLeaders CLI agent.
+//!
+//! This project is unofficial and is not affiliated with, endorsed by, or
+//! sponsored by [volumeleaders.com](https://www.volumeleaders.com).
+
 pub mod cli;
 pub mod commands;
 pub mod common;
