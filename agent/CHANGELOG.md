@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.2.0] - 2026-05-18
+
+### <!-- 4 -->🔧 Refactor
+
+- Remove CSV/TSV output, keep JSON only
+- *(agent)* Centralize order direction mapping
+- *(agent)* Extract shared client command scaffolding
+- *(agent)* Decompose trade command modules
+
+
 ## [0.1.2] - 2026-05-18
 
 ### <!-- 0 -->🚀 Features
