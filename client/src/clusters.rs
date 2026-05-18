@@ -5,8 +5,7 @@ use tracing::instrument;
 
 use crate::client::Client;
 use crate::datatables::{
-    DataTablesColumn, DataTablesRequest, DataTablesResponse, fetch_limit,
-    impl_datatables_request_methods,
+    DataTablesColumn, DataTablesRequest, DataTablesResponse, impl_datatables_request_methods,
 };
 use crate::error::Result;
 use crate::models::{TradeCluster, TradeClusterBomb};
@@ -158,10 +157,8 @@ impl Client {
         &self,
         request: &TradeClustersRequest,
     ) -> Result<DataTablesResponse<TradeCluster>> {
-        let body = self
-            .post_form(TRADE_CLUSTERS_PATH, request.to_pairs())
-            .await?;
-        Ok(serde_json::from_str(&body)?)
+        self.post_datatables(TRADE_CLUSTERS_PATH, request.to_pairs())
+            .await
     }
 
     /// Fetch up to `limit` trade clusters by paginating
@@ -172,7 +169,8 @@ impl Client {
         request: &TradeClustersRequest,
         limit: usize,
     ) -> Result<Vec<TradeCluster>> {
-        fetch_limit(self, TRADE_CLUSTERS_PATH, request.0.clone(), limit).await
+        self.fetch_limit(TRADE_CLUSTERS_PATH, request.0.clone(), limit)
+            .await
     }
 
     /// Post a DataTables request to
@@ -183,10 +181,8 @@ impl Client {
         &self,
         request: &TradeClusterBombsRequest,
     ) -> Result<DataTablesResponse<TradeClusterBomb>> {
-        let body = self
-            .post_form(TRADE_CLUSTER_BOMBS_PATH, request.to_pairs())
-            .await?;
-        Ok(serde_json::from_str(&body)?)
+        self.post_datatables(TRADE_CLUSTER_BOMBS_PATH, request.to_pairs())
+            .await
     }
 
     /// Fetch up to `limit` trade cluster bombs by paginating
@@ -197,38 +193,15 @@ impl Client {
         request: &TradeClusterBombsRequest,
         limit: usize,
     ) -> Result<Vec<TradeClusterBomb>> {
-        fetch_limit(self, TRADE_CLUSTER_BOMBS_PATH, request.0.clone(), limit).await
+        self.fetch_limit(TRADE_CLUSTER_BOMBS_PATH, request.0.clone(), limit)
+            .await
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::client::ClientConfig;
-    use crate::session::{
-        COOKIE_DOMAIN, Cookie, FORMS_AUTH_COOKIE_NAME, SESSION_COOKIE_NAME, Session,
-    };
-
-    fn test_session() -> Session {
-        Session::new(
-            vec![
-                Cookie::new(SESSION_COOKIE_NAME, "session-123", COOKIE_DOMAIN),
-                Cookie::new(FORMS_AUTH_COOKIE_NAME, "auth-456", COOKIE_DOMAIN),
-            ],
-            "xsrf-789",
-        )
-    }
-
-    fn test_client(server: &mockito::Server) -> Client {
-        Client::with_config(
-            test_session(),
-            ClientConfig {
-                base_url: server.url(),
-                ..ClientConfig::default()
-            },
-        )
-        .unwrap()
-    }
+    use crate::test_support::test_client;
 
     // -- column definition tests --
 

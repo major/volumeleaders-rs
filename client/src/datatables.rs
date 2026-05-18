@@ -8,7 +8,7 @@
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Deserializer, Serialize};
 
-use crate::client::Client;
+use crate::client::{Client, encode_form_value};
 use crate::error::Result;
 
 const DEFAULT_DATATABLES_LENGTH: i32 = 25;
@@ -168,7 +168,7 @@ impl DataTablesRequest {
     pub fn encode(&self) -> String {
         raw_pairs(self)
             .into_iter()
-            .map(|(k, v)| format!("{k}={}", encode_value(&v)))
+            .map(|(k, v)| format!("{k}={}", encode_form_value(&v)))
             .collect::<Vec<_>>()
             .join("&")
     }
@@ -352,73 +352,64 @@ fn bool_value(value: bool) -> &'static str {
     if value { "true" } else { "false" }
 }
 
-fn encode_value(value: &str) -> String {
-    let mut encoded = String::new();
-    for byte in value.bytes() {
-        match byte {
-            b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'-' | b'_' | b'.' | b'~' => {
-                encoded.push(char::from(byte));
-            }
-            b' ' => encoded.push('+'),
-            _ => {
-                encoded.push('%');
-                encoded.push(hex_digit(byte >> 4));
-                encoded.push(hex_digit(byte & 0x0f));
+impl Client {
+    /// Post a DataTables form request and deserialize the JSON response.
+    pub(crate) async fn post_datatables<T>(
+        &self,
+        path: &str,
+        pairs: Vec<(String, String)>,
+    ) -> Result<DataTablesResponse<T>>
+    where
+        T: DeserializeOwned,
+    {
+        let body = self.post_form(path, pairs).await?;
+        Ok(serde_json::from_str(&body)?)
+    }
+}
+
+impl Client {
+    /// Paginate a DataTables endpoint, collecting up to `limit` records.
+    ///
+    /// Each page posts `request` with an updated `start` offset and deserializes
+    /// the response as [`DataTablesResponse<T>`]. Pagination stops when any of:
+    /// - `records_total` is zero (no data available)
+    /// - The page returned fewer than [`PAGE_SIZE`] items (last page)
+    /// - Total collected items reaches `limit`
+    pub async fn fetch_limit<T>(
+        &self,
+        path: &str,
+        mut request: DataTablesRequest,
+        limit: usize,
+    ) -> Result<Vec<T>>
+    where
+        T: DeserializeOwned + Send,
+    {
+        let mut results = Vec::new();
+        request.length = PAGE_SIZE as i32;
+
+        loop {
+            request.start = results.len() as i32;
+            let body = self.post_form(path, request.to_pairs()).await?;
+            let response: DataTablesResponse<T> = serde_json::from_str(&body)?;
+            let page_len = response.data.len();
+            results.extend(response.data);
+
+            if response.records_total == 0 || page_len < PAGE_SIZE || results.len() >= limit {
+                break;
             }
         }
-    }
-    encoded
-}
 
-fn hex_digit(value: u8) -> char {
-    match value {
-        0..=9 => char::from(b'0' + value),
-        10..=15 => char::from(b'A' + value - 10),
-        _ => unreachable!("nibble values are always in 0..=15"),
-    }
-}
-
-/// Paginate a DataTables endpoint, collecting up to `limit` records.
-///
-/// Each page posts `request` with an updated `start` offset and deserializes
-/// the response as [`DataTablesResponse<T>`]. Pagination stops when any of:
-/// - `records_total` is zero (no data available)
-/// - The page returned fewer than [`PAGE_SIZE`] items (last page)
-/// - Total collected items reaches `limit`
-pub async fn fetch_limit<T>(
-    client: &Client,
-    path: &str,
-    mut request: DataTablesRequest,
-    limit: usize,
-) -> Result<Vec<T>>
-where
-    T: DeserializeOwned + Send,
-{
-    let mut results = Vec::new();
-    request.length = PAGE_SIZE as i32;
-
-    loop {
-        request.start = results.len() as i32;
-        let body = client.post_form(path, request.to_pairs()).await?;
-        let response: DataTablesResponse<T> = serde_json::from_str(&body)?;
-        let page_len = response.data.len();
-        results.extend(response.data);
-
-        if response.records_total == 0 || page_len < PAGE_SIZE || results.len() >= limit {
-            break;
-        }
+        results.truncate(limit);
+        Ok(results)
     }
 
-    results.truncate(limit);
-    Ok(results)
-}
-
-/// Paginate a DataTables endpoint, collecting all available records.
-pub async fn fetch_all<T>(client: &Client, path: &str, request: DataTablesRequest) -> Result<Vec<T>>
-where
-    T: DeserializeOwned + Send,
-{
-    fetch_limit(client, path, request, usize::MAX).await
+    /// Paginate a DataTables endpoint, collecting all available records.
+    pub async fn fetch_all<T>(&self, path: &str, request: DataTablesRequest) -> Result<Vec<T>>
+    where
+        T: DeserializeOwned + Send,
+    {
+        self.fetch_limit(path, request, usize::MAX).await
+    }
 }
 
 #[cfg(test)]
@@ -542,35 +533,11 @@ mod tests {
 
     // --- paginator tests ---
 
-    use crate::client::ClientConfig;
-    use crate::session::{
-        COOKIE_DOMAIN, Cookie, FORMS_AUTH_COOKIE_NAME, SESSION_COOKIE_NAME, Session,
-    };
+    use crate::test_support::test_client;
 
     #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
     struct TestRow {
         id: i32,
-    }
-
-    fn test_session() -> Session {
-        Session::new(
-            vec![
-                Cookie::new(SESSION_COOKIE_NAME, "session-123", COOKIE_DOMAIN),
-                Cookie::new(FORMS_AUTH_COOKIE_NAME, "auth-456", COOKIE_DOMAIN),
-            ],
-            "xsrf-789",
-        )
-    }
-
-    fn test_client(server: &mockito::Server) -> Client {
-        Client::with_config(
-            test_session(),
-            ClientConfig {
-                base_url: server.url(),
-                ..ClientConfig::default()
-            },
-        )
-        .unwrap()
     }
 
     fn make_response(data: Vec<TestRow>, records_total: i32) -> String {
@@ -597,7 +564,8 @@ mod tests {
             .await;
         let client = test_client(&server);
 
-        let result: Vec<TestRow> = fetch_all(&client, "/data", DataTablesRequest::default())
+        let result: Vec<TestRow> = client
+            .fetch_all("/data", DataTablesRequest::default())
             .await
             .unwrap();
 
@@ -631,7 +599,8 @@ mod tests {
             .await;
         let client = test_client(&server);
 
-        let result: Vec<TestRow> = fetch_all(&client, "/data", DataTablesRequest::default())
+        let result: Vec<TestRow> = client
+            .fetch_all("/data", DataTablesRequest::default())
             .await
             .unwrap();
 
@@ -657,7 +626,8 @@ mod tests {
             .await;
         let client = test_client(&server);
 
-        let result: Vec<TestRow> = fetch_limit(&client, "/data", DataTablesRequest::default(), 5)
+        let result: Vec<TestRow> = client
+            .fetch_limit("/data", DataTablesRequest::default(), 5)
             .await
             .unwrap();
 
@@ -678,7 +648,8 @@ mod tests {
             .await;
         let client = test_client(&server);
 
-        let result: Vec<TestRow> = fetch_all(&client, "/data", DataTablesRequest::default())
+        let result: Vec<TestRow> = client
+            .fetch_all("/data", DataTablesRequest::default())
             .await
             .unwrap();
 

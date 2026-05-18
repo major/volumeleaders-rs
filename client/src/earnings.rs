@@ -4,8 +4,7 @@ use tracing::instrument;
 
 use crate::client::Client;
 use crate::datatables::{
-    DataTablesColumn, DataTablesRequest, DataTablesResponse, fetch_limit,
-    impl_datatables_request_methods,
+    DataTablesColumn, DataTablesRequest, DataTablesResponse, impl_datatables_request_methods,
 };
 use crate::error::Result;
 use crate::models::Earning;
@@ -81,10 +80,8 @@ impl Client {
         &self,
         request: &EarningsRequest,
     ) -> Result<DataTablesResponse<Earning>> {
-        let body = self
-            .post_form(EARNINGS_GET_EARNINGS_PATH, request.to_pairs())
-            .await?;
-        Ok(serde_json::from_str(&body)?)
+        self.post_datatables(EARNINGS_GET_EARNINGS_PATH, request.to_pairs())
+            .await
     }
 
     /// Fetch up to `limit` earnings by paginating `/Earnings/GetEarnings`.
@@ -95,38 +92,15 @@ impl Client {
         request: &EarningsRequest,
         limit: usize,
     ) -> Result<Vec<Earning>> {
-        fetch_limit(self, EARNINGS_GET_EARNINGS_PATH, request.0.clone(), limit).await
+        self.fetch_limit(EARNINGS_GET_EARNINGS_PATH, request.0.clone(), limit)
+            .await
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::client::ClientConfig;
-    use crate::session::{
-        COOKIE_DOMAIN, Cookie, FORMS_AUTH_COOKIE_NAME, SESSION_COOKIE_NAME, Session,
-    };
-
-    fn test_session() -> Session {
-        Session::new(
-            vec![
-                Cookie::new(SESSION_COOKIE_NAME, "session-123", COOKIE_DOMAIN),
-                Cookie::new(FORMS_AUTH_COOKIE_NAME, "auth-456", COOKIE_DOMAIN),
-            ],
-            "xsrf-789",
-        )
-    }
-
-    fn test_client(server: &mockito::Server) -> Client {
-        Client::with_config(
-            test_session(),
-            ClientConfig {
-                base_url: server.url(),
-                ..ClientConfig::default()
-            },
-        )
-        .unwrap()
-    }
+    use crate::test_support::test_client;
 
     // -- column definition tests --
 

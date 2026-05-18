@@ -4,8 +4,7 @@ use tracing::instrument;
 
 use crate::client::Client;
 use crate::datatables::{
-    DataTablesColumn, DataTablesRequest, DataTablesResponse, fetch_limit,
-    impl_datatables_request_methods,
+    DataTablesColumn, DataTablesRequest, DataTablesResponse, impl_datatables_request_methods,
 };
 use crate::error::Result;
 use crate::models::Trade;
@@ -91,8 +90,7 @@ impl Client {
     /// typed response envelope.
     #[instrument(skip_all)]
     pub async fn get_trades(&self, request: &TradesRequest) -> Result<DataTablesResponse<Trade>> {
-        let body = self.post_form(TRADES_PATH, request.to_pairs()).await?;
-        Ok(serde_json::from_str(&body)?)
+        self.post_datatables(TRADES_PATH, request.to_pairs()).await
     }
 
     /// Fetch up to `limit` trades by paginating `/Trades/GetTrades`.
@@ -102,38 +100,15 @@ impl Client {
         request: &TradesRequest,
         limit: usize,
     ) -> Result<Vec<Trade>> {
-        fetch_limit(self, TRADES_PATH, request.0.clone(), limit).await
+        self.fetch_limit(TRADES_PATH, request.0.clone(), limit)
+            .await
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::client::ClientConfig;
-    use crate::session::{
-        COOKIE_DOMAIN, Cookie, FORMS_AUTH_COOKIE_NAME, SESSION_COOKIE_NAME, Session,
-    };
-
-    fn test_session() -> Session {
-        Session::new(
-            vec![
-                Cookie::new(SESSION_COOKIE_NAME, "session-123", COOKIE_DOMAIN),
-                Cookie::new(FORMS_AUTH_COOKIE_NAME, "auth-456", COOKIE_DOMAIN),
-            ],
-            "xsrf-789",
-        )
-    }
-
-    fn test_client(server: &mockito::Server) -> Client {
-        Client::with_config(
-            test_session(),
-            ClientConfig {
-                base_url: server.url(),
-                ..ClientConfig::default()
-            },
-        )
-        .unwrap()
-    }
+    use crate::test_support::test_client;
 
     #[test]
     fn trades_columns_returns_15_columns() {

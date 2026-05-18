@@ -6,8 +6,7 @@ use tracing::instrument;
 
 use crate::client::Client;
 use crate::datatables::{
-    DataTablesColumn, DataTablesRequest, DataTablesResponse, fetch_limit,
-    impl_datatables_request_methods,
+    DataTablesColumn, DataTablesRequest, DataTablesResponse, impl_datatables_request_methods,
 };
 use crate::error::Result;
 use crate::models::TradeLevel;
@@ -162,10 +161,8 @@ impl Client {
         &self,
         request: &TradeLevelsRequest,
     ) -> Result<DataTablesResponse<TradeLevel>> {
-        let body = self
-            .post_form(CHART_GET_TRADE_LEVELS_PATH, request.to_pairs())
-            .await?;
-        Ok(serde_json::from_str(&body)?)
+        self.post_datatables(CHART_GET_TRADE_LEVELS_PATH, request.to_pairs())
+            .await
     }
 
     /// Fetch up to `limit` trade levels by paginating
@@ -176,7 +173,8 @@ impl Client {
         request: &TradeLevelsRequest,
         limit: usize,
     ) -> Result<Vec<TradeLevel>> {
-        fetch_limit(self, CHART_GET_TRADE_LEVELS_PATH, request.0.clone(), limit).await
+        self.fetch_limit(CHART_GET_TRADE_LEVELS_PATH, request.0.clone(), limit)
+            .await
     }
 
     /// Post a DataTables request to `/Chart0/GetTradeLevels` and return the
@@ -186,10 +184,8 @@ impl Client {
         &self,
         request: &TradeLevelsRequest,
     ) -> Result<DataTablesResponse<TradeLevel>> {
-        let body = self
-            .post_form(CHART0_GET_TRADE_LEVELS_PATH, request.to_pairs())
-            .await?;
-        Ok(serde_json::from_str(&body)?)
+        self.post_datatables(CHART0_GET_TRADE_LEVELS_PATH, request.to_pairs())
+            .await
     }
 
     /// Fetch up to `limit` trade levels by paginating
@@ -200,7 +196,8 @@ impl Client {
         request: &TradeLevelsRequest,
         limit: usize,
     ) -> Result<Vec<TradeLevel>> {
-        fetch_limit(self, CHART0_GET_TRADE_LEVELS_PATH, request.0.clone(), limit).await
+        self.fetch_limit(CHART0_GET_TRADE_LEVELS_PATH, request.0.clone(), limit)
+            .await
     }
 
     /// Post a DataTables request to `/TradeLevels/GetTradeLevels` and return
@@ -210,10 +207,8 @@ impl Client {
         &self,
         request: &TradeLevelsRequest,
     ) -> Result<DataTablesResponse<TradeLevel>> {
-        let body = self
-            .post_form(TRADE_LEVELS_GET_TRADE_LEVELS_PATH, request.to_pairs())
-            .await?;
-        Ok(serde_json::from_str(&body)?)
+        self.post_datatables(TRADE_LEVELS_GET_TRADE_LEVELS_PATH, request.to_pairs())
+            .await
     }
 
     /// Fetch up to `limit` trade levels by paginating
@@ -224,13 +219,8 @@ impl Client {
         request: &TradeLevelsRequest,
         limit: usize,
     ) -> Result<Vec<TradeLevel>> {
-        fetch_limit(
-            self,
-            TRADE_LEVELS_GET_TRADE_LEVELS_PATH,
-            request.0.clone(),
-            limit,
-        )
-        .await
+        self.fetch_limit(TRADE_LEVELS_GET_TRADE_LEVELS_PATH, request.0.clone(), limit)
+            .await
     }
 
     /// Post a DataTables request to
@@ -241,10 +231,8 @@ impl Client {
         &self,
         request: &TradeLevelTouchesRequest,
     ) -> Result<DataTablesResponse<TradeLevel>> {
-        let body = self
-            .post_form(TRADE_LEVEL_TOUCHES_PATH, request.to_pairs())
-            .await?;
-        Ok(serde_json::from_str(&body)?)
+        self.post_datatables(TRADE_LEVEL_TOUCHES_PATH, request.to_pairs())
+            .await
     }
 
     /// Fetch up to `limit` trade level touches by paginating
@@ -255,38 +243,15 @@ impl Client {
         request: &TradeLevelTouchesRequest,
         limit: usize,
     ) -> Result<Vec<TradeLevel>> {
-        fetch_limit(self, TRADE_LEVEL_TOUCHES_PATH, request.0.clone(), limit).await
+        self.fetch_limit(TRADE_LEVEL_TOUCHES_PATH, request.0.clone(), limit)
+            .await
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::client::ClientConfig;
-    use crate::session::{
-        COOKIE_DOMAIN, Cookie, FORMS_AUTH_COOKIE_NAME, SESSION_COOKIE_NAME, Session,
-    };
-
-    fn test_session() -> Session {
-        Session::new(
-            vec![
-                Cookie::new(SESSION_COOKIE_NAME, "session-123", COOKIE_DOMAIN),
-                Cookie::new(FORMS_AUTH_COOKIE_NAME, "auth-456", COOKIE_DOMAIN),
-            ],
-            "xsrf-789",
-        )
-    }
-
-    fn test_client(server: &mockito::Server) -> Client {
-        Client::with_config(
-            test_session(),
-            ClientConfig {
-                base_url: server.url(),
-                ..ClientConfig::default()
-            },
-        )
-        .unwrap()
-    }
+    use crate::test_support::test_client;
 
     // -- column definition tests --
 

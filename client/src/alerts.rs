@@ -3,10 +3,9 @@
 use serde::Serialize;
 use tracing::instrument;
 
-use crate::client::Client;
+use crate::client::{Client, multipart_form_from_fields, push_bool_field};
 use crate::datatables::{
-    DataTablesColumn, DataTablesRequest, DataTablesResponse, fetch_limit,
-    impl_datatables_request_methods,
+    DataTablesColumn, DataTablesRequest, DataTablesResponse, impl_datatables_request_methods,
 };
 use crate::error::Result;
 use crate::models::{AlertConfig, TradeAlert, TradeClusterAlert};
@@ -264,13 +263,6 @@ impl SaveAlertConfigRequest {
     }
 }
 
-fn push_bool_field(fields: &mut Vec<(String, String)>, name: &str, value: bool) {
-    if value {
-        fields.push((name.to_string(), "true".to_string()));
-    }
-    fields.push((name.to_string(), "false".to_string()));
-}
-
 /// JSON payload for deleting an alert configuration.
 #[derive(Clone, Debug, Eq, PartialEq, Serialize)]
 #[serde(rename_all = "PascalCase")]
@@ -308,10 +300,8 @@ impl Client {
         &self,
         request: &AlertConfigsRequest,
     ) -> Result<DataTablesResponse<AlertConfig>> {
-        let body = self
-            .post_form(ALERT_CONFIGS_GET_ALERT_CONFIGS_PATH, request.to_pairs())
-            .await?;
-        Ok(serde_json::from_str(&body)?)
+        self.post_datatables(ALERT_CONFIGS_GET_ALERT_CONFIGS_PATH, request.to_pairs())
+            .await
     }
 
     /// Fetch up to `limit` alert configurations by paginating the endpoint.
@@ -321,8 +311,7 @@ impl Client {
         request: &AlertConfigsRequest,
         limit: usize,
     ) -> Result<Vec<AlertConfig>> {
-        fetch_limit(
-            self,
+        self.fetch_limit(
             ALERT_CONFIGS_GET_ALERT_CONFIGS_PATH,
             request.0.clone(),
             limit,
@@ -336,10 +325,8 @@ impl Client {
         &self,
         request: &TradeAlertsRequest,
     ) -> Result<DataTablesResponse<TradeAlert>> {
-        let body = self
-            .post_form(TRADE_ALERTS_GET_TRADE_ALERTS_PATH, request.to_pairs())
-            .await?;
-        Ok(serde_json::from_str(&body)?)
+        self.post_datatables(TRADE_ALERTS_GET_TRADE_ALERTS_PATH, request.to_pairs())
+            .await
     }
 
     /// Fetch up to `limit` trade alerts by paginating the endpoint.
@@ -349,13 +336,8 @@ impl Client {
         request: &TradeAlertsRequest,
         limit: usize,
     ) -> Result<Vec<TradeAlert>> {
-        fetch_limit(
-            self,
-            TRADE_ALERTS_GET_TRADE_ALERTS_PATH,
-            request.0.clone(),
-            limit,
-        )
-        .await
+        self.fetch_limit(TRADE_ALERTS_GET_TRADE_ALERTS_PATH, request.0.clone(), limit)
+            .await
     }
 
     /// Post a DataTables request to `/TradeClusterAlerts/GetTradeClusterAlerts`.
@@ -364,13 +346,11 @@ impl Client {
         &self,
         request: &TradeClusterAlertsRequest,
     ) -> Result<DataTablesResponse<TradeClusterAlert>> {
-        let body = self
-            .post_form(
-                TRADE_CLUSTER_ALERTS_GET_TRADE_CLUSTER_ALERTS_PATH,
-                request.to_pairs(),
-            )
-            .await?;
-        Ok(serde_json::from_str(&body)?)
+        self.post_datatables(
+            TRADE_CLUSTER_ALERTS_GET_TRADE_CLUSTER_ALERTS_PATH,
+            request.to_pairs(),
+        )
+        .await
     }
 
     /// Fetch up to `limit` trade cluster alerts by paginating the endpoint.
@@ -380,8 +360,7 @@ impl Client {
         request: &TradeClusterAlertsRequest,
         limit: usize,
     ) -> Result<Vec<TradeClusterAlert>> {
-        fetch_limit(
-            self,
+        self.fetch_limit(
             TRADE_CLUSTER_ALERTS_GET_TRADE_CLUSTER_ALERTS_PATH,
             request.0.clone(),
             limit,
@@ -409,53 +388,10 @@ impl Client {
     }
 }
 
-fn multipart_form_from_fields(fields: &[(String, String)]) -> reqwest::multipart::Form {
-    let mut form = reqwest::multipart::Form::new();
-    for (key, value) in fields {
-        form = form.text(key.clone(), value.clone());
-    }
-    form
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::client::ClientConfig;
-    use crate::session::{
-        COOKIE_DOMAIN, Cookie, FORMS_AUTH_COOKIE_NAME, SESSION_COOKIE_NAME, Session,
-    };
-
-    fn test_session() -> Session {
-        Session::new(
-            vec![
-                Cookie::new(SESSION_COOKIE_NAME, "session-123", COOKIE_DOMAIN),
-                Cookie::new(FORMS_AUTH_COOKIE_NAME, "auth-456", COOKIE_DOMAIN),
-            ],
-            "xsrf-789",
-        )
-    }
-
-    fn test_client(server: &mockito::Server) -> Client {
-        Client::with_config(
-            test_session(),
-            ClientConfig {
-                base_url: server.url(),
-                ..ClientConfig::default()
-            },
-        )
-        .unwrap()
-    }
-
-    fn datatables_body<T: Serialize>(data: Vec<T>) -> String {
-        serde_json::to_string(&DataTablesResponse {
-            draw: 1,
-            records_total: data.len() as i32,
-            records_filtered: data.len() as i32,
-            data,
-            error: None,
-        })
-        .unwrap()
-    }
+    use crate::test_support::{datatables_body, test_client};
 
     #[test]
     fn alert_configs_columns_match_go_source() {

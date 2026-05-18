@@ -324,7 +324,7 @@ async fn read_limited_body(mut response: reqwest::Response, limit: usize) -> Res
     Ok(String::from_utf8_lossy(&body).into_owned())
 }
 
-fn encode_form_pairs(pairs: &[(String, String)]) -> String {
+pub(crate) fn encode_form_pairs(pairs: &[(String, String)]) -> String {
     pairs
         .iter()
         .map(|(key, value)| format!("{key}={}", encode_form_value(value)))
@@ -332,7 +332,7 @@ fn encode_form_pairs(pairs: &[(String, String)]) -> String {
         .join("&")
 }
 
-fn encode_form_value(value: &str) -> String {
+pub(crate) fn encode_form_value(value: &str) -> String {
     let mut encoded = String::new();
     for byte in value.bytes() {
         match byte {
@@ -350,12 +350,33 @@ fn encode_form_value(value: &str) -> String {
     encoded
 }
 
-fn hex_digit(value: u8) -> char {
+pub(crate) fn hex_digit(value: u8) -> char {
     match value {
         0..=9 => char::from(b'0' + value),
         10..=15 => char::from(b'A' + value - 10),
         _ => unreachable!("nibble values are always in 0..=15"),
     }
+}
+
+/// Push a boolean form field using the VolumeLeaders duplicate-key convention.
+///
+/// When `value` is true, two entries are pushed (`"true"` then `"false"`);
+/// when false, only `"false"` is pushed. This matches browser form behavior
+/// for checkbox + hidden input pairs.
+pub(crate) fn push_bool_field(fields: &mut Vec<(String, String)>, name: &str, value: bool) {
+    if value {
+        fields.push((name.to_string(), "true".to_string()));
+    }
+    fields.push((name.to_string(), "false".to_string()));
+}
+
+/// Build a `reqwest::multipart::Form` from key-value field pairs.
+pub(crate) fn multipart_form_from_fields(fields: &[(String, String)]) -> reqwest::multipart::Form {
+    let mut form = reqwest::multipart::Form::new();
+    for (key, value) in fields {
+        form = form.text(key.clone(), value.clone());
+    }
+    form
 }
 
 fn map_reqwest_error(error: reqwest::Error) -> ClientError {

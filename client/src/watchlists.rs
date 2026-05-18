@@ -3,10 +3,9 @@
 use serde::{Deserialize, Serialize};
 use tracing::instrument;
 
-use crate::client::Client;
+use crate::client::{Client, multipart_form_from_fields, push_bool_field};
 use crate::datatables::{
-    DataTablesColumn, DataTablesRequest, DataTablesResponse, fetch_limit,
-    impl_datatables_request_methods,
+    DataTablesColumn, DataTablesRequest, DataTablesResponse, impl_datatables_request_methods,
 };
 use crate::error::Result;
 use crate::models::{WatchListConfig, WatchListTicker};
@@ -263,13 +262,6 @@ impl SaveWatchListConfigRequest {
     }
 }
 
-fn push_bool_field(fields: &mut Vec<(String, String)>, name: &str, value: bool) {
-    if value {
-        fields.push((name.to_string(), "true".to_string()));
-    }
-    fields.push((name.to_string(), "false".to_string()));
-}
-
 /// Form payload for adding a ticker to an existing watchlist.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct AddTickerToWatchListRequest {
@@ -333,10 +325,8 @@ impl Client {
         &self,
         request: &WatchListConfigsRequest,
     ) -> Result<DataTablesResponse<WatchListConfig>> {
-        let body = self
-            .post_form(WATCH_LIST_CONFIGS_GET_WATCH_LISTS_PATH, request.to_pairs())
-            .await?;
-        Ok(serde_json::from_str(&body)?)
+        self.post_datatables(WATCH_LIST_CONFIGS_GET_WATCH_LISTS_PATH, request.to_pairs())
+            .await
     }
 
     /// Fetch up to `limit` watchlist configurations by paginating the endpoint.
@@ -346,8 +336,7 @@ impl Client {
         request: &WatchListConfigsRequest,
         limit: usize,
     ) -> Result<Vec<WatchListConfig>> {
-        fetch_limit(
-            self,
+        self.fetch_limit(
             WATCH_LIST_CONFIGS_GET_WATCH_LISTS_PATH,
             request.0.clone(),
             limit,
@@ -361,10 +350,8 @@ impl Client {
         &self,
         request: &WatchListTickersRequest,
     ) -> Result<DataTablesResponse<WatchListTicker>> {
-        let body = self
-            .post_form(WATCH_LISTS_GET_WATCH_LIST_TICKERS_PATH, request.to_pairs())
-            .await?;
-        Ok(serde_json::from_str(&body)?)
+        self.post_datatables(WATCH_LISTS_GET_WATCH_LIST_TICKERS_PATH, request.to_pairs())
+            .await
     }
 
     /// Fetch up to `limit` watchlist tickers by paginating the endpoint.
@@ -374,8 +361,7 @@ impl Client {
         request: &WatchListTickersRequest,
         limit: usize,
     ) -> Result<Vec<WatchListTicker>> {
-        fetch_limit(
-            self,
+        self.fetch_limit(
             WATCH_LISTS_GET_WATCH_LIST_TICKERS_PATH,
             request.0.clone(),
             limit,
@@ -424,53 +410,10 @@ impl Client {
     }
 }
 
-fn multipart_form_from_fields(fields: &[(String, String)]) -> reqwest::multipart::Form {
-    let mut form = reqwest::multipart::Form::new();
-    for (key, value) in fields {
-        form = form.text(key.clone(), value.clone());
-    }
-    form
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::client::ClientConfig;
-    use crate::session::{
-        COOKIE_DOMAIN, Cookie, FORMS_AUTH_COOKIE_NAME, SESSION_COOKIE_NAME, Session,
-    };
-
-    fn test_session() -> Session {
-        Session::new(
-            vec![
-                Cookie::new(SESSION_COOKIE_NAME, "session-123", COOKIE_DOMAIN),
-                Cookie::new(FORMS_AUTH_COOKIE_NAME, "auth-456", COOKIE_DOMAIN),
-            ],
-            "xsrf-789",
-        )
-    }
-
-    fn test_client(server: &mockito::Server) -> Client {
-        Client::with_config(
-            test_session(),
-            ClientConfig {
-                base_url: server.url(),
-                ..ClientConfig::default()
-            },
-        )
-        .unwrap()
-    }
-
-    fn datatables_body<T: Serialize>(data: Vec<T>) -> String {
-        serde_json::to_string(&DataTablesResponse {
-            draw: 1,
-            records_total: data.len() as i32,
-            records_filtered: data.len() as i32,
-            data,
-            error: None,
-        })
-        .unwrap()
-    }
+    use crate::test_support::{datatables_body, test_client};
 
     #[test]
     fn watchlist_configs_columns_match_go_source() {

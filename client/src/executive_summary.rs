@@ -10,8 +10,7 @@ use tracing::instrument;
 
 use crate::client::Client;
 use crate::datatables::{
-    DataTablesColumn, DataTablesRequest, DataTablesResponse, fetch_limit,
-    impl_datatables_request_methods,
+    DataTablesColumn, DataTablesRequest, DataTablesResponse, impl_datatables_request_methods,
 };
 use crate::error::Result;
 use crate::models::{ExhaustionScore, Trade, TradeCluster};
@@ -194,13 +193,11 @@ impl Client {
         &self,
         request: &WelcomeTradesRequest,
     ) -> Result<DataTablesResponse<Trade>> {
-        let body = self
-            .post_form(
-                EXECUTIVE_SUMMARY_GET_WELCOME_TRADES_PATH,
-                request.to_pairs(),
-            )
-            .await?;
-        Ok(serde_json::from_str(&body)?)
+        self.post_datatables(
+            EXECUTIVE_SUMMARY_GET_WELCOME_TRADES_PATH,
+            request.to_pairs(),
+        )
+        .await
     }
 
     /// Fetch up to `limit` welcome trades by paginating
@@ -211,8 +208,7 @@ impl Client {
         request: &WelcomeTradesRequest,
         limit: usize,
     ) -> Result<Vec<Trade>> {
-        fetch_limit(
-            self,
+        self.fetch_limit(
             EXECUTIVE_SUMMARY_GET_WELCOME_TRADES_PATH,
             request.0.clone(),
             limit,
@@ -228,13 +224,11 @@ impl Client {
         &self,
         request: &WelcomeTradeClustersRequest,
     ) -> Result<DataTablesResponse<TradeCluster>> {
-        let body = self
-            .post_form(
-                EXECUTIVE_SUMMARY_GET_WELCOME_TRADE_CLUSTERS_PATH,
-                request.to_pairs(),
-            )
-            .await?;
-        Ok(serde_json::from_str(&body)?)
+        self.post_datatables(
+            EXECUTIVE_SUMMARY_GET_WELCOME_TRADE_CLUSTERS_PATH,
+            request.to_pairs(),
+        )
+        .await
     }
 
     /// Fetch up to `limit` welcome trade clusters by paginating
@@ -245,8 +239,7 @@ impl Client {
         request: &WelcomeTradeClustersRequest,
         limit: usize,
     ) -> Result<Vec<TradeCluster>> {
-        fetch_limit(
-            self,
+        self.fetch_limit(
             EXECUTIVE_SUMMARY_GET_WELCOME_TRADE_CLUSTERS_PATH,
             request.0.clone(),
             limit,
@@ -274,31 +267,7 @@ impl Client {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::client::ClientConfig;
-    use crate::session::{
-        COOKIE_DOMAIN, Cookie, FORMS_AUTH_COOKIE_NAME, SESSION_COOKIE_NAME, Session,
-    };
-
-    fn test_session() -> Session {
-        Session::new(
-            vec![
-                Cookie::new(SESSION_COOKIE_NAME, "session-123", COOKIE_DOMAIN),
-                Cookie::new(FORMS_AUTH_COOKIE_NAME, "auth-456", COOKIE_DOMAIN),
-            ],
-            "xsrf-789",
-        )
-    }
-
-    fn test_client(server: &mockito::Server) -> Client {
-        Client::with_config(
-            test_session(),
-            ClientConfig {
-                base_url: server.url(),
-                ..ClientConfig::default()
-            },
-        )
-        .unwrap()
-    }
+    use crate::test_support::test_client;
 
     // -- column definition tests --
 
