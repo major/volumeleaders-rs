@@ -83,6 +83,7 @@ The `rookie_spike` example checks whether required VolumeLeaders cookies can be 
 - `cd.yml` runs release-plz on pushes to `main` and on manual dispatch. It uses the `RELEASE_PLZ_TOKEN` secret so release PR branch updates and release tags can trigger normal GitHub Actions workflows.
 - `release-plz.toml` keeps the changelog current, opens release PRs, publishes publishable workspace crates to crates.io, and creates git tags. GitHub Releases are disabled there because cargo-dist owns artifact releases.
 - `dist-workspace.toml` configures cargo-dist for the `volumeleaders-agent` binary installers and generated GitHub Release workflow.
+- The cargo-dist release workflow updates Rust to the current stable toolchain before artifact builds so runner image defaults do not fall below the workspace MSRV.
 - The first crates.io release for each crate must be published manually with a crates.io API token. After that, configure crates.io Trusted Publishing for `major/volumeleaders-rs` with workflow file `cd.yml`; release-plz can then publish through GitHub OIDC without storing a `CARGO_REGISTRY_TOKEN` secret.
 - Publish workspace crates in dependency order: `volumeleaders-client` first, then `volumeleaders-agent` after the client version is available in the crates.io index.
 

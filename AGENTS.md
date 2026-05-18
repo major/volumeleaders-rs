@@ -87,6 +87,7 @@ cargo doc --workspace --no-deps
 - `cd.yml` runs release-plz with `RELEASE_PLZ_TOKEN`; the token is needed so release PR branch updates and release tags trigger normal workflows.
 - `release-plz.toml` publishes crates.io packages and creates git tags, but GitHub Releases are disabled because cargo-dist owns artifact releases.
 - `dist-workspace.toml` configures cargo-dist for the `volumeleaders-agent` binary installers. Regenerate `.github/workflows/release.yml` after changing dist settings.
+- Release artifact jobs in `.github/workflows/release.yml` explicitly update Rust to stable before `dist build`; keep that step if regenerating cargo-dist CI so hosted runner images cannot fall below the workspace MSRV.
 - After the first manual crates.io publish, configure crates.io Trusted Publishing for repo `major/volumeleaders-rs` and workflow file `cd.yml` so future release-plz publishes use GitHub OIDC.
 - If a code change modifies public CLI behavior, update README examples and the matching `agent/AGENTS.md` note.
 - If a code change modifies request fields, response models, auth, fixtures, or pagination, update README scope notes and `client/AGENTS.md`.
