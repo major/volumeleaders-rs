@@ -10,7 +10,6 @@ use volumeleaders_client::{
 
 use crate::cli::WatchlistArgs;
 use crate::common::auth::{handle_api_error, make_client};
-use crate::common::types::OutputFormat;
 use crate::output::{finish_output, print_json, print_records};
 
 const DEFAULT_CONFIGS_FIELDS: [&str; 4] = ["SearchTemplateKey", "Name", "Tickers", "Criteria"];
@@ -42,10 +41,6 @@ pub enum WatchlistCommand {
 /// Arguments for `watchlist configs`.
 #[derive(Debug, Args)]
 pub struct ConfigsArgs {
-    /// Output format.
-    #[arg(long, value_enum, default_value = "json")]
-    pub format: OutputFormat,
-
     /// Comma-separated field list for output.
     #[arg(long, conflicts_with = "all_fields")]
     pub fields: Option<String>,
@@ -61,9 +56,6 @@ pub struct TickersArgs {
     #[arg(long, default_value = "-1")]
     pub watchlist_key: i64,
 
-    /// Output format.
-    #[arg(long, value_enum, default_value = "json")]
-    pub format: OutputFormat,
     /// Comma-separated field list for output.
     #[arg(long, conflicts_with = "all_fields")]
     pub fields: Option<String>,
@@ -276,7 +268,6 @@ async fn execute_configs(args: &ConfigsArgs, pretty: bool) -> i32 {
 
     finish_output(print_records(
         &configs,
-        args.format,
         pretty,
         &DEFAULT_CONFIGS_FIELDS,
         args.fields.as_deref(),
@@ -302,7 +293,6 @@ async fn execute_tickers(args: &TickersArgs, pretty: bool) -> i32 {
 
     finish_output(print_records(
         &tickers,
-        args.format,
         pretty,
         &DEFAULT_TICKERS_FIELDS,
         args.fields.as_deref(),

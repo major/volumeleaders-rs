@@ -8,7 +8,6 @@ use volumeleaders_client::{EarningsRequest, ExhaustionScoresRequest};
 use crate::cli::MarketArgs;
 use crate::common::auth::{handle_api_error, make_client};
 use crate::common::dates::resolve_date_range;
-use crate::common::types::OutputFormat;
 use crate::output::{finish_output, print_json, print_records};
 
 const DEFAULT_EARNINGS_FIELDS: [&str; 6] = [
@@ -43,10 +42,6 @@ pub struct EarningsArgs {
     /// Look back this many days from the end date or today.
     #[arg(long)]
     pub days: Option<u32>,
-
-    /// Output format.
-    #[arg(long, value_enum, default_value = "json")]
-    pub format: OutputFormat,
 
     /// Comma-separated field list for output.
     #[arg(long, conflicts_with = "all_fields")]
@@ -87,7 +82,6 @@ async fn execute_earnings(args: &EarningsArgs, pretty: bool) -> i32 {
 
     finish_output(print_records(
         &earnings,
-        args.format,
         pretty,
         &DEFAULT_EARNINGS_FIELDS,
         args.fields.as_deref(),
@@ -127,7 +121,6 @@ mod tests {
     use clap::CommandFactory;
 
     use crate::cli::Cli;
-    use crate::common::types::OutputFormat;
 
     use super::{EarningsArgs, build_earnings_request};
 
@@ -149,7 +142,6 @@ mod tests {
             start_date: Some("2025-01-01".to_string()),
             end_date: Some("2025-01-15".to_string()),
             days: None,
-            format: OutputFormat::Json,
             fields: None,
             all_fields: false,
         };

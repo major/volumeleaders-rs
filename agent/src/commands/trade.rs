@@ -19,8 +19,8 @@ use crate::common::tickers::{parse_single_ticker, parse_tickers};
 use crate::common::trade_transforms::{
     TradeRecordKind, transform_trade_dashboard, transformed_trade_values,
 };
-use crate::common::types::{OrderDirection, OutputFormat, SummaryGroup, TriStateFilter};
-use crate::output::{finish_output, print_delimited, print_json, print_record_values};
+use crate::common::types::{OrderDirection, SummaryGroup, TriStateFilter};
+use crate::output::{finish_output, print_json, print_record_values};
 
 const DEFAULT_TRADE_LIMIT: usize = 1_000;
 const TRADE_LIST_TICKER_LOOKBACK_DAYS: u32 = 90;
@@ -97,17 +97,6 @@ const ALERT_HEADERS: [&str; 12] = [
     "type",
     "venue",
     "events",
-];
-const SENTIMENT_HEADERS: [&str; 9] = [
-    "date",
-    "bear_trades",
-    "bear_dollars",
-    "bear_top_tickers",
-    "bull_trades",
-    "bull_dollars",
-    "bull_top_tickers",
-    "ratio",
-    "signal",
 ];
 
 const DASHBOARD_TOP_LEVEL_FIELDS: [&str; 3] = ["ticker", "date_range", "count"];
@@ -213,9 +202,6 @@ pub struct ListArgs {
     /// Summary grouping. Valid only with --summary.
     #[arg(long = "group-by", value_enum)]
     pub group_by: Option<SummaryGroup>,
-    /// Output format.
-    #[arg(long, value_enum, default_value = "json")]
-    pub format: OutputFormat,
     /// Maximum number of trades to return.
     #[arg(long, default_value_t = DEFAULT_TRADE_LIMIT)]
     pub limit: usize,
@@ -261,9 +247,6 @@ pub struct SentimentArgs {
     pub ranges: TradeRangeArgs,
     #[command(flatten)]
     pub filters: TradeFilterArgs,
-    /// Output format.
-    #[arg(long, value_enum, default_value = "json")]
-    pub format: OutputFormat,
 }
 
 /// Arguments for `trade clusters`.
@@ -292,8 +275,6 @@ pub struct ClustersArgs {
     pub trade_cluster_rank: i32,
     #[command(flatten)]
     pub page: FixedPageArgs,
-    #[arg(long, value_enum, default_value = "json")]
-    pub format: OutputFormat,
     /// Comma-separated field list for output.
     #[arg(long, conflicts_with = "all_fields")]
     pub fields: Option<String>,
@@ -328,8 +309,6 @@ pub struct ClusterBombsArgs {
     pub trade_cluster_bomb_rank: i32,
     #[command(flatten)]
     pub page: FixedPageArgs,
-    #[arg(long, value_enum, default_value = "json")]
-    pub format: OutputFormat,
     /// Comma-separated field list for output.
     #[arg(long, conflicts_with = "all_fields")]
     pub fields: Option<String>,
@@ -346,8 +325,6 @@ pub struct AlertsArgs {
     pub date: String,
     #[command(flatten)]
     pub page: PageArgs,
-    #[arg(long, value_enum, default_value = "json")]
-    pub format: OutputFormat,
     /// Comma-separated field list for output.
     #[arg(long, conflicts_with = "all_fields")]
     pub fields: Option<String>,
@@ -366,8 +343,6 @@ pub struct LevelsArgs {
     /// Number of price levels to return.
     #[arg(long = "trade-level-count", default_value_t = DEFAULT_LEVEL_COUNT)]
     pub trade_level_count: usize,
-    #[arg(long, value_enum, default_value = "json")]
-    pub format: OutputFormat,
     /// Comma-separated field list for output.
     #[arg(long, conflicts_with = "all_fields")]
     pub fields: Option<String>,
@@ -399,8 +374,6 @@ pub struct LevelTouchesArgs {
     pub relative_size: Option<i32>,
     #[command(flatten)]
     pub page: PageArgs,
-    #[arg(long, value_enum, default_value = "json")]
-    pub format: OutputFormat,
     /// Comma-separated field list for output.
     #[arg(long, conflicts_with = "all_fields")]
     pub fields: Option<String>,
@@ -583,10 +556,6 @@ async fn execute_list(args: &ListArgs, pretty: bool) -> i32 {
         eprintln!("--group-by only works with --summary");
         return 1;
     }
-    if args.summary && args.format != OutputFormat::Json {
-        eprintln!("summary mode only supports JSON output");
-        return 1;
-    }
     if args.summary && (args.fields.is_some() || args.all_fields) {
         eprintln!("--fields and --all-fields cannot be used with --summary");
         return 1;
@@ -638,7 +607,6 @@ async fn execute_list(args: &ListArgs, pretty: bool) -> i32 {
         print_trade_records(
             &trades,
             TradeRecordKind::Trade,
-            args.format,
             pretty,
             &TRADE_HEADERS,
             args.fields.as_deref(),
@@ -736,14 +704,7 @@ async fn execute_sentiment(args: &SentimentArgs, pretty: bool) -> i32 {
         Err(err) => return handle_api_error(err),
     };
     let sentiment = summarize_trade_sentiment(&trades, &start, &end);
-    let output = match args.format {
-        OutputFormat::Json => print_json(&sentiment, pretty),
-        OutputFormat::Csv | OutputFormat::Tsv => {
-            let rows = flatten_sentiment(&sentiment);
-            print_delimited(&rows, args.format, &SENTIMENT_HEADERS)
-        }
-    };
-    finish_output(output)
+    finish_output(print_json(&sentiment, pretty))
 }
 
 #[instrument(skip_all)]
@@ -771,7 +732,6 @@ async fn execute_clusters(args: &ClustersArgs, pretty: bool) -> i32 {
     output_trade_records(
         &response.data,
         TradeRecordKind::Cluster,
-        args.format,
         pretty,
         &CLUSTER_HEADERS,
         args.fields.as_deref(),
@@ -804,7 +764,6 @@ async fn execute_cluster_bombs(args: &ClusterBombsArgs, pretty: bool) -> i32 {
     output_trade_records(
         &response.data,
         TradeRecordKind::ClusterBomb,
-        args.format,
         pretty,
         &BOMB_HEADERS,
         args.fields.as_deref(),
@@ -830,7 +789,6 @@ async fn execute_alerts(args: &AlertsArgs, pretty: bool) -> i32 {
     output_trade_records(
         &response.data,
         TradeRecordKind::Trade,
-        args.format,
         pretty,
         &ALERT_HEADERS,
         args.fields.as_deref(),
@@ -856,7 +814,6 @@ async fn execute_cluster_alerts(args: &AlertsArgs, pretty: bool) -> i32 {
     output_trade_records(
         &response.data,
         TradeRecordKind::Cluster,
-        args.format,
         pretty,
         &CLUSTER_HEADERS,
         args.fields.as_deref(),
@@ -887,7 +844,6 @@ async fn execute_levels(args: &LevelsArgs, pretty: bool) -> i32 {
     output_trade_records(
         &levels,
         TradeRecordKind::Level,
-        args.format,
         pretty,
         &LEVEL_HEADERS,
         args.fields.as_deref(),
@@ -929,7 +885,6 @@ async fn execute_level_touches(args: &LevelTouchesArgs, pretty: bool) -> i32 {
     output_trade_records(
         &response.data,
         TradeRecordKind::Level,
-        args.format,
         pretty,
         &LEVEL_HEADERS,
         args.fields.as_deref(),
@@ -940,20 +895,18 @@ async fn execute_level_touches(args: &LevelTouchesArgs, pretty: bool) -> i32 {
 fn output_trade_records<T: Serialize>(
     records: &[T],
     kind: TradeRecordKind,
-    format: OutputFormat,
     pretty: bool,
     headers: &[&str],
     fields: Option<&str>,
     all_fields: bool,
 ) -> i32 {
-    let result = print_trade_records(records, kind, format, pretty, headers, fields, all_fields);
+    let result = print_trade_records(records, kind, pretty, headers, fields, all_fields);
     finish_output(result)
 }
 
 fn print_trade_records<T: Serialize>(
     records: &[T],
     kind: TradeRecordKind,
-    format: OutputFormat,
     pretty: bool,
     headers: &[&str],
     fields: Option<&str>,
@@ -961,7 +914,7 @@ fn print_trade_records<T: Serialize>(
 ) -> std::io::Result<()> {
     let values = transformed_trade_values(records, kind)
         .map_err(|err| std::io::Error::new(std::io::ErrorKind::InvalidData, err))?;
-    print_record_values(&values, format, pretty, headers, fields, all_fields)
+    print_record_values(&values, pretty, headers, fields, all_fields)
 }
 
 fn parse_tri_state_filter(value: &str) -> Result<TriStateFilter, String> {
@@ -1882,19 +1835,6 @@ struct SentimentDayAccumulator {
     bull: SentimentAccumulator,
 }
 
-#[derive(Debug, Serialize)]
-struct SentimentRow {
-    date: String,
-    bear_trades: usize,
-    bear_dollars: f64,
-    bear_top_tickers: String,
-    bull_trades: usize,
-    bull_dollars: f64,
-    bull_top_tickers: String,
-    ratio: Option<f64>,
-    signal: TradeSentimentSignal,
-}
-
 fn summarize_trade_sentiment(
     trades: &[volumeleaders_client::Trade],
     start: &str,
@@ -2051,40 +1991,6 @@ fn top_sentiment_tickers(ticker_dollars: HashMap<String, f64>, limit: usize) -> 
         .take(limit)
         .map(|(ticker, _)| ticker)
         .collect()
-}
-
-fn flatten_sentiment(sentiment: &TradeSentiment) -> Vec<SentimentRow> {
-    let mut rows: Vec<SentimentRow> = sentiment.daily.iter().map(sentiment_day_row).collect();
-    rows.push(sentiment_totals_row(&sentiment.totals));
-    rows
-}
-
-fn sentiment_day_row(day: &TradeSentimentDay) -> SentimentRow {
-    SentimentRow {
-        date: day.date.clone(),
-        bear_trades: day.bear.trades,
-        bear_dollars: day.bear.dollars,
-        bear_top_tickers: day.bear.top_tickers.join(";"),
-        bull_trades: day.bull.trades,
-        bull_dollars: day.bull.dollars,
-        bull_top_tickers: day.bull.top_tickers.join(";"),
-        ratio: day.ratio,
-        signal: day.signal,
-    }
-}
-
-fn sentiment_totals_row(totals: &TradeSentimentTotals) -> SentimentRow {
-    SentimentRow {
-        date: "total".to_string(),
-        bear_trades: totals.bear.trades,
-        bear_dollars: totals.bear.dollars,
-        bear_top_tickers: totals.bear.top_tickers.join(";"),
-        bull_trades: totals.bull.trades,
-        bull_dollars: totals.bull.dollars,
-        bull_top_tickers: totals.bull.top_tickers.join(";"),
-        ratio: totals.ratio,
-        signal: totals.signal,
-    }
 }
 
 #[derive(Debug)]
@@ -2564,7 +2470,6 @@ mod tests {
         write_record_values(
             &mut output,
             &values,
-            OutputFormat::Json,
             false,
             &CLUSTER_HEADERS,
             fields,
@@ -2911,25 +2816,21 @@ mod tests {
         let values = transformed_trade_values(&[cluster_alert_fixture()], TradeRecordKind::Cluster)
             .expect("cluster alert serializes");
         let mut output = Vec::new();
-        write_record_values(
-            &mut output,
-            &values,
-            OutputFormat::Csv,
-            false,
-            &CLUSTER_HEADERS,
-            None,
-            false,
-        )
-        .expect("cluster alert output renders");
-        let output = String::from_utf8(output).unwrap();
-        let lines: Vec<&str> = output.lines().collect();
+        write_record_values(&mut output, &values, false, &CLUSTER_HEADERS, None, false)
+            .expect("cluster alert output renders");
+        let output: serde_json::Value = serde_json::from_slice(&output).unwrap();
+        let row = output[0].as_object().unwrap();
 
-        assert_eq!(lines[0], CLUSTER_HEADERS.join(","));
-        assert!(lines[1].contains("MSFT"));
-        assert!(lines[1].contains("15:00:00-15:07:30"));
-        assert!(lines[1].contains("VOLEX"));
-        assert!(!lines[1].contains("MinFullDateTime"));
-        assert!(!lines[1].contains("MaxFullDateTime"));
+        assert!(
+            CLUSTER_HEADERS
+                .iter()
+                .all(|header| row.contains_key(*header))
+        );
+        assert_eq!(row["Ticker"], "MSFT");
+        assert_eq!(row["window"], "15:00:00-15:07:30");
+        assert_eq!(row["events"], json!(["VOLEX"]));
+        assert!(!row.contains_key("MinFullDateTime"));
+        assert!(!row.contains_key("MaxFullDateTime"));
     }
 
     #[test]

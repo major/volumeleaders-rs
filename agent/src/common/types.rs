@@ -38,21 +38,6 @@ pub enum OrderDirection {
     Desc,
 }
 
-/// Supported output formats for CLI commands.
-#[derive(Clone, Copy, Debug, Default, PartialEq, clap::ValueEnum)]
-pub enum OutputFormat {
-    /// JSON output (default).
-    #[default]
-    #[value(name = "json")]
-    Json,
-    /// Comma-separated values.
-    #[value(name = "csv")]
-    Csv,
-    /// Tab-separated values.
-    #[value(name = "tsv")]
-    Tsv,
-}
-
 /// Grouping dimension for summary commands.
 #[derive(Clone, Copy, Debug, PartialEq, clap::ValueEnum)]
 pub enum SummaryGroup {
@@ -81,10 +66,5 @@ mod tests {
     #[test]
     fn tri_state_filter_default_is_all() {
         assert_eq!(TriStateFilter::default(), TriStateFilter::All);
-    }
-
-    #[test]
-    fn output_format_default_is_json() {
-        assert_eq!(OutputFormat::default(), OutputFormat::Json);
     }
 }

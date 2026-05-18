@@ -3,25 +3,11 @@ use std::io::{self, Write};
 use serde::Serialize;
 use serde_json::Value;
 
-use crate::common::types::OutputFormat;
-
 /// Writes `value` as JSON to stdout, newline-terminated.
 ///
 /// Uses compact format when `pretty` is false, 2-space-indented when true.
 pub fn print_json<T: Serialize>(value: &T, pretty: bool) -> io::Result<()> {
     write_json(&mut io::stdout().lock(), value, pretty)
-}
-
-/// Writes `records` as delimited text (CSV or TSV) to stdout with a header row.
-///
-/// Each record is serialized to JSON and fields are extracted in header order.
-/// Null or missing fields become empty cells, booleans render as true/false.
-pub fn print_delimited<T: Serialize>(
-    records: &[T],
-    format: OutputFormat,
-    headers: &[&str],
-) -> io::Result<()> {
-    write_delimited(io::stdout().lock(), records, format, headers)
 }
 
 /// Parses a comma-separated output field list.
@@ -68,7 +54,6 @@ pub fn records_to_values<T: Serialize>(records: &[T], fields: Option<&[String]>)
 /// Outputs pre-serialized record values with compact JSON defaults and optional custom fields.
 pub fn print_record_values(
     records: &[Value],
-    format: OutputFormat,
     pretty: bool,
     compact_headers: &[&str],
     fields: Option<&str>,
@@ -77,7 +62,6 @@ pub fn print_record_values(
     write_record_values(
         io::stdout().lock(),
         records,
-        format,
         pretty,
         compact_headers,
         fields,
@@ -89,7 +73,6 @@ pub fn print_record_values(
 pub(crate) fn write_record_values<W: Write>(
     mut writer: W,
     records: &[Value],
-    format: OutputFormat,
     pretty: bool,
     compact_headers: &[&str],
     fields: Option<&str>,
@@ -103,44 +86,19 @@ pub(crate) fn write_record_values<W: Write>(
         validate_value_fields(records, fields)?;
     }
 
-    match format {
-        OutputFormat::Json if all_fields || raw_fields_requested => {
-            write_json(&mut writer, &records, pretty)
-        }
-        OutputFormat::Json => {
-            let default_fields: Vec<String> = compact_headers
-                .iter()
-                .map(|field| (*field).to_string())
-                .collect();
-            let selected = custom_fields
-                .as_deref()
-                .unwrap_or(default_fields.as_slice());
-            let values = filter_record_values(records, selected);
-            write_json(&mut writer, &values, pretty)
-        }
-        OutputFormat::Csv | OutputFormat::Tsv => {
-            let headers = if all_fields || raw_fields_requested {
-                let available = available_value_fields(records);
-                if available.is_empty() {
-                    compact_headers
-                        .iter()
-                        .map(|field| (*field).to_string())
-                        .collect()
-                } else {
-                    available
-                }
-            } else {
-                custom_fields.unwrap_or_else(|| {
-                    compact_headers
-                        .iter()
-                        .map(|field| (*field).to_string())
-                        .collect()
-                })
-            };
-            let header_refs: Vec<&str> = headers.iter().map(String::as_str).collect();
-            write_delimited(writer, records, format, &header_refs)
-        }
+    if all_fields || raw_fields_requested {
+        return write_json(&mut writer, &records, pretty);
     }
+
+    let default_fields: Vec<String> = compact_headers
+        .iter()
+        .map(|field| (*field).to_string())
+        .collect();
+    let selected = custom_fields
+        .as_deref()
+        .unwrap_or(default_fields.as_slice());
+    let values = filter_record_values(records, selected);
+    write_json(&mut writer, &values, pretty)
 }
 
 /// Checks custom output fields against record keys when records are available.
@@ -171,13 +129,8 @@ pub fn validate_record_fields<T: Serialize>(records: &[T], fields: &[String]) ->
 }
 
 /// Outputs record lists with compact JSON defaults and optional custom fields.
-///
-/// JSON defaults to `compact_headers` unless `all_fields` is true. CSV and TSV
-/// always use compact headers unless custom fields are supplied because they
-/// require a stable column list.
 pub fn print_records<T: Serialize>(
     records: &[T],
-    format: OutputFormat,
     pretty: bool,
     compact_headers: &[&str],
     fields: Option<&str>,
@@ -191,42 +144,19 @@ pub fn print_records<T: Serialize>(
         validate_record_fields(records, fields)?;
     }
 
-    match format {
-        OutputFormat::Json if all_fields || raw_fields_requested => print_json(&records, pretty),
-        OutputFormat::Json => {
-            let default_fields: Vec<String> = compact_headers
-                .iter()
-                .map(|field| (*field).to_string())
-                .collect();
-            let selected = custom_fields
-                .as_deref()
-                .unwrap_or(default_fields.as_slice());
-            let values = records_to_values(records, Some(selected));
-            print_json(&values, pretty)
-        }
-        OutputFormat::Csv | OutputFormat::Tsv => {
-            let headers = if all_fields || raw_fields_requested {
-                let available = available_record_fields(records)?;
-                if available.is_empty() {
-                    compact_headers
-                        .iter()
-                        .map(|field| (*field).to_string())
-                        .collect()
-                } else {
-                    available
-                }
-            } else {
-                custom_fields.unwrap_or_else(|| {
-                    compact_headers
-                        .iter()
-                        .map(|field| (*field).to_string())
-                        .collect()
-                })
-            };
-            let header_refs: Vec<&str> = headers.iter().map(String::as_str).collect();
-            print_delimited(records, format, &header_refs)
-        }
+    if all_fields || raw_fields_requested {
+        return print_json(&records, pretty);
     }
+
+    let default_fields: Vec<String> = compact_headers
+        .iter()
+        .map(|field| (*field).to_string())
+        .collect();
+    let selected = custom_fields
+        .as_deref()
+        .unwrap_or(default_fields.as_slice());
+    let values = records_to_values(records, Some(selected));
+    print_json(&values, pretty)
 }
 
 fn available_record_fields<T: Serialize>(records: &[T]) -> io::Result<Vec<String>> {
@@ -300,18 +230,9 @@ fn available_value_fields(records: &[Value]) -> Vec<String> {
     fields
 }
 
-/// Prints `value` in the requested format.
-///
-/// For JSON, respects the `pretty` flag. CSV/TSV on single values falls back
-/// to JSON since delimited formats require record slices. Use
-/// [`print_delimited`] directly for record lists.
-pub fn print_result<T: Serialize>(value: &T, pretty: bool, format: OutputFormat) -> io::Result<()> {
-    match format {
-        OutputFormat::Json => print_json(value, pretty),
-        // Single values don't map to tabular output; fall back to JSON.
-        // Use print_delimited directly for record slices.
-        OutputFormat::Csv | OutputFormat::Tsv => print_json(value, pretty),
-    }
+/// Prints `value` as JSON.
+pub fn print_result<T: Serialize>(value: &T, pretty: bool) -> io::Result<()> {
+    print_json(value, pretty)
 }
 
 /// Convert an output write result into the CLI exit code convention.
@@ -336,70 +257,11 @@ fn write_json<W: Write, T: Serialize>(writer: &mut W, value: &T, pretty: bool) -
     writer.write_all(b"\n")
 }
 
-/// Writes `records` as delimited text (CSV or TSV) to `writer` with a header row.
-fn write_delimited<W: Write, T: Serialize>(
-    writer: W,
-    records: &[T],
-    format: OutputFormat,
-    headers: &[&str],
-) -> io::Result<()> {
-    let delimiter = match format {
-        OutputFormat::Csv => b',',
-        OutputFormat::Tsv => b'\t',
-        OutputFormat::Json => {
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidInput,
-                "use write_json for JSON format",
-            ));
-        }
-    };
-
-    let mut wtr = csv::WriterBuilder::new()
-        .delimiter(delimiter)
-        .terminator(csv::Terminator::Any(b'\n'))
-        .from_writer(writer);
-
-    wtr.write_record(headers).map_err(csv_to_io)?;
-
-    for record in records {
-        let value = serde_json::to_value(record)
-            .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
-        let row: Vec<String> = headers
-            .iter()
-            .map(|&h| value_to_cell(value.get(h)))
-            .collect();
-        wtr.write_record(&row).map_err(csv_to_io)?;
-    }
-
-    wtr.flush()
-}
-
-/// Converts a JSON value to a delimited cell string.
-///
-/// Null or missing values become empty strings, booleans render as true/false,
-/// numbers keep their JSON representation, and complex values serialize to JSON.
-fn value_to_cell(value: Option<&serde_json::Value>) -> String {
-    match value {
-        None | Some(serde_json::Value::Null) => String::new(),
-        Some(serde_json::Value::String(s)) => s.clone(),
-        Some(serde_json::Value::Bool(b)) => b.to_string(),
-        Some(serde_json::Value::Number(n)) => n.to_string(),
-        Some(other) => other.to_string(),
-    }
-}
-
-/// Converts a csv crate error to an io error.
-fn csv_to_io(err: csv::Error) -> io::Error {
-    io::Error::other(err)
-}
-
 #[cfg(test)]
 mod tests {
     use serde::Serialize;
 
-    use crate::common::types::OutputFormat;
-
-    use super::{print_records, records_to_values, selected_fields, write_delimited, write_json};
+    use super::{print_records, records_to_values, selected_fields, write_json};
 
     #[derive(Debug, Serialize)]
     struct TestRecord {
@@ -462,46 +324,6 @@ mod tests {
     }
 
     #[test]
-    fn output_csv_with_headers() {
-        let records = sample_records();
-        let mut buf = Vec::new();
-        write_delimited(
-            &mut buf,
-            &records,
-            OutputFormat::Csv,
-            &["symbol", "price", "volume"],
-        )
-        .unwrap();
-        let output = String::from_utf8(buf).unwrap();
-
-        let lines: Vec<&str> = output.lines().collect();
-        assert_eq!(lines.len(), 3);
-        assert_eq!(lines[0], "symbol,price,volume");
-        assert_eq!(lines[1], "AAPL,150.5,1000000");
-        assert_eq!(lines[2], "MSFT,320.75,500000");
-    }
-
-    #[test]
-    fn output_tsv_with_headers() {
-        let records = sample_records();
-        let mut buf = Vec::new();
-        write_delimited(
-            &mut buf,
-            &records,
-            OutputFormat::Tsv,
-            &["symbol", "price", "volume"],
-        )
-        .unwrap();
-        let output = String::from_utf8(buf).unwrap();
-
-        let lines: Vec<&str> = output.lines().collect();
-        assert_eq!(lines.len(), 3);
-        assert_eq!(lines[0], "symbol\tprice\tvolume");
-        assert_eq!(lines[1], "AAPL\t150.5\t1000000");
-        assert_eq!(lines[2], "MSFT\t320.75\t500000");
-    }
-
-    #[test]
     fn selected_fields_trims_all_sentinel() {
         assert_eq!(selected_fields(Some(" all ")), None);
         assert_eq!(
@@ -532,15 +354,7 @@ mod tests {
     #[test]
     fn print_records_rejects_unknown_custom_fields() {
         let records = sample_records();
-        let err = print_records(
-            &records,
-            OutputFormat::Json,
-            false,
-            &["symbol"],
-            Some("ticker"),
-            false,
-        )
-        .unwrap_err();
+        let err = print_records(&records, false, &["symbol"], Some("ticker"), false).unwrap_err();
 
         assert_eq!(err.kind(), std::io::ErrorKind::InvalidInput);
         assert!(err.to_string().contains("unknown output field"));
