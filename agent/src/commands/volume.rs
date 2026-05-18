@@ -59,6 +59,7 @@ pub struct VolumeOptions {
 }
 
 /// Volume subcommands.
+#[allow(missing_docs)]
 #[derive(Debug, Subcommand)]
 pub enum VolumeCommand {
     /// Query institutional volume.

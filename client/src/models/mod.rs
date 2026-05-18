@@ -1,4 +1,9 @@
 //! API response models for VolumeLeaders trade data.
+//!
+//! Model structs mirror server JSON field names exactly and are not
+//! individually documented because the field names are the API contract.
+
+#![allow(missing_docs)]
 
 /// VolumeLeaders alert configuration and alert row models.
 pub mod alert;

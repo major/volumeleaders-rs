@@ -3,22 +3,40 @@
 //! This project is unofficial and is not affiliated with, endorsed by, or
 //! sponsored by [volumeleaders.com](https://www.volumeleaders.com).
 
+#![deny(missing_docs)]
+
+/// Alert configuration and alert DataTables endpoints.
 pub mod alerts;
+/// Login-page detection and XSRF token extraction.
 pub mod auth;
+/// Browser cookie extraction for session bootstrapping.
 pub mod browser_auth;
+/// HTTP client with cookie and XSRF header management.
 pub mod client;
+/// Trade cluster and cluster bomb DataTables endpoints.
 pub mod clusters;
+/// ASP.NET DataTables wire format encoding and pagination.
 pub mod datatables;
+/// Earnings calendar DataTables endpoint.
 pub mod earnings;
+/// Error types and result alias.
 pub mod error;
+/// Executive summary endpoints (exhaustion scores, welcome trades/clusters).
 pub mod executive_summary;
+/// Trade level and level-touch DataTables endpoints.
 pub mod levels;
+/// API response models for trade data.
 pub mod models;
+/// Browser session material (cookies and XSRF token).
 pub mod session;
+/// Institutional trade DataTables endpoint.
 pub mod trades;
+/// Volume DataTables endpoint.
 pub mod volume;
+/// Watchlist configuration and ticker DataTables endpoints.
 pub mod watchlists;
 
+/// Test utilities and fixture helpers (test and `test-support` feature only).
 #[cfg(any(test, feature = "test-support"))]
 pub mod test_support;
 

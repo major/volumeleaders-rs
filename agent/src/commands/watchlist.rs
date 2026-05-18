@@ -66,6 +66,7 @@ pub struct TickersArgs {
 }
 
 /// Arguments for `watchlist create`.
+#[allow(missing_docs)]
 #[derive(Debug, Args)]
 pub struct CreateArgs {
     /// Watchlist name.
@@ -77,6 +78,7 @@ pub struct CreateArgs {
 }
 
 /// Arguments for `watchlist edit`.
+#[allow(missing_docs)]
 #[derive(Debug, Args)]
 pub struct EditArgs {
     /// Watchlist key to edit.

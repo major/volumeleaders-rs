@@ -102,6 +102,7 @@ pub struct SaveWatchListConfigRequest {
 }
 
 /// Typed values for creating or editing a watchlist configuration.
+#[allow(missing_docs)]
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct SaveWatchListConfigFields {
     pub search_template_key: i64,
@@ -263,6 +264,7 @@ impl SaveWatchListConfigRequest {
 }
 
 /// Form payload for adding a ticker to an existing watchlist.
+#[allow(missing_docs)]
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct AddTickerToWatchListRequest {
     pub watch_list_key: i64,
@@ -270,6 +272,7 @@ pub struct AddTickerToWatchListRequest {
 }
 
 /// JSON envelope returned by `/Chart0/UpdateWatchList`.
+#[allow(missing_docs)]
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AddTickerToWatchListResponse {
@@ -278,6 +281,7 @@ pub struct AddTickerToWatchListResponse {
 }
 
 /// JSON payload for deleting a watchlist.
+#[allow(missing_docs)]
 #[derive(Clone, Debug, Eq, PartialEq, Serialize)]
 #[serde(rename_all = "PascalCase")]
 pub struct DeleteWatchListRequest {

@@ -1,5 +1,6 @@
 use chrono::Local;
 
+/// Date format string used for all CLI date arguments and API requests.
 pub const DATE_FMT: &str = "%Y-%m-%d";
 const DEFAULT_LOOKBACK_DAYS: u32 = 5;
 

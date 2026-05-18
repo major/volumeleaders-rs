@@ -133,6 +133,7 @@ pub enum TradeCommand {
 }
 
 /// Arguments for `trade list`.
+#[allow(missing_docs)]
 #[derive(Debug, Args)]
 pub struct ListArgs {
     /// Tickers as comma-separated or space-separated symbols.
@@ -166,6 +167,7 @@ pub struct ListArgs {
 }
 
 /// Arguments for `trade dashboard`.
+#[allow(missing_docs)]
 #[derive(Debug, Args)]
 pub struct DashboardArgs {
     /// Ticker symbol.
@@ -191,6 +193,7 @@ pub struct DashboardArgs {
 }
 
 /// Arguments for `trade sentiment`.
+#[allow(missing_docs)]
 #[derive(Debug, Args)]
 pub struct SentimentArgs {
     #[command(flatten)]
@@ -202,6 +205,7 @@ pub struct SentimentArgs {
 }
 
 /// Arguments for `trade clusters`.
+#[allow(missing_docs)]
 #[derive(Debug, Args)]
 pub struct ClustersArgs {
     /// Tickers as comma-separated or space-separated symbols.
@@ -236,6 +240,7 @@ pub struct ClustersArgs {
 }
 
 /// Arguments for `trade cluster-bombs`.
+#[allow(missing_docs)]
 #[derive(Debug, Args)]
 pub struct ClusterBombsArgs {
     /// Tickers as comma-separated or space-separated symbols.
@@ -270,6 +275,7 @@ pub struct ClusterBombsArgs {
 }
 
 /// Arguments for trade alert commands.
+#[allow(missing_docs)]
 #[derive(Debug, Args)]
 pub struct AlertsArgs {
     /// Alert date, YYYY-MM-DD.
@@ -286,6 +292,7 @@ pub struct AlertsArgs {
 }
 
 /// Arguments for `trade levels`.
+#[allow(missing_docs)]
 #[derive(Debug, Args)]
 pub struct LevelsArgs {
     /// Ticker symbol.
@@ -304,6 +311,7 @@ pub struct LevelsArgs {
 }
 
 /// Arguments for `trade level-touches`.
+#[allow(missing_docs)]
 #[derive(Debug, Args)]
 pub struct LevelTouchesArgs {
     /// Ticker symbol.
@@ -349,6 +357,7 @@ pub struct OptionalDateRangeArgs {
 }
 
 /// Trade volume, price, and dollars range flags.
+#[allow(missing_docs)]
 #[derive(Debug, Args)]
 pub struct TradeRangeArgs {
     #[arg(long = "min-volume")]
@@ -366,6 +375,7 @@ pub struct TradeRangeArgs {
 }
 
 /// Trade volume and dollars range flags.
+#[allow(missing_docs)]
 #[derive(Debug, Args)]
 pub struct VolumeDollarRangeArgs {
     #[arg(long = "min-volume")]
@@ -379,6 +389,7 @@ pub struct VolumeDollarRangeArgs {
 }
 
 /// Shared trade filter flags.
+#[allow(missing_docs)]
 #[derive(Debug, Args)]
 pub struct TradeFilterArgs {
     #[arg(long)]
@@ -426,6 +437,7 @@ pub struct TradeFilterArgs {
 /// Dashboard trade filters. The chart endpoint does not accept the heavier
 /// list-only filters such as security type, even-share, rank snapshot, or
 /// market-cap filters.
+#[allow(missing_docs)]
 #[derive(Debug, Args)]
 pub struct DashboardFilterArgs {
     #[arg(long)]
@@ -463,6 +475,7 @@ pub struct DashboardFilterArgs {
 }
 
 /// DataTables page flags with length.
+#[allow(missing_docs)]
 #[derive(Debug, Args)]
 pub struct PageArgs {
     #[arg(long, default_value_t = 0)]
@@ -476,6 +489,7 @@ pub struct PageArgs {
 }
 
 /// DataTables page flags without length.
+#[allow(missing_docs)]
 #[derive(Debug, Args)]
 pub struct FixedPageArgs {
     #[arg(long, default_value_t = 0)]

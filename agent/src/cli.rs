@@ -32,6 +32,7 @@ pub struct Cli {
     #[arg(short, long, global = true, hide = true)]
     pub json: bool,
 
+    /// Subcommand to run.
     #[command(subcommand)]
     pub command: Commands,
 }
@@ -59,6 +60,7 @@ pub enum Commands {
 /// Arguments for the report command group.
 #[derive(Debug, Args)]
 pub struct ReportArgs {
+    /// Report subcommand to run.
     #[command(subcommand)]
     pub command: ReportCommand,
 }
@@ -66,6 +68,7 @@ pub struct ReportArgs {
 /// Arguments for trade commands.
 #[derive(Debug, Args)]
 pub struct TradeArgs {
+    /// Trade subcommand to run.
     #[command(subcommand)]
     pub command: TradeCommand,
 }
@@ -73,6 +76,7 @@ pub struct TradeArgs {
 /// Arguments for volume commands.
 #[derive(Debug, Args)]
 pub struct VolumeArgs {
+    /// Volume subcommand to run.
     #[command(subcommand)]
     pub command: VolumeCommand,
 }
@@ -80,6 +84,7 @@ pub struct VolumeArgs {
 /// Arguments for market commands.
 #[derive(Debug, Args)]
 pub struct MarketArgs {
+    /// Market subcommand to run.
     #[command(subcommand)]
     pub command: MarketCommand,
 }
@@ -87,6 +92,7 @@ pub struct MarketArgs {
 /// Arguments for alert commands.
 #[derive(Debug, Args)]
 pub struct AlertArgs {
+    /// Alert subcommand to run.
     #[command(subcommand)]
     pub command: AlertCommand,
 }
@@ -94,6 +100,7 @@ pub struct AlertArgs {
 /// Arguments for watchlist commands.
 #[derive(Debug, Args)]
 pub struct WatchlistArgs {
+    /// Watchlist subcommand to run.
     #[command(subcommand)]
     pub command: WatchlistCommand,
 }

@@ -1,3 +1,5 @@
+//! Error types and result alias for the VolumeLeaders client.
+
 /// Convenient result type used by this crate.
 pub type Result<T> = std::result::Result<T, ClientError>;
 
