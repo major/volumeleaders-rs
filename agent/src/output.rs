@@ -5,11 +5,33 @@ use serde_json::Value;
 
 use crate::common::trade_transforms::{TradeRecordKind, transformed_trade_values};
 
-/// Writes `value` as JSON to stdout, newline-terminated.
+/// Controls the output format for CLI results.
+#[derive(Clone, Debug, Default, PartialEq)]
+pub enum OutputFormat {
+    /// Tab-separated values (default).
+    #[default]
+    Tsv,
+    /// Compact JSON.
+    Json,
+    /// Pretty-printed JSON.
+    JsonPretty,
+}
+
+/// Writes `value` to stdout in the requested output format.
 ///
-/// Uses compact format when `pretty` is false, 2-space-indented when true.
-pub fn print_json<T: Serialize>(value: &T, pretty: bool) -> io::Result<()> {
-    write_json(&mut io::stdout().lock(), value, pretty)
+/// JSON output is newline-terminated. TSV output prints scalar values as a
+/// single line, objects as a header row plus one value row, and arrays as rows.
+pub fn print_value<T: Serialize>(value: &T, format: &OutputFormat) -> io::Result<()> {
+    let mut writer = io::stdout().lock();
+    match format {
+        OutputFormat::Tsv => {
+            let value = serde_json::to_value(value)
+                .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
+            write_tsv_single(&mut writer, &value)
+        }
+        OutputFormat::Json => write_json(&mut writer, value, false),
+        OutputFormat::JsonPretty => write_json(&mut writer, value, true),
+    }
 }
 
 /// Parses a comma-separated output field list.
@@ -53,18 +75,19 @@ pub fn records_to_values<T: Serialize>(records: &[T], fields: Option<&[String]>)
         .collect()
 }
 
-/// Outputs pre-serialized record values with compact JSON defaults and optional custom fields.
+/// Outputs pre-serialized record values with compact defaults and optional custom fields.
 pub fn print_record_values(
     records: &[Value],
-    pretty: bool,
+    format: &OutputFormat,
     compact_headers: &[&str],
     fields: Option<&str>,
     all_fields: bool,
 ) -> io::Result<()> {
+    let mut writer = io::stdout().lock();
     write_record_values(
-        io::stdout().lock(),
+        &mut writer,
         records,
-        pretty,
+        format,
         compact_headers,
         fields,
         all_fields,
@@ -75,7 +98,7 @@ pub fn print_record_values(
 pub fn print_transformed_record_values<T: Serialize>(
     records: &[T],
     kind: TradeRecordKind,
-    pretty: bool,
+    format: &OutputFormat,
     compact_headers: &[&str],
     fields: Option<&str>,
     all_fields: bool,
@@ -83,15 +106,15 @@ pub fn print_transformed_record_values<T: Serialize>(
     transformed_trade_values(records, kind)
         .map_err(|err| io::Error::new(io::ErrorKind::InvalidData, err))
         .and_then(|values| {
-            print_record_values(&values, pretty, compact_headers, fields, all_fields)
+            print_record_values(&values, format, compact_headers, fields, all_fields)
         })
 }
 
 /// Writes pre-serialized record values to `writer`.
 pub(crate) fn write_record_values<W: Write>(
-    mut writer: W,
+    writer: &mut W,
     records: &[Value],
-    pretty: bool,
+    format: &OutputFormat,
     compact_headers: &[&str],
     fields: Option<&str>,
     all_fields: bool,
@@ -105,7 +128,14 @@ pub(crate) fn write_record_values<W: Write>(
     }
 
     if all_fields || raw_fields_requested {
-        return write_json(&mut writer, &records, pretty);
+        return match format {
+            OutputFormat::Tsv => {
+                let headers = record_headers(records);
+                write_tsv(writer, records, &headers)
+            }
+            OutputFormat::Json => write_json(writer, &records, false),
+            OutputFormat::JsonPretty => write_json(writer, &records, true),
+        };
     }
 
     let default_fields: Vec<String> = compact_headers
@@ -116,7 +146,14 @@ pub(crate) fn write_record_values<W: Write>(
         .as_deref()
         .unwrap_or(default_fields.as_slice());
     let values = filter_record_values(records, selected);
-    write_json(&mut writer, &values, pretty)
+    match format {
+        OutputFormat::Tsv => {
+            let headers: Vec<&str> = selected.iter().map(String::as_str).collect();
+            write_tsv(writer, &values, &headers)
+        }
+        OutputFormat::Json => write_json(writer, &values, false),
+        OutputFormat::JsonPretty => write_json(writer, &values, true),
+    }
 }
 
 /// Checks custom output fields against record keys when records are available.
@@ -124,35 +161,29 @@ pub fn validate_record_fields<T: Serialize>(records: &[T], fields: &[String]) ->
     validate_selected_fields(available_record_fields(records)?, fields)
 }
 
-/// Outputs record lists with compact JSON defaults and optional custom fields.
+/// Outputs record lists with compact defaults and optional custom fields.
 pub fn print_records<T: Serialize>(
     records: &[T],
-    pretty: bool,
+    format: &OutputFormat,
     compact_headers: &[&str],
     fields: Option<&str>,
     all_fields: bool,
 ) -> io::Result<()> {
-    let custom_fields = selected_fields(fields);
-    let raw_fields_requested =
-        fields.is_some_and(|fields| fields.trim().eq_ignore_ascii_case("all"));
-
-    if let Some(fields) = custom_fields.as_deref() {
-        validate_record_fields(records, fields)?;
-    }
-
-    if all_fields || raw_fields_requested {
-        return print_json(&records, pretty);
-    }
-
-    let default_fields: Vec<String> = compact_headers
+    let values = records
         .iter()
-        .map(|field| (*field).to_string())
-        .collect();
-    let selected = custom_fields
-        .as_deref()
-        .unwrap_or(default_fields.as_slice());
-    let values = records_to_values(records, Some(selected));
-    print_json(&values, pretty)
+        .map(|record| {
+            serde_json::to_value(record).map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))
+        })
+        .collect::<io::Result<Vec<_>>>()?;
+    let mut writer = io::stdout().lock();
+    write_record_values(
+        &mut writer,
+        &values,
+        format,
+        compact_headers,
+        fields,
+        all_fields,
+    )
 }
 
 fn available_record_fields<T: Serialize>(records: &[T]) -> io::Result<Vec<String>> {
@@ -235,9 +266,9 @@ fn retain_selected_fields(map: &mut serde_json::Map<String, Value>, fields: &[St
     map.retain(|key, _| fields.iter().any(|field| field == key));
 }
 
-/// Prints `value` as JSON.
-pub fn print_result<T: Serialize>(value: &T, pretty: bool) -> io::Result<()> {
-    print_json(value, pretty)
+/// Convenience alias for [`print_value`] for callers that prefer the name.
+pub fn print_output<T: Serialize>(value: &T, format: &OutputFormat) -> io::Result<()> {
+    print_value(value, format)
 }
 
 /// Convert an output write result into the CLI exit code convention.
@@ -262,11 +293,98 @@ fn write_json<W: Write, T: Serialize>(writer: &mut W, value: &T, pretty: bool) -
     writer.write_all(b"\n")
 }
 
+/// Escapes a TSV field value so tabs and newlines do not break row structure.
+fn escape_tsv_field(value: &str) -> String {
+    value
+        .replace('\\', "\\\\")
+        .replace('\t', "\\t")
+        .replace('\n', "\\n")
+        .replace('\r', "\\r")
+}
+
+fn write_tsv<W: Write>(writer: &mut W, records: &[Value], headers: &[&str]) -> io::Result<()> {
+    writeln!(writer, "{}", headers.join("\t"))?;
+    for record in records {
+        let row: Vec<String> = headers
+            .iter()
+            .map(|header| match record.get(header) {
+                Some(Value::String(s)) => escape_tsv_field(s),
+                Some(Value::Null) | None => String::new(),
+                Some(v) => escape_tsv_field(&v.to_string()),
+            })
+            .collect();
+        writeln!(writer, "{}", row.join("\t"))?;
+    }
+    Ok(())
+}
+
+fn write_tsv_single<W: Write>(writer: &mut W, value: &Value) -> io::Result<()> {
+    match value {
+        Value::Object(map) => {
+            let keys: Vec<&str> = map.keys().map(String::as_str).collect();
+            writeln!(writer, "{}", keys.join("\t"))?;
+            let vals: Vec<String> = map
+                .values()
+                .map(|v| match v {
+                    Value::String(s) => escape_tsv_field(s),
+                    Value::Null => String::new(),
+                    v => escape_tsv_field(&v.to_string()),
+                })
+                .collect();
+            writeln!(writer, "{}", vals.join("\t"))?;
+        }
+        Value::Array(arr) => {
+            if let Some(Value::Object(first)) = arr.first() {
+                let keys: Vec<&str> = first.keys().map(String::as_str).collect();
+                writeln!(writer, "{}", keys.join("\t"))?;
+                for item in arr {
+                    let vals: Vec<String> = keys
+                        .iter()
+                        .map(|key| match item.get(*key) {
+                            Some(Value::String(s)) => escape_tsv_field(s),
+                            Some(Value::Null) | None => String::new(),
+                            Some(v) => escape_tsv_field(&v.to_string()),
+                        })
+                        .collect();
+                    writeln!(writer, "{}", vals.join("\t"))?;
+                }
+            } else {
+                for item in arr {
+                    match item {
+                        Value::String(s) => writeln!(writer, "{}", escape_tsv_field(s))?,
+                        Value::Null => writeln!(writer)?,
+                        v => writeln!(writer, "{}", escape_tsv_field(&v.to_string()))?,
+                    }
+                }
+            }
+        }
+        other => match other {
+            Value::String(s) => writeln!(writer, "{}", escape_tsv_field(s))?,
+            Value::Null => writeln!(writer)?,
+            v => writeln!(writer, "{}", escape_tsv_field(&v.to_string()))?,
+        },
+    }
+    Ok(())
+}
+
+fn record_headers(records: &[Value]) -> Vec<&str> {
+    records
+        .first()
+        .and_then(Value::as_object)
+        .map(|map| map.keys().map(String::as_str).collect())
+        .unwrap_or_default()
+}
+
 #[cfg(test)]
 mod tests {
     use serde::Serialize;
 
-    use super::{print_records, records_to_values, selected_fields, write_json};
+    use serde_json::json;
+
+    use super::{
+        OutputFormat, escape_tsv_field, print_records, records_to_values, selected_fields,
+        write_json, write_record_values, write_tsv_single,
+    };
 
     #[derive(Debug, Serialize)]
     struct TestRecord {
@@ -357,9 +475,106 @@ mod tests {
     }
 
     #[test]
+    fn write_record_values_outputs_tsv_records() {
+        let records = sample_records();
+        let values = records_to_values(&records, None);
+        let mut output = Vec::new();
+
+        write_record_values(
+            &mut output,
+            &values,
+            &OutputFormat::Tsv,
+            &["symbol", "price"],
+            None,
+            false,
+        )
+        .unwrap();
+
+        assert_eq!(
+            String::from_utf8(output).unwrap(),
+            "symbol\tprice\nAAPL\t150.5\nMSFT\t320.75\n"
+        );
+    }
+
+    #[test]
+    fn write_tsv_single_outputs_object_header_and_values() {
+        let value = json!({"success": true, "action": "created", "key": null});
+        let mut output = Vec::new();
+
+        write_tsv_single(&mut output, &value).unwrap();
+
+        let rendered = String::from_utf8(output).unwrap();
+        let mut lines = rendered.lines();
+        let headers: Vec<&str> = lines.next().unwrap().split('\t').collect();
+        let vals: Vec<&str> = lines.next().unwrap().split('\t').collect();
+        let value_for =
+            |name: &str| vals[headers.iter().position(|header| *header == name).unwrap()];
+
+        assert_eq!(lines.next(), None);
+        assert_eq!(value_for("action"), "created");
+        assert_eq!(value_for("key"), "");
+        assert_eq!(value_for("success"), "true");
+    }
+
+    #[test]
+    fn escape_tsv_field_handles_special_characters() {
+        assert_eq!(escape_tsv_field("plain"), "plain");
+        assert_eq!(escape_tsv_field("tab\there"), "tab\\there");
+        assert_eq!(escape_tsv_field("new\nline"), "new\\nline");
+        assert_eq!(escape_tsv_field("cr\rreturn"), "cr\\rreturn");
+        assert_eq!(escape_tsv_field("back\\slash"), "back\\\\slash");
+        assert_eq!(
+            escape_tsv_field("all\t\n\r\\mixed"),
+            "all\\t\\n\\r\\\\mixed"
+        );
+    }
+
+    #[test]
+    fn write_record_values_tsv_escapes_special_characters() {
+        let values = vec![json!({"name": "Tab\there", "desc": "New\nline"})];
+        let mut output = Vec::new();
+
+        write_record_values(
+            &mut output,
+            &values,
+            &OutputFormat::Tsv,
+            &["name", "desc"],
+            None,
+            false,
+        )
+        .unwrap();
+
+        assert_eq!(
+            String::from_utf8(output).unwrap(),
+            "name\tdesc\nTab\\there\tNew\\nline\n"
+        );
+    }
+
+    #[test]
+    fn write_tsv_single_escapes_special_characters() {
+        let value = json!({"note": "has\ttab\nand\nnewlines"});
+        let mut output = Vec::new();
+
+        write_tsv_single(&mut output, &value).unwrap();
+
+        let rendered = String::from_utf8(output).unwrap();
+        let lines: Vec<&str> = rendered.lines().collect();
+        assert_eq!(lines.len(), 2);
+        assert_eq!(lines[0], "note");
+        assert_eq!(lines[1], "has\\ttab\\nand\\nnewlines");
+    }
+
+    #[test]
     fn print_records_rejects_unknown_custom_fields() {
         let records = sample_records();
-        let err = print_records(&records, false, &["symbol"], Some("ticker"), false).unwrap_err();
+        let err = print_records(
+            &records,
+            &OutputFormat::Tsv,
+            &["symbol"],
+            Some("ticker"),
+            false,
+        )
+        .unwrap_err();
 
         assert_eq!(err.kind(), std::io::ErrorKind::InvalidInput);
         assert!(err.to_string().contains("unknown output field"));

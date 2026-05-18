@@ -9,7 +9,7 @@ use crate::common::auth::{handle_api_error, make_client};
 use crate::common::tickers::parse_tickers;
 use crate::common::trade_transforms::TradeRecordKind;
 use crate::common::types::OrderDirection;
-use crate::output::{finish_output, print_transformed_record_values};
+use crate::output::{OutputFormat, finish_output, print_transformed_record_values};
 
 const VOLUME_HEADERS: [&str; 16] = [
     "Date",
@@ -80,16 +80,16 @@ pub enum VolumeCommand {
 
 /// Handles the volume command group.
 #[instrument(skip_all)]
-pub async fn handle(args: &VolumeArgs, pretty: bool) -> i32 {
+pub async fn handle(args: &VolumeArgs, format: &OutputFormat) -> i32 {
     match &args.command {
-        VolumeCommand::Institutional { args } => execute_institutional(args, pretty).await,
-        VolumeCommand::AhInstitutional { args } => execute_ah_institutional(args, pretty).await,
-        VolumeCommand::Total { args } => execute_total(args, pretty).await,
+        VolumeCommand::Institutional { args } => execute_institutional(args, format).await,
+        VolumeCommand::AhInstitutional { args } => execute_ah_institutional(args, format).await,
+        VolumeCommand::Total { args } => execute_total(args, format).await,
     }
 }
 
 #[instrument(skip_all)]
-async fn execute_institutional(args: &VolumeOptions, pretty: bool) -> i32 {
+async fn execute_institutional(args: &VolumeOptions, format: &OutputFormat) -> i32 {
     let request = build_request(VolumeRequest::institutional(), args);
     let client = match make_client().await {
         Ok(client) => client,
@@ -103,11 +103,11 @@ async fn execute_institutional(args: &VolumeOptions, pretty: bool) -> i32 {
         Err(err) => return handle_api_error(err),
     };
 
-    output_records(&trades, pretty, args.fields.as_deref(), args.all_fields)
+    output_records(&trades, format, args.fields.as_deref(), args.all_fields)
 }
 
 #[instrument(skip_all)]
-async fn execute_ah_institutional(args: &VolumeOptions, pretty: bool) -> i32 {
+async fn execute_ah_institutional(args: &VolumeOptions, format: &OutputFormat) -> i32 {
     let request = build_request(VolumeRequest::ah_institutional(), args);
     let client = match make_client().await {
         Ok(client) => client,
@@ -121,11 +121,11 @@ async fn execute_ah_institutional(args: &VolumeOptions, pretty: bool) -> i32 {
         Err(err) => return handle_api_error(err),
     };
 
-    output_records(&trades, pretty, args.fields.as_deref(), args.all_fields)
+    output_records(&trades, format, args.fields.as_deref(), args.all_fields)
 }
 
 #[instrument(skip_all)]
-async fn execute_total(args: &VolumeOptions, pretty: bool) -> i32 {
+async fn execute_total(args: &VolumeOptions, format: &OutputFormat) -> i32 {
     let request = build_request(VolumeRequest::total(), args);
     let client = match make_client().await {
         Ok(client) => client,
@@ -136,7 +136,7 @@ async fn execute_total(args: &VolumeOptions, pretty: bool) -> i32 {
         Err(err) => return handle_api_error(err),
     };
 
-    output_records(&trades, pretty, args.fields.as_deref(), args.all_fields)
+    output_records(&trades, format, args.fields.as_deref(), args.all_fields)
 }
 
 fn build_request(mut request: VolumeRequest, args: &VolumeOptions) -> VolumeRequest {
@@ -154,14 +154,14 @@ fn build_request(mut request: VolumeRequest, args: &VolumeOptions) -> VolumeRequ
 
 fn output_records<T: serde::Serialize>(
     records: &[T],
-    pretty: bool,
+    format: &OutputFormat,
     fields: Option<&str>,
     all_fields: bool,
 ) -> i32 {
     finish_output(print_transformed_record_values(
         records,
         TradeRecordKind::Trade,
-        pretty,
+        format,
         &VOLUME_HEADERS,
         fields,
         all_fields,
