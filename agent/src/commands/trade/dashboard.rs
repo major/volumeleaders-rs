@@ -2,6 +2,7 @@ use serde::Serialize;
 use serde_json::{Map, Value};
 
 use crate::common::trade_transforms::transform_trade_dashboard;
+use crate::output::values_to_table;
 
 use super::{DashboardArgs, DateRange};
 
@@ -207,6 +208,23 @@ fn section_has_rows(map: &Map<String, Value>, section: &str) -> bool {
     matches!(map.get(section), Some(Value::Array(rows)) if !rows.is_empty())
 }
 
+const DASHBOARD_SECTIONS: [&str; 4] = ["trades", "clusters", "levels", "cluster_bombs"];
+
+/// Convert each array section in a dashboard value from array-of-objects to
+/// array-of-arrays (JSON Table format). Top-level metadata fields are kept
+/// as-is.
+pub(super) fn convert_dashboard_sections_to_table(value: &mut Value) {
+    let Some(map) = value.as_object_mut() else {
+        return;
+    };
+    for section in DASHBOARD_SECTIONS {
+        let Some(Value::Array(rows)) = map.remove(section) else {
+            continue;
+        };
+        map.insert(section.to_string(), values_to_table(&rows));
+    }
+}
+
 fn is_empty_dashboard_value(value: &Value) -> bool {
     match value {
         Value::Null => true,
@@ -216,5 +234,42 @@ fn is_empty_dashboard_value(value: &Value) -> bool {
         Value::Array(values) => values.is_empty(),
         Value::Object(values) => values.is_empty(),
         Value::Bool(true) => false,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use serde_json::json;
+
+    use super::convert_dashboard_sections_to_table;
+
+    #[test]
+    fn dashboard_sections_converted_to_table() {
+        let mut value = json!({
+            "ticker": "AAPL",
+            "count": 2,
+            "trades": [
+                {"Date": "2025-01-01", "Price": 150.0},
+                {"Date": "2025-01-02", "Price": 151.0}
+            ],
+            "clusters": [],
+            "levels": [
+                {"Price": 149.0, "Dollars": 1000000}
+            ]
+        });
+        convert_dashboard_sections_to_table(&mut value);
+
+        assert_eq!(value["ticker"], "AAPL");
+        assert_eq!(value["count"], 2);
+
+        let trades = value["trades"].as_array().unwrap();
+        assert_eq!(trades.len(), 3, "header + 2 data rows");
+        assert!(trades[0].as_array().unwrap().contains(&json!("Date")));
+
+        let levels = value["levels"].as_array().unwrap();
+        assert_eq!(levels.len(), 2, "header + 1 data row");
+
+        let clusters = value["clusters"].as_array().unwrap();
+        assert!(clusters.is_empty(), "empty section stays empty");
     }
 }

@@ -18,15 +18,19 @@ use crate::commands::watchlist::WatchlistCommand;
         Use it for trades, volume leaderboards, market data, alerts, and watchlists.\n\n\
         Auth: reads browser cookies automatically. If auth fails with exit code 2,\n\
         log in at https://www.volumeleaders.com in your browser, then retry.\n\n\
-        Output: compact JSON to stdout by default. Use --pretty for indented JSON.\n\
+        Output: compact JSON to stdout. Pipe through jq for pretty-printing.\n\
         Errors and logs go to stderr.",
     arg_required_else_help = true,
     propagate_version = true
 )]
 pub struct Cli {
-    /// Pretty-print JSON output with indentation.
-    #[arg(short, long, global = true)]
-    pub pretty: bool,
+    /// Emit array-of-arrays with a header row instead of array-of-objects.
+    #[arg(long, global = true)]
+    pub json_table: bool,
+
+    /// Accepted for backward compatibility (output is always JSON now).
+    #[arg(short, long, global = true, hide = true)]
+    pub json: bool,
 
     #[command(subcommand)]
     pub command: Commands,

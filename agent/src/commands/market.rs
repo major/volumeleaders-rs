@@ -61,15 +61,15 @@ pub struct ExhaustionArgs {
 
 /// Handles the market command group.
 #[instrument(skip_all)]
-pub async fn handle(args: &MarketArgs, pretty: bool) -> i32 {
+pub async fn handle(args: &MarketArgs, json_table: bool) -> i32 {
     match &args.command {
-        MarketCommand::Earnings(args) => execute_earnings(args, pretty).await,
-        MarketCommand::Exhaustion(args) => execute_exhaustion(args, pretty).await,
+        MarketCommand::Earnings(args) => execute_earnings(args, json_table).await,
+        MarketCommand::Exhaustion(args) => execute_exhaustion(args, json_table).await,
     }
 }
 
 #[instrument(skip_all)]
-async fn execute_earnings(args: &EarningsArgs, pretty: bool) -> i32 {
+async fn execute_earnings(args: &EarningsArgs, json_table: bool) -> i32 {
     let request = build_earnings_request(args);
     let client = match make_client().await {
         Ok(client) => client,
@@ -82,15 +82,15 @@ async fn execute_earnings(args: &EarningsArgs, pretty: bool) -> i32 {
 
     finish_output(print_records(
         &earnings,
-        pretty,
         &DEFAULT_EARNINGS_FIELDS,
         args.fields.as_deref(),
         args.all_fields,
+        json_table,
     ))
 }
 
 #[instrument(skip_all)]
-async fn execute_exhaustion(args: &ExhaustionArgs, pretty: bool) -> i32 {
+async fn execute_exhaustion(args: &ExhaustionArgs, json_table: bool) -> i32 {
     let request = ExhaustionScoresRequest {
         date: args.date.clone().unwrap_or_default(),
     };
@@ -98,7 +98,7 @@ async fn execute_exhaustion(args: &ExhaustionArgs, pretty: bool) -> i32 {
         move |client| Box::pin(async move { client.get_exhaustion_scores(&request).await }),
         move |scores| {
             let json = serde_json::to_value(&scores).unwrap_or(serde_json::Value::Null);
-            print_json(&json, pretty)
+            print_json(&json, json_table)
         },
     )
     .await

@@ -24,7 +24,9 @@ use crate::common::types::{OrderDirection, SummaryGroup, TriStateFilter};
 use crate::common::{DATE_FMT, TRADE_HEADERS};
 use crate::output::{finish_output, print_json, print_transformed_record_values};
 
-use self::dashboard::{TradeDashboard, dashboard_output_value};
+use self::dashboard::{
+    TradeDashboard, convert_dashboard_sections_to_table, dashboard_output_value,
+};
 use self::filters::{
     apply_trade_filter_args, apply_trade_ranges, cluster_bomb_filters, cluster_filters,
     dashboard_bombs_request, dashboard_clusters_request, dashboard_levels_request,
@@ -486,17 +488,25 @@ pub struct FixedPageArgs {
 
 /// Handles the trade command group.
 #[instrument(skip_all)]
-pub async fn handle(args: &TradeArgs, pretty: bool) -> i32 {
+pub async fn handle(args: &TradeArgs, json_table: bool) -> i32 {
     match &args.command {
-        TradeCommand::List(list_args) => execute_list(list_args, pretty).await,
-        TradeCommand::Dashboard(dashboard_args) => execute_dashboard(dashboard_args, pretty).await,
-        TradeCommand::Sentiment(sentiment_args) => execute_sentiment(sentiment_args, pretty).await,
-        TradeCommand::Clusters(cluster_args) => execute_clusters(cluster_args, pretty).await,
-        TradeCommand::ClusterBombs(bomb_args) => execute_cluster_bombs(bomb_args, pretty).await,
-        TradeCommand::Alerts(alert_args) => execute_alerts(alert_args, pretty).await,
-        TradeCommand::ClusterAlerts(alert_args) => execute_cluster_alerts(alert_args, pretty).await,
-        TradeCommand::Levels(level_args) => execute_levels(level_args, pretty).await,
-        TradeCommand::LevelTouches(touch_args) => execute_level_touches(touch_args, pretty).await,
+        TradeCommand::List(list_args) => execute_list(list_args, json_table).await,
+        TradeCommand::Dashboard(dashboard_args) => {
+            execute_dashboard(dashboard_args, json_table).await
+        }
+        TradeCommand::Sentiment(sentiment_args) => {
+            execute_sentiment(sentiment_args, json_table).await
+        }
+        TradeCommand::Clusters(cluster_args) => execute_clusters(cluster_args, json_table).await,
+        TradeCommand::ClusterBombs(bomb_args) => execute_cluster_bombs(bomb_args, json_table).await,
+        TradeCommand::Alerts(alert_args) => execute_alerts(alert_args, json_table).await,
+        TradeCommand::ClusterAlerts(alert_args) => {
+            execute_cluster_alerts(alert_args, json_table).await
+        }
+        TradeCommand::Levels(level_args) => execute_levels(level_args, json_table).await,
+        TradeCommand::LevelTouches(touch_args) => {
+            execute_level_touches(touch_args, json_table).await
+        }
     }
 }
 
@@ -534,7 +544,7 @@ fn resolve_required_range(args: &OptionalDateRangeArgs) -> Result<(String, Strin
 }
 
 #[instrument(skip_all)]
-async fn execute_list(args: &ListArgs, pretty: bool) -> i32 {
+async fn execute_list(args: &ListArgs, json_table: bool) -> i32 {
     if args.group_by.is_some() && !args.summary {
         eprintln!("--group-by only works with --summary");
         return 1;
@@ -585,22 +595,22 @@ async fn execute_list(args: &ListArgs, pretty: bool) -> i32 {
     let output = if args.summary {
         let group = args.group_by.unwrap_or(SummaryGroup::Ticker);
         let summary = build_summary(&trades, group, &start, &end);
-        print_json(&summary, pretty)
+        print_json(&summary, json_table)
     } else {
         print_trade_records(
             &trades,
             TradeRecordKind::Trade,
-            pretty,
             &TRADE_HEADERS,
             args.fields.as_deref(),
             args.all_fields,
+            json_table,
         )
     };
     finish_output(output)
 }
 
 #[instrument(skip_all)]
-async fn execute_dashboard(args: &DashboardArgs, pretty: bool) -> i32 {
+async fn execute_dashboard(args: &DashboardArgs, json_table: bool) -> i32 {
     let ticker = parse_single_ticker(&args.ticker);
     let (start, end) = resolve_with_default(&args.dates, DEFAULT_DASHBOARD_LOOKBACK_DAYS);
     let client = match make_client().await {
@@ -648,18 +658,21 @@ async fn execute_dashboard(args: &DashboardArgs, pretty: bool) -> i32 {
         levels,
         cluster_bombs,
     };
-    let dashboard = match dashboard_output_value(&dashboard, args) {
+    let mut dashboard = match dashboard_output_value(&dashboard, args) {
         Ok(value) => value,
         Err(message) => {
             eprintln!("field error: {message}");
             return 1;
         }
     };
-    finish_output(print_json(&dashboard, pretty))
+    if json_table {
+        convert_dashboard_sections_to_table(&mut dashboard);
+    }
+    finish_output(print_json(&dashboard, json_table))
 }
 
 #[instrument(skip_all)]
-async fn execute_sentiment(args: &SentimentArgs, pretty: bool) -> i32 {
+async fn execute_sentiment(args: &SentimentArgs, json_table: bool) -> i32 {
     let (start, end) = match resolve_required_range(&args.dates) {
         Ok(range) => range,
         Err(message) => {
@@ -687,11 +700,11 @@ async fn execute_sentiment(args: &SentimentArgs, pretty: bool) -> i32 {
         Err(err) => return handle_api_error(err),
     };
     let sentiment = summarize_trade_sentiment(&trades, &start, &end);
-    finish_output(print_json(&sentiment, pretty))
+    finish_output(print_json(&sentiment, json_table))
 }
 
 #[instrument(skip_all)]
-async fn execute_clusters(args: &ClustersArgs, pretty: bool) -> i32 {
+async fn execute_clusters(args: &ClustersArgs, json_table: bool) -> i32 {
     let (start, end) = match resolve_required_range(&args.dates) {
         Ok(range) => range,
         Err(message) => {
@@ -715,15 +728,15 @@ async fn execute_clusters(args: &ClustersArgs, pretty: bool) -> i32 {
     output_trade_records(
         &response.data,
         TradeRecordKind::Cluster,
-        pretty,
         &CLUSTER_HEADERS,
         args.fields.as_deref(),
         args.all_fields,
+        json_table,
     )
 }
 
 #[instrument(skip_all)]
-async fn execute_cluster_bombs(args: &ClusterBombsArgs, pretty: bool) -> i32 {
+async fn execute_cluster_bombs(args: &ClusterBombsArgs, json_table: bool) -> i32 {
     let (start, end) = match resolve_required_range(&args.dates) {
         Ok(range) => range,
         Err(message) => {
@@ -747,15 +760,15 @@ async fn execute_cluster_bombs(args: &ClusterBombsArgs, pretty: bool) -> i32 {
     output_trade_records(
         &response.data,
         TradeRecordKind::ClusterBomb,
-        pretty,
         &BOMB_HEADERS,
         args.fields.as_deref(),
         args.all_fields,
+        json_table,
     )
 }
 
 #[instrument(skip_all)]
-async fn execute_alerts(args: &AlertsArgs, pretty: bool) -> i32 {
+async fn execute_alerts(args: &AlertsArgs, json_table: bool) -> i32 {
     let request = volumeleaders_client::TradeAlertsRequest::new()
         .with_start(args.page.start)
         .with_length(args.page.length)
@@ -772,15 +785,15 @@ async fn execute_alerts(args: &AlertsArgs, pretty: bool) -> i32 {
     output_trade_records(
         &response.data,
         TradeRecordKind::Trade,
-        pretty,
         &ALERT_HEADERS,
         args.fields.as_deref(),
         args.all_fields,
+        json_table,
     )
 }
 
 #[instrument(skip_all)]
-async fn execute_cluster_alerts(args: &AlertsArgs, pretty: bool) -> i32 {
+async fn execute_cluster_alerts(args: &AlertsArgs, json_table: bool) -> i32 {
     let request = volumeleaders_client::TradeClusterAlertsRequest::new()
         .with_start(args.page.start)
         .with_length(args.page.length)
@@ -797,15 +810,15 @@ async fn execute_cluster_alerts(args: &AlertsArgs, pretty: bool) -> i32 {
     output_trade_records(
         &response.data,
         TradeRecordKind::Cluster,
-        pretty,
         &CLUSTER_HEADERS,
         args.fields.as_deref(),
         args.all_fields,
+        json_table,
     )
 }
 
 #[instrument(skip_all)]
-async fn execute_levels(args: &LevelsArgs, pretty: bool) -> i32 {
+async fn execute_levels(args: &LevelsArgs, json_table: bool) -> i32 {
     if !validate_trade_level_count(args.trade_level_count) {
         eprintln!("--trade-level-count must be one of 5, 10, 20, or 50 for trade level retrieval");
         return 1;
@@ -827,15 +840,15 @@ async fn execute_levels(args: &LevelsArgs, pretty: bool) -> i32 {
     output_trade_records(
         &levels,
         TradeRecordKind::Level,
-        pretty,
         &LEVEL_HEADERS,
         args.fields.as_deref(),
         args.all_fields,
+        json_table,
     )
 }
 
 #[instrument(skip_all)]
-async fn execute_level_touches(args: &LevelTouchesArgs, pretty: bool) -> i32 {
+async fn execute_level_touches(args: &LevelTouchesArgs, json_table: bool) -> i32 {
     if !validate_trade_level_count(args.trade_level_count) {
         eprintln!("--trade-level-count must be one of 5, 10, 20, or 50 for trade level retrieval");
         return 1;
@@ -868,34 +881,34 @@ async fn execute_level_touches(args: &LevelTouchesArgs, pretty: bool) -> i32 {
     output_trade_records(
         &response.data,
         TradeRecordKind::Level,
-        pretty,
         &LEVEL_HEADERS,
         args.fields.as_deref(),
         args.all_fields,
+        json_table,
     )
 }
 
 fn output_trade_records<T: Serialize>(
     records: &[T],
     kind: TradeRecordKind,
-    pretty: bool,
     headers: &[&str],
     fields: Option<&str>,
     all_fields: bool,
+    json_table: bool,
 ) -> i32 {
-    let result = print_trade_records(records, kind, pretty, headers, fields, all_fields);
+    let result = print_trade_records(records, kind, headers, fields, all_fields, json_table);
     finish_output(result)
 }
 
 fn print_trade_records<T: Serialize>(
     records: &[T],
     kind: TradeRecordKind,
-    pretty: bool,
     headers: &[&str],
     fields: Option<&str>,
     all_fields: bool,
+    json_table: bool,
 ) -> std::io::Result<()> {
-    print_transformed_record_values(records, kind, pretty, headers, fields, all_fields)
+    print_transformed_record_values(records, kind, headers, fields, all_fields, json_table)
 }
 
 /// Clamp an arbitrary count to the nearest API-supported level count.
@@ -1120,10 +1133,10 @@ mod tests {
         write_record_values(
             &mut output,
             &values,
-            false,
             &CLUSTER_HEADERS,
             fields,
             all_fields,
+            false,
         )
         .expect("cluster output renders");
 
@@ -1485,7 +1498,7 @@ mod tests {
         )
         .expect("cluster alert serializes");
         let mut output = Vec::new();
-        write_record_values(&mut output, &values, false, &CLUSTER_HEADERS, None, false)
+        write_record_values(&mut output, &values, &CLUSTER_HEADERS, None, false, false)
             .expect("cluster alert output renders");
         let output: serde_json::Value = serde_json::from_slice(&output).unwrap();
         let row = output[0].as_object().unwrap();

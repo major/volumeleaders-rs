@@ -17,13 +17,15 @@ use crate::cli::{Cli, Commands};
 pub async fn run() -> i32 {
     let cli = Cli::parse();
 
+    let json_table = cli.json_table;
+
     match &cli.command {
-        Commands::Report(args) => commands::report::handle(args, cli.pretty).await,
-        Commands::Trade(args) => commands::trade::handle(args, cli.pretty).await,
-        Commands::Volume(args) => commands::volume::handle(args, cli.pretty).await,
-        Commands::Market(args) => commands::market::handle(args, cli.pretty).await,
-        Commands::Alert(args) => commands::alert::handle(args, cli.pretty).await,
-        Commands::Watchlist(args) => commands::watchlist::handle(args, cli.pretty).await,
+        Commands::Report(args) => commands::report::handle(args, json_table).await,
+        Commands::Trade(args) => commands::trade::handle(args, json_table).await,
+        Commands::Volume(args) => commands::volume::handle(args, json_table).await,
+        Commands::Market(args) => commands::market::handle(args, json_table).await,
+        Commands::Alert(args) => commands::alert::handle(args, json_table).await,
+        Commands::Watchlist(args) => commands::watchlist::handle(args, json_table).await,
         Commands::Completions(args) => {
             commands::completions::handle(args);
             0
