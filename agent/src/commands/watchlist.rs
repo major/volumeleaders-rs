@@ -516,6 +516,131 @@ mod tests {
     }
 
     #[test]
+    fn build_config_request_edits_config_with_nonzero_key_and_name() {
+        let cfg = WatchlistConfigFlags {
+            tickers: "MSFT,NVDA".to_string(),
+            min_volume: 500,
+            max_volume: 1_500_000,
+            min_dollars: 10_000.5,
+            max_dollars: 25_000_000.25,
+            min_price: 12.5,
+            max_price: 450.75,
+            min_vcd: 2.5,
+            sector_industry: "Technology".to_string(),
+            security_type: 1,
+            min_relative_size: 25,
+            max_trade_rank: 10,
+            normal_prints: false,
+            signature_prints: true,
+            late_prints: false,
+            timely_prints: true,
+            dark_pools: false,
+            lit_exchanges: true,
+            sweeps: false,
+            blocks: true,
+            premarket_trades: false,
+            rth_trades: true,
+            ah_trades: false,
+            opening_trades: true,
+            closing_trades: false,
+            phantom_trades: true,
+            offsetting_trades: false,
+            rsi_overbought_daily: 1,
+            rsi_overbought_hourly: 0,
+            rsi_oversold_daily: 1,
+            rsi_oversold_hourly: 0,
+        };
+
+        let request = build_config_request(42, "Edited WL", &cfg);
+        let fields = request.fields();
+
+        // Key is non-zero for edit.
+        assert_eq!(fields[0], ("SearchTemplateKey".into(), "42".into()));
+        assert_eq!(fields[1], ("Name".into(), "Edited WL".into()));
+        assert_eq!(fields[2], ("Tickers".into(), "MSFT,NVDA".into()));
+        assert_eq!(fields[3], ("MinVolume".into(), "500".into()));
+        assert_eq!(fields[4], ("MaxVolume".into(), "1500000".into()));
+        assert_eq!(fields[5], ("MinDollars".into(), "10000.5".into()));
+        assert_eq!(fields[6], ("MaxDollars".into(), "25000000.25".into()));
+        assert_eq!(fields[7], ("MinPrice".into(), "12.5".into()));
+        assert_eq!(fields[8], ("MaxPrice".into(), "450.75".into()));
+        assert_eq!(fields[9], ("MinVCD".into(), "2.5".into()));
+        assert_eq!(fields[10], ("SectorIndustry".into(), "Technology".into()));
+        assert_eq!(fields[11], ("SecurityTypeKey".into(), "1".into()));
+        assert_eq!(fields[12], ("MinRelativeSizeSelected".into(), "25".into()));
+        assert_eq!(fields[13], ("MaxTradeRankSelected".into(), "10".into()));
+    }
+
+    #[test]
+    fn build_config_request_edit_flips_dual_entry_bool_paths() {
+        let cfg = WatchlistConfigFlags {
+            tickers: "QQQ".to_string(),
+            min_volume: 0,
+            max_volume: 2_000_000_000,
+            min_dollars: 0.0,
+            max_dollars: 30_000_000_000.0,
+            min_price: 0.0,
+            max_price: 100_000.0,
+            min_vcd: 0.0,
+            sector_industry: String::new(),
+            security_type: -1,
+            min_relative_size: 0,
+            max_trade_rank: -1,
+            normal_prints: false,
+            signature_prints: true,
+            late_prints: false,
+            timely_prints: true,
+            dark_pools: false,
+            lit_exchanges: true,
+            sweeps: false,
+            blocks: true,
+            premarket_trades: false,
+            rth_trades: true,
+            ah_trades: false,
+            opening_trades: true,
+            closing_trades: false,
+            phantom_trades: true,
+            offsetting_trades: false,
+            rsi_overbought_daily: 0,
+            rsi_overbought_hourly: 1,
+            rsi_oversold_daily: 0,
+            rsi_oversold_hourly: 1,
+        };
+
+        let request = build_config_request(42, "Edited WL", &cfg);
+        let fields = request.fields();
+
+        // Key and name stay on the edit path while bool fields flip paths.
+        assert_eq!(fields[0], ("SearchTemplateKey".into(), "42".into()));
+        assert_eq!(fields[1], ("Name".into(), "Edited WL".into()));
+
+        // NormalPrintsSelected is false: single false entry.
+        let normal_entries: Vec<_> = fields
+            .iter()
+            .filter(|(k, _)| k == "NormalPrintsSelected")
+            .collect();
+        assert_eq!(normal_entries.len(), 1);
+        assert_eq!(normal_entries[0].1, "false");
+
+        // SignaturePrintsSelected is true: dual entries (true then false).
+        let sig_entries: Vec<_> = fields
+            .iter()
+            .filter(|(k, _)| k == "SignaturePrintsSelected")
+            .collect();
+        assert_eq!(sig_entries.len(), 2);
+        assert_eq!(sig_entries[0].1, "true");
+        assert_eq!(sig_entries[1].1, "false");
+
+        // RSI fields remain simple string values on edit.
+        let rsi_entries: Vec<_> = fields
+            .iter()
+            .filter(|(k, _)| k == "RSIOversoldHourlySelected")
+            .collect();
+        assert_eq!(rsi_entries.len(), 1);
+        assert_eq!(rsi_entries[0].1, "1");
+    }
+
+    #[test]
     fn tickers_request_sets_watchlist_key_in_extra_values() {
         let request = WatchListTickersRequest::new().with_watch_list_key(6260);
 

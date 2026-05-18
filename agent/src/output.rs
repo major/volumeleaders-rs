@@ -323,7 +323,10 @@ fn write_json<W: Write, T: Serialize>(writer: &mut W, value: &T) -> io::Result<(
 mod tests {
     use serde::Serialize;
 
-    use super::{print_records, records_to_values, selected_fields, values_to_table, write_json};
+    use super::{
+        finish_output, print_records, records_to_values, selected_fields, values_to_table,
+        write_json, write_record_values,
+    };
 
     #[derive(Debug, Serialize)]
     struct TestRecord {
@@ -375,6 +378,13 @@ mod tests {
     }
 
     #[test]
+    fn selected_fields_returns_none_for_empty_input() {
+        assert_eq!(selected_fields(None), None);
+        assert_eq!(selected_fields(Some("")), None);
+        assert_eq!(selected_fields(Some(",,,")), None);
+    }
+
+    #[test]
     fn records_to_values_filters_to_selected_fields() {
         let records = sample_records();
         let values = records_to_values(&records, Some(&["symbol".to_string()]));
@@ -401,6 +411,139 @@ mod tests {
         assert_eq!(err.kind(), std::io::ErrorKind::InvalidInput);
         assert!(err.to_string().contains("unknown output field"));
         assert!(err.to_string().contains("symbol"));
+    }
+
+    #[test]
+    fn write_record_values_outputs_compact_json_table() {
+        let records = sample_records();
+        let values: Vec<serde_json::Value> = records
+            .iter()
+            .map(|r| serde_json::to_value(r).unwrap())
+            .collect();
+        let mut buf = Vec::new();
+
+        write_record_values(&mut buf, &values, &["symbol", "price"], None, false, true).unwrap();
+
+        let output = String::from_utf8(buf).unwrap();
+        let parsed: serde_json::Value = serde_json::from_str(output.trim()).unwrap();
+        let rows = parsed.as_array().unwrap();
+        assert_eq!(rows.len(), 3, "header row + 2 data rows");
+        assert!(rows.iter().all(serde_json::Value::is_array));
+
+        let headers = rows[0].as_array().unwrap();
+        assert_eq!(headers.len(), 2);
+        assert!(headers.contains(&serde_json::json!("symbol")));
+        assert!(headers.contains(&serde_json::json!("price")));
+        assert!(!headers.contains(&serde_json::json!("volume")));
+
+        let first_row = rows[1].as_array().unwrap();
+        assert!(first_row.contains(&serde_json::json!("AAPL")));
+        assert!(first_row.contains(&serde_json::json!(150.5)));
+    }
+
+    #[test]
+    fn write_record_values_outputs_all_fields_json_table() {
+        let records = sample_records();
+        let values: Vec<serde_json::Value> = records
+            .iter()
+            .map(|r| serde_json::to_value(r).unwrap())
+            .collect();
+        let mut buf = Vec::new();
+
+        write_record_values(&mut buf, &values, &["symbol"], None, true, true).unwrap();
+
+        let output = String::from_utf8(buf).unwrap();
+        let parsed: serde_json::Value = serde_json::from_str(output.trim()).unwrap();
+        let rows = parsed.as_array().unwrap();
+        assert_eq!(rows.len(), 3, "header row + 2 data rows");
+        assert!(rows.iter().all(serde_json::Value::is_array));
+
+        let headers = rows[0].as_array().unwrap();
+        assert_eq!(headers.len(), 3);
+        assert!(headers.contains(&serde_json::json!("symbol")));
+        assert!(headers.contains(&serde_json::json!("price")));
+        assert!(headers.contains(&serde_json::json!("volume")));
+
+        let first_row = rows[1].as_array().unwrap();
+        assert!(first_row.contains(&serde_json::json!("AAPL")));
+        assert!(first_row.contains(&serde_json::json!(150.5)));
+        assert!(first_row.contains(&serde_json::json!(1_000_000)));
+    }
+
+    #[test]
+    fn write_record_values_outputs_custom_field() {
+        let records = sample_records();
+        let values: Vec<serde_json::Value> = records
+            .iter()
+            .map(|r| serde_json::to_value(r).unwrap())
+            .collect();
+        let mut buf = Vec::new();
+
+        write_record_values(
+            &mut buf,
+            &values,
+            &["symbol", "price"],
+            Some("symbol"),
+            false,
+            false,
+        )
+        .unwrap();
+
+        let output = String::from_utf8(buf).unwrap();
+        let parsed: serde_json::Value = serde_json::from_str(output.trim()).unwrap();
+        assert_eq!(
+            parsed,
+            serde_json::json!([
+                {"symbol": "AAPL"},
+                {"symbol": "MSFT"}
+            ])
+        );
+    }
+
+    #[test]
+    fn write_record_values_rejects_unknown_custom_fields() {
+        let records = sample_records();
+        let values: Vec<serde_json::Value> = records
+            .iter()
+            .map(|r| serde_json::to_value(r).unwrap())
+            .collect();
+        let mut buf = Vec::new();
+
+        let err = write_record_values(
+            &mut buf,
+            &values,
+            &["symbol", "price"],
+            Some("ticker"),
+            false,
+            false,
+        )
+        .unwrap_err();
+
+        assert_eq!(err.kind(), std::io::ErrorKind::InvalidInput);
+        assert!(err.to_string().contains("unknown output field"));
+        assert!(err.to_string().contains("ticker"));
+    }
+
+    #[test]
+    fn write_record_values_outputs_raw_fields_for_all_sentinel() {
+        let records = sample_records();
+        let values: Vec<serde_json::Value> = records
+            .iter()
+            .map(|r| serde_json::to_value(r).unwrap())
+            .collect();
+        let mut buf = Vec::new();
+
+        write_record_values(&mut buf, &values, &["symbol"], Some("all"), false, false).unwrap();
+
+        let output = String::from_utf8(buf).unwrap();
+        let parsed: serde_json::Value = serde_json::from_str(output.trim()).unwrap();
+        assert_eq!(parsed, serde_json::Value::Array(values));
+    }
+
+    #[test]
+    fn finish_output_maps_result_to_exit_code() {
+        assert_eq!(finish_output(Ok(())), 0);
+        assert_eq!(finish_output(Err(std::io::Error::other("broken pipe"))), 1);
     }
 
     #[test]

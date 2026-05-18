@@ -569,6 +569,121 @@ mod tests {
     }
 
     #[test]
+    fn resolve_ticker_group_uses_explicit_group() {
+        let ticker_group = resolve_ticker_group(Some("MyWatchlist"), "AAPL,MSFT");
+
+        assert_eq!(ticker_group, "MyWatchlist");
+    }
+
+    #[test]
+    fn resolve_ticker_group_auto_selects_tickers() {
+        let ticker_group = resolve_ticker_group(None, "AAPL,MSFT");
+
+        assert_eq!(ticker_group, "SelectedTickers");
+    }
+
+    #[test]
+    fn resolve_ticker_group_defaults_to_all_tickers() {
+        let ticker_group = resolve_ticker_group(None, "");
+
+        assert_eq!(ticker_group, "AllTickers");
+    }
+
+    #[test]
+    fn build_edit_request_uses_key_and_name() {
+        let args = EditArgs {
+            key: 42,
+            name: Some("Edited Alert".to_string()),
+            ticker_group: None,
+            tickers: "AAPL,MSFT".to_string(),
+            trade_rank_lte: 0,
+            trade_vcd_gte: 0,
+            trade_mult_gte: 0,
+            trade_volume_gte: 0,
+            trade_dollars_gte: 0,
+            trade_conditions: "0".to_string(),
+            dark_pool: true,
+            sweep: false,
+            closing_trade_rank_lte: 0,
+            closing_trade_vcd_gte: 0,
+            closing_trade_mult_gte: 0,
+            closing_trade_volume_gte: 0,
+            closing_trade_dollars_gte: 0,
+            closing_trade_conditions: "0".to_string(),
+            cluster_rank_lte: 0,
+            cluster_vcd_gte: 0,
+            cluster_mult_gte: 0,
+            cluster_volume_gte: 0,
+            cluster_dollars_gte: 0,
+            total_rank_lte: 0,
+            total_volume_gte: 0,
+            total_dollars_gte: 0,
+            ah_rank_lte: 0,
+            ah_volume_gte: 0,
+            ah_dollars_gte: 0,
+            offsetting_print: true,
+            phantom_print: false,
+        };
+
+        let request = build_edit_request(&args);
+        let fields = request.fields();
+
+        // AlertConfigKey matches edit key.
+        assert_eq!(fields[0], ("AlertConfigKey".into(), "42".into()));
+        // Name matches input.
+        assert_eq!(fields[1], ("Name".into(), "Edited Alert".into()));
+        // Auto-selected SelectedTickers because tickers is non-empty.
+        assert_eq!(fields[2], ("TickerGroup".into(), "SelectedTickers".into()));
+        // Tickers preserved.
+        assert_eq!(fields[3], ("Tickers".into(), "AAPL,MSFT".into()));
+    }
+
+    #[test]
+    fn build_edit_request_defaults_missing_name_to_empty() {
+        let args = EditArgs {
+            key: 42,
+            name: None,
+            ticker_group: None,
+            tickers: "AAPL".to_string(),
+            trade_rank_lte: 0,
+            trade_vcd_gte: 0,
+            trade_mult_gte: 0,
+            trade_volume_gte: 0,
+            trade_dollars_gte: 0,
+            trade_conditions: "0".to_string(),
+            dark_pool: true,
+            sweep: false,
+            closing_trade_rank_lte: 0,
+            closing_trade_vcd_gte: 0,
+            closing_trade_mult_gte: 0,
+            closing_trade_volume_gte: 0,
+            closing_trade_dollars_gte: 0,
+            closing_trade_conditions: "0".to_string(),
+            cluster_rank_lte: 0,
+            cluster_vcd_gte: 0,
+            cluster_mult_gte: 0,
+            cluster_volume_gte: 0,
+            cluster_dollars_gte: 0,
+            total_rank_lte: 0,
+            total_volume_gte: 0,
+            total_dollars_gte: 0,
+            ah_rank_lte: 0,
+            ah_volume_gte: 0,
+            ah_dollars_gte: 0,
+            offsetting_print: true,
+            phantom_print: false,
+        };
+
+        let request = build_edit_request(&args);
+        let fields = request.fields();
+
+        // AlertConfigKey matches edit key.
+        assert_eq!(fields[0], ("AlertConfigKey".into(), "42".into()));
+        // Name defaults to empty when omitted.
+        assert_eq!(fields[1], ("Name".into(), "".into()));
+    }
+
+    #[test]
     fn build_create_request_auto_selects_ticker_group() {
         let args = CreateArgs {
             name: "Test Alert".to_string(),
