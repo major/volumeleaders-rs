@@ -1,5 +1,6 @@
 //! VolumeLeaders institutional trade model.
 
+use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
 
 use super::types::{AspNetDate, FlexBool};
@@ -53,11 +54,11 @@ pub struct Trade {
     pub full_time_string_24: Option<String>,
 
     // -- Price / size --
-    pub price: Option<f64>,
-    pub bid: Option<f64>,
-    pub ask: Option<f64>,
-    pub dollars: Option<f64>,
-    pub average_block_size_dollars: Option<f64>,
+    pub price: Option<Decimal>,
+    pub bid: Option<Decimal>,
+    pub ask: Option<Decimal>,
+    pub dollars: Option<Decimal>,
+    pub average_block_size_dollars: Option<Decimal>,
     pub average_block_size_shares: Option<i64>,
     pub dollars_multiplier: Option<f64>,
     pub volume: Option<i64>,
@@ -93,25 +94,25 @@ pub struct Trade {
 
     // -- After-hours / institutional aggregates --
     #[serde(rename = "AHInstitutionalDollars")]
-    pub ah_institutional_dollars: Option<f64>,
+    pub ah_institutional_dollars: Option<Decimal>,
     #[serde(rename = "AHInstitutionalDollarsRank")]
     pub ah_institutional_dollars_rank: Option<i64>,
     #[serde(rename = "AHInstitutionalVolume")]
     pub ah_institutional_volume: Option<i64>,
-    pub total_institutional_dollars: Option<f64>,
+    pub total_institutional_dollars: Option<Decimal>,
     pub total_institutional_dollars_rank: Option<i64>,
     pub total_institutional_volume: Option<i64>,
 
     // -- Closing / total aggregates --
-    pub closing_trade_dollars: Option<f64>,
+    pub closing_trade_dollars: Option<Decimal>,
     pub closing_trade_dollars_rank: Option<i64>,
     pub closing_trade_volume: Option<i64>,
-    pub total_dollars: Option<f64>,
+    pub total_dollars: Option<Decimal>,
     pub total_dollars_rank: Option<i64>,
     pub total_volume: Option<i64>,
 
     // -- Indicators --
-    pub close_price: Option<f64>,
+    pub close_price: Option<Decimal>,
     #[serde(rename = "RSIHour")]
     pub rsi_hour: Option<f64>,
     #[serde(rename = "RSIDay")]
@@ -135,6 +136,10 @@ pub struct Trade {
 mod tests {
     use super::*;
 
+    fn dec(v: f64) -> Decimal {
+        Decimal::try_from(v).unwrap()
+    }
+
     /// Helper struct matching the DataTables response envelope.
     #[derive(Deserialize)]
     struct TradesResponse {
@@ -152,7 +157,7 @@ mod tests {
         assert_eq!(first.sector.as_deref(), Some("Financial Services"));
         assert_eq!(first.industry.as_deref(), Some("Consumer Finance"));
         assert_eq!(first.trade_id, Some(71_774_613_157_188));
-        assert_eq!(first.price, Some(319.68));
+        assert_eq!(first.price, Some(dec(319.68)));
         assert_eq!(first.volume, Some(276_248));
 
         // FlexBool from integer 1 -> true

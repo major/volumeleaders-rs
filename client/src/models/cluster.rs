@@ -1,5 +1,6 @@
 //! VolumeLeaders trade cluster and trade cluster bomb models.
 
+use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
 
 use super::types::{AspNetDate, FlexBool};
@@ -36,11 +37,11 @@ pub struct TradeCluster {
     pub max_full_time_string_24: Option<String>,
 
     // -- Price / size --
-    pub price: Option<f64>,
-    pub close_price: Option<f64>,
-    pub dollars: Option<f64>,
+    pub price: Option<Decimal>,
+    pub close_price: Option<Decimal>,
+    pub dollars: Option<Decimal>,
     pub average_block_size_shares: Option<i64>,
-    pub average_block_size_dollars: Option<f64>,
+    pub average_block_size_dollars: Option<Decimal>,
     pub volume: Option<i64>,
     pub average_daily_volume: Option<i64>,
 
@@ -104,10 +105,10 @@ pub struct TradeClusterBomb {
     pub max_full_time_string_24: Option<String>,
 
     // -- Price / size --
-    pub close_price: Option<f64>,
-    pub dollars: Option<f64>,
+    pub close_price: Option<Decimal>,
+    pub dollars: Option<Decimal>,
     pub average_block_size_shares: Option<i64>,
-    pub average_block_size_dollars: Option<f64>,
+    pub average_block_size_dollars: Option<Decimal>,
     pub volume: Option<i64>,
     pub average_daily_volume: Option<i64>,
 
