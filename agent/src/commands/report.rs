@@ -8,6 +8,8 @@ use serde::Serialize;
 use tracing::instrument;
 
 use crate::cli::ReportArgs;
+use crate::common::DATE_FMT;
+use crate::common::TRADE_HEADERS;
 use crate::common::auth::{handle_api_error, make_client};
 use crate::common::dates::resolve_date_range;
 use crate::common::tickers::parse_tickers;
@@ -625,23 +627,6 @@ async fn execute_preset(args: &ReportArgs, pretty: bool) -> i32 {
     finish_output(result)
 }
 
-/// Column headers for trade output.
-const TRADE_HEADERS: [&str; 13] = [
-    "Ticker",
-    "Date",
-    "FullTimeString24",
-    "Price",
-    "Dollars",
-    "DollarsMultiplier",
-    "CumulativeDistribution",
-    "TradeRank",
-    "type",
-    "venue",
-    "Sector",
-    "Industry",
-    "events",
-];
-
 /// Entry for the preset list output.
 #[derive(Debug, Serialize)]
 struct PresetListEntry {
@@ -692,14 +677,14 @@ fn build_summary(
             SummaryGroup::Day => trade
                 .date
                 .as_ref()
-                .and_then(|d| d.0.map(|dt| dt.format("%Y-%m-%d").to_string()))
+                .and_then(|d| d.0.map(|dt| dt.format(DATE_FMT).to_string()))
                 .unwrap_or_else(|| "unknown".to_string()),
             SummaryGroup::TickerDay => {
                 let ticker = trade.ticker.as_deref().unwrap_or("unknown");
                 let day = trade
                     .date
                     .as_ref()
-                    .and_then(|d| d.0.map(|dt| dt.format("%Y-%m-%d").to_string()))
+                    .and_then(|d| d.0.map(|dt| dt.format(DATE_FMT).to_string()))
                     .unwrap_or_else(|| "unknown".to_string());
                 format!("{ticker}|{day}")
             }
