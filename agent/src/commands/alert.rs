@@ -9,7 +9,7 @@ use volumeleaders_client::{
 use crate::cli::AlertArgs;
 use crate::commands::scaffold::run_client_command;
 use crate::common::auth::{handle_api_error, make_client};
-use crate::output::{OutputFormat, finish_output, print_records, print_value};
+use crate::output::{finish_output, print_json, print_records};
 
 const DEFAULT_CONFIGS_FIELDS: [&str; 9] = [
     "AlertConfigKey",
@@ -309,17 +309,17 @@ pub struct DeleteArgs {
 
 /// Handles the alert command group.
 #[instrument(skip_all)]
-pub async fn handle(args: &AlertArgs, format: &OutputFormat) -> i32 {
+pub async fn handle(args: &AlertArgs, json_table: bool) -> i32 {
     match &args.command {
-        AlertCommand::Configs(a) => execute_configs(a, format).await,
-        AlertCommand::Create(a) => execute_create(a, format).await,
-        AlertCommand::Edit(a) => execute_edit(a, format).await,
-        AlertCommand::Delete(a) => execute_delete(a, format).await,
+        AlertCommand::Configs(a) => execute_configs(a, json_table).await,
+        AlertCommand::Create(a) => execute_create(a, json_table).await,
+        AlertCommand::Edit(a) => execute_edit(a, json_table).await,
+        AlertCommand::Delete(a) => execute_delete(a, json_table).await,
     }
 }
 
 #[instrument(skip_all)]
-async fn execute_configs(args: &ConfigsArgs, format: &OutputFormat) -> i32 {
+async fn execute_configs(args: &ConfigsArgs, json_table: bool) -> i32 {
     let client = match make_client().await {
         Ok(c) => c,
         Err(code) => return code,
@@ -332,15 +332,15 @@ async fn execute_configs(args: &ConfigsArgs, format: &OutputFormat) -> i32 {
 
     finish_output(print_records(
         &configs,
-        format,
         &DEFAULT_CONFIGS_FIELDS,
         args.fields.as_deref(),
         args.all_fields,
+        json_table,
     ))
 }
 
 #[instrument(skip_all)]
-async fn execute_create(args: &CreateArgs, format: &OutputFormat) -> i32 {
+async fn execute_create(args: &CreateArgs, json_table: bool) -> i32 {
     let request = build_create_request(args);
     run_client_command(
         move |client| {
@@ -349,13 +349,13 @@ async fn execute_create(args: &CreateArgs, format: &OutputFormat) -> i32 {
                 Ok(serde_json::json!({"success": true, "action": "created", "key": 0}))
             })
         },
-        move |result| print_value(&result, format),
+        move |result| print_json(&result, json_table),
     )
     .await
 }
 
 #[instrument(skip_all)]
-async fn execute_edit(args: &EditArgs, format: &OutputFormat) -> i32 {
+async fn execute_edit(args: &EditArgs, json_table: bool) -> i32 {
     let request = build_edit_request(args);
     let key = args.key;
     run_client_command(
@@ -365,13 +365,13 @@ async fn execute_edit(args: &EditArgs, format: &OutputFormat) -> i32 {
                 Ok(serde_json::json!({"success": true, "action": "updated", "key": key}))
             })
         },
-        move |result| print_value(&result, format),
+        move |result| print_json(&result, json_table),
     )
     .await
 }
 
 #[instrument(skip_all)]
-async fn execute_delete(args: &DeleteArgs, format: &OutputFormat) -> i32 {
+async fn execute_delete(args: &DeleteArgs, json_table: bool) -> i32 {
     let key = args.key;
     let request = DeleteAlertConfigRequest {
         alert_config_key: key,
@@ -383,7 +383,7 @@ async fn execute_delete(args: &DeleteArgs, format: &OutputFormat) -> i32 {
                 Ok(serde_json::json!({"success": true, "action": "deleted", "key": key}))
             })
         },
-        move |result| print_value(&result, format),
+        move |result| print_json(&result, json_table),
     )
     .await
 }

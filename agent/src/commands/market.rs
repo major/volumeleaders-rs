@@ -8,7 +8,7 @@ use crate::cli::MarketArgs;
 use crate::commands::scaffold::run_client_command;
 use crate::common::auth::{handle_api_error, make_client};
 use crate::common::dates::resolve_date_range;
-use crate::output::{OutputFormat, finish_output, print_records, print_value};
+use crate::output::{finish_output, print_json, print_records};
 
 const DEFAULT_EARNINGS_FIELDS: [&str; 6] = [
     "Ticker",
@@ -61,15 +61,15 @@ pub struct ExhaustionArgs {
 
 /// Handles the market command group.
 #[instrument(skip_all)]
-pub async fn handle(args: &MarketArgs, format: &OutputFormat) -> i32 {
+pub async fn handle(args: &MarketArgs, json_table: bool) -> i32 {
     match &args.command {
-        MarketCommand::Earnings(args) => execute_earnings(args, format).await,
-        MarketCommand::Exhaustion(args) => execute_exhaustion(args, format).await,
+        MarketCommand::Earnings(args) => execute_earnings(args, json_table).await,
+        MarketCommand::Exhaustion(args) => execute_exhaustion(args, json_table).await,
     }
 }
 
 #[instrument(skip_all)]
-async fn execute_earnings(args: &EarningsArgs, format: &OutputFormat) -> i32 {
+async fn execute_earnings(args: &EarningsArgs, json_table: bool) -> i32 {
     let request = build_earnings_request(args);
     let client = match make_client().await {
         Ok(client) => client,
@@ -82,15 +82,15 @@ async fn execute_earnings(args: &EarningsArgs, format: &OutputFormat) -> i32 {
 
     finish_output(print_records(
         &earnings,
-        format,
         &DEFAULT_EARNINGS_FIELDS,
         args.fields.as_deref(),
         args.all_fields,
+        json_table,
     ))
 }
 
 #[instrument(skip_all)]
-async fn execute_exhaustion(args: &ExhaustionArgs, format: &OutputFormat) -> i32 {
+async fn execute_exhaustion(args: &ExhaustionArgs, json_table: bool) -> i32 {
     let request = ExhaustionScoresRequest {
         date: args.date.clone().unwrap_or_default(),
     };
@@ -98,7 +98,7 @@ async fn execute_exhaustion(args: &ExhaustionArgs, format: &OutputFormat) -> i32
         move |client| Box::pin(async move { client.get_exhaustion_scores(&request).await }),
         move |scores| {
             let json = serde_json::to_value(&scores).unwrap_or(serde_json::Value::Null);
-            print_value(&json, format)
+            print_json(&json, json_table)
         },
     )
     .await

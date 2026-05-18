@@ -2,7 +2,7 @@
 
 ## OVERVIEW
 
-`volumeleaders-agent` is the CLI boundary. It parses clap commands, bootstraps browser auth, translates arguments into `volumeleaders-client` requests, and writes results to stdout (TSV by default, JSON with `--json` or `--pretty`).
+`volumeleaders-agent` is the CLI boundary. It parses clap commands, bootstraps browser auth, translates arguments into `volumeleaders-client` requests, and writes JSON to stdout.
 
 ## DOC FRESHNESS
 
@@ -15,17 +15,17 @@
 |------|----------|-------|
 | Binary entry | `src/main.rs` | Thin wrapper around `volumeleaders_agent::run()` |
 | Dispatch | `src/lib.rs` | Parses CLI and routes to command handlers |
-| Command tree | `src/cli.rs` | Top-level clap groups and global `--json`/`--pretty` |
-| Command handlers | `src/commands/*.rs` | `handle(args, format) -> i32` per group |
+| Command tree | `src/cli.rs` | Top-level clap groups and global `--json-table` |
+| Command handlers | `src/commands/*.rs` | `handle(args, json_table) -> i32` per group |
 | Shared CLI args/types | `src/common/` | Dates, tickers, order direction, summary groups, tri-state filters |
 | Browser auth bridge | `src/common/auth.rs` | Builds client sessions from browser cookies |
-| Output formatting | `src/output.rs` | TSV/JSON output, `OutputFormat` enum, field selection, validation |
+| Output formatting | `src/output.rs` | JSON, field selection, validation |
 | Trade output transforms | `src/common/trade_transforms.rs` | Shared semantic cleanup for trade-shaped rows before field selection |
 
 ## COMMAND SURFACE
 
 - Top-level groups: `report`, `trade`, `volume`, `market`, `alert`, `watchlist`, `completions`.
-- Default output is tab-separated values (TSV). `--json` switches to compact JSON, `--pretty` to indented JSON.
+- Default output is compact JSON. `--json-table` emits array-of-arrays with a header row for token-efficient consumption. Pipe through `jq` for pretty-printing.
 - Errors and logs go to stderr. Data goes to stdout.
 - Auth failure text tells users to log in at `https://www.volumeleaders.com` and retry.
 - Trade-shaped output intentionally omits the upstream `PercentDailyVolume` value because live report payloads return it as `0.0` for current and prior trading days.

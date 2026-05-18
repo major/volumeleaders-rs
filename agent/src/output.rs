@@ -5,32 +5,23 @@ use serde_json::Value;
 
 use crate::common::trade_transforms::{TradeRecordKind, transformed_trade_values};
 
-/// Controls the output format for CLI results.
-#[derive(Clone, Debug, Default, PartialEq)]
-pub enum OutputFormat {
-    /// Tab-separated values (default).
-    #[default]
-    Tsv,
-    /// Compact JSON.
-    Json,
-    /// Pretty-printed JSON.
-    JsonPretty,
-}
-
-/// Writes `value` to stdout in the requested output format.
+/// Writes `value` as compact JSON to stdout, newline-terminated.
 ///
-/// JSON output is newline-terminated. TSV output prints scalar values as a
-/// single line, objects as a header row plus one value row, and arrays as rows.
-pub fn print_value<T: Serialize>(value: &T, format: &OutputFormat) -> io::Result<()> {
-    let mut writer = io::stdout().lock();
-    match format {
-        OutputFormat::Tsv => {
-            let value = serde_json::to_value(value)
-                .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
-            write_tsv_single(&mut writer, &value)
+/// When `json_table` is true, arrays of objects are converted to
+/// array-of-arrays format with a header row before serialization.
+pub fn print_json<T: Serialize>(value: &T, json_table: bool) -> io::Result<()> {
+    if json_table {
+        let v = serde_json::to_value(value)
+            .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
+        match &v {
+            Value::Array(arr) if arr.first().is_some_and(Value::is_object) => {
+                let table = values_to_table(arr);
+                write_json(&mut io::stdout().lock(), &table)
+            }
+            _ => write_json(&mut io::stdout().lock(), &v),
         }
-        OutputFormat::Json => write_json(&mut writer, value, false),
-        OutputFormat::JsonPretty => write_json(&mut writer, value, true),
+    } else {
+        write_json(&mut io::stdout().lock(), value)
     }
 }
 
@@ -75,22 +66,21 @@ pub fn records_to_values<T: Serialize>(records: &[T], fields: Option<&[String]>)
         .collect()
 }
 
-/// Outputs pre-serialized record values with compact defaults and optional custom fields.
+/// Outputs pre-serialized record values with compact JSON defaults and optional custom fields.
 pub fn print_record_values(
     records: &[Value],
-    format: &OutputFormat,
     compact_headers: &[&str],
     fields: Option<&str>,
     all_fields: bool,
+    json_table: bool,
 ) -> io::Result<()> {
-    let mut writer = io::stdout().lock();
     write_record_values(
-        &mut writer,
+        io::stdout().lock(),
         records,
-        format,
         compact_headers,
         fields,
         all_fields,
+        json_table,
     )
 }
 
@@ -98,26 +88,26 @@ pub fn print_record_values(
 pub fn print_transformed_record_values<T: Serialize>(
     records: &[T],
     kind: TradeRecordKind,
-    format: &OutputFormat,
     compact_headers: &[&str],
     fields: Option<&str>,
     all_fields: bool,
+    json_table: bool,
 ) -> io::Result<()> {
     transformed_trade_values(records, kind)
         .map_err(|err| io::Error::new(io::ErrorKind::InvalidData, err))
         .and_then(|values| {
-            print_record_values(&values, format, compact_headers, fields, all_fields)
+            print_record_values(&values, compact_headers, fields, all_fields, json_table)
         })
 }
 
 /// Writes pre-serialized record values to `writer`.
 pub(crate) fn write_record_values<W: Write>(
-    writer: &mut W,
+    mut writer: W,
     records: &[Value],
-    format: &OutputFormat,
     compact_headers: &[&str],
     fields: Option<&str>,
     all_fields: bool,
+    json_table: bool,
 ) -> io::Result<()> {
     let custom_fields = selected_fields(fields);
     let raw_fields_requested =
@@ -128,14 +118,11 @@ pub(crate) fn write_record_values<W: Write>(
     }
 
     if all_fields || raw_fields_requested {
-        return match format {
-            OutputFormat::Tsv => {
-                let headers = record_headers(records);
-                write_tsv(writer, records, &headers)
-            }
-            OutputFormat::Json => write_json(writer, &records, false),
-            OutputFormat::JsonPretty => write_json(writer, &records, true),
-        };
+        if json_table {
+            let table = values_to_table(records);
+            return write_json(&mut writer, &table);
+        }
+        return write_json(&mut writer, &records);
     }
 
     let default_fields: Vec<String> = compact_headers
@@ -146,13 +133,11 @@ pub(crate) fn write_record_values<W: Write>(
         .as_deref()
         .unwrap_or(default_fields.as_slice());
     let values = filter_record_values(records, selected);
-    match format {
-        OutputFormat::Tsv => {
-            let headers: Vec<&str> = selected.iter().map(String::as_str).collect();
-            write_tsv(writer, &values, &headers)
-        }
-        OutputFormat::Json => write_json(writer, &values, false),
-        OutputFormat::JsonPretty => write_json(writer, &values, true),
+    if json_table {
+        let table = values_to_table(&values);
+        write_json(&mut writer, &table)
+    } else {
+        write_json(&mut writer, &values)
     }
 }
 
@@ -161,29 +146,35 @@ pub fn validate_record_fields<T: Serialize>(records: &[T], fields: &[String]) ->
     validate_selected_fields(available_record_fields(records)?, fields)
 }
 
-/// Outputs record lists with compact defaults and optional custom fields.
+/// Outputs record lists with compact JSON defaults and optional custom fields.
 pub fn print_records<T: Serialize>(
     records: &[T],
-    format: &OutputFormat,
     compact_headers: &[&str],
     fields: Option<&str>,
     all_fields: bool,
+    json_table: bool,
 ) -> io::Result<()> {
-    let values = records
+    let custom_fields = selected_fields(fields);
+    let raw_fields_requested =
+        fields.is_some_and(|fields| fields.trim().eq_ignore_ascii_case("all"));
+
+    if let Some(fields) = custom_fields.as_deref() {
+        validate_record_fields(records, fields)?;
+    }
+
+    if all_fields || raw_fields_requested {
+        return print_json(&records, json_table);
+    }
+
+    let default_fields: Vec<String> = compact_headers
         .iter()
-        .map(|record| {
-            serde_json::to_value(record).map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))
-        })
-        .collect::<io::Result<Vec<_>>>()?;
-    let mut writer = io::stdout().lock();
-    write_record_values(
-        &mut writer,
-        &values,
-        format,
-        compact_headers,
-        fields,
-        all_fields,
-    )
+        .map(|field| (*field).to_string())
+        .collect();
+    let selected = custom_fields
+        .as_deref()
+        .unwrap_or(default_fields.as_slice());
+    let values = records_to_values(records, Some(selected));
+    print_json(&values, json_table)
 }
 
 fn available_record_fields<T: Serialize>(records: &[T]) -> io::Result<Vec<String>> {
@@ -266,9 +257,9 @@ fn retain_selected_fields(map: &mut serde_json::Map<String, Value>, fields: &[St
     map.retain(|key, _| fields.iter().any(|field| field == key));
 }
 
-/// Convenience alias for [`print_value`] for callers that prefer the name.
-pub fn print_output<T: Serialize>(value: &T, format: &OutputFormat) -> io::Result<()> {
-    print_value(value, format)
+/// Prints `value` as compact JSON.
+pub fn print_result<T: Serialize>(value: &T, json_table: bool) -> io::Result<()> {
+    print_json(value, json_table)
 }
 
 /// Convert an output write result into the CLI exit code convention.
@@ -282,109 +273,57 @@ pub fn finish_output(result: io::Result<()>) -> i32 {
     }
 }
 
-/// Writes `value` as JSON to `writer`, newline-terminated.
-fn write_json<W: Write, T: Serialize>(writer: &mut W, value: &T, pretty: bool) -> io::Result<()> {
-    if pretty {
-        serde_json::to_writer_pretty(&mut *writer, value)
-    } else {
-        serde_json::to_writer(&mut *writer, value)
+/// Converts an array of JSON objects into JSON Table format: an array whose
+/// first element is the header row (field names) and remaining elements are
+/// value rows. Headers are the union of all object keys, ordered by first
+/// appearance across all rows. Missing keys in any row produce `null`.
+pub(crate) fn values_to_table(records: &[Value]) -> Value {
+    if !records.first().is_some_and(Value::is_object) {
+        return Value::Array(records.to_vec());
     }
-    .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
-    writer.write_all(b"\n")
-}
 
-/// Escapes a TSV field value so tabs and newlines do not break row structure.
-fn escape_tsv_field(value: &str) -> String {
-    value
-        .replace('\\', "\\\\")
-        .replace('\t', "\\t")
-        .replace('\n', "\\n")
-        .replace('\r', "\\r")
-}
-
-fn write_tsv<W: Write>(writer: &mut W, records: &[Value], headers: &[&str]) -> io::Result<()> {
-    writeln!(writer, "{}", headers.join("\t"))?;
+    let mut headers: Vec<String> = Vec::new();
+    let mut seen = std::collections::HashSet::new();
     for record in records {
-        let row: Vec<String> = headers
-            .iter()
-            .map(|header| match record.get(header) {
-                Some(Value::String(s)) => escape_tsv_field(s),
-                Some(Value::Null) | None => String::new(),
-                Some(v) => escape_tsv_field(&v.to_string()),
-            })
-            .collect();
-        writeln!(writer, "{}", row.join("\t"))?;
-    }
-    Ok(())
-}
-
-fn write_tsv_single<W: Write>(writer: &mut W, value: &Value) -> io::Result<()> {
-    match value {
-        Value::Object(map) => {
-            let keys: Vec<&str> = map.keys().map(String::as_str).collect();
-            writeln!(writer, "{}", keys.join("\t"))?;
-            let vals: Vec<String> = map
-                .values()
-                .map(|v| match v {
-                    Value::String(s) => escape_tsv_field(s),
-                    Value::Null => String::new(),
-                    v => escape_tsv_field(&v.to_string()),
-                })
-                .collect();
-            writeln!(writer, "{}", vals.join("\t"))?;
-        }
-        Value::Array(arr) => {
-            if let Some(Value::Object(first)) = arr.first() {
-                let keys: Vec<&str> = first.keys().map(String::as_str).collect();
-                writeln!(writer, "{}", keys.join("\t"))?;
-                for item in arr {
-                    let vals: Vec<String> = keys
-                        .iter()
-                        .map(|key| match item.get(*key) {
-                            Some(Value::String(s)) => escape_tsv_field(s),
-                            Some(Value::Null) | None => String::new(),
-                            Some(v) => escape_tsv_field(&v.to_string()),
-                        })
-                        .collect();
-                    writeln!(writer, "{}", vals.join("\t"))?;
-                }
-            } else {
-                for item in arr {
-                    match item {
-                        Value::String(s) => writeln!(writer, "{}", escape_tsv_field(s))?,
-                        Value::Null => writeln!(writer)?,
-                        v => writeln!(writer, "{}", escape_tsv_field(&v.to_string()))?,
-                    }
+        if let Value::Object(obj) = record {
+            for key in obj.keys() {
+                if seen.insert(key.clone()) {
+                    headers.push(key.clone());
                 }
             }
         }
-        other => match other {
-            Value::String(s) => writeln!(writer, "{}", escape_tsv_field(s))?,
-            Value::Null => writeln!(writer)?,
-            v => writeln!(writer, "{}", escape_tsv_field(&v.to_string()))?,
-        },
     }
-    Ok(())
+
+    let header_row = Value::Array(headers.iter().map(|h| Value::String(h.clone())).collect());
+
+    let mut table = Vec::with_capacity(records.len() + 1);
+    table.push(header_row);
+
+    for record in records {
+        if let Value::Object(obj) = record {
+            let row: Vec<Value> = headers
+                .iter()
+                .map(|h| obj.get(h).cloned().unwrap_or(Value::Null))
+                .collect();
+            table.push(Value::Array(row));
+        }
+    }
+
+    Value::Array(table)
 }
 
-fn record_headers(records: &[Value]) -> Vec<&str> {
-    records
-        .first()
-        .and_then(Value::as_object)
-        .map(|map| map.keys().map(String::as_str).collect())
-        .unwrap_or_default()
+/// Writes `value` as compact JSON to `writer`, newline-terminated.
+fn write_json<W: Write, T: Serialize>(writer: &mut W, value: &T) -> io::Result<()> {
+    serde_json::to_writer(&mut *writer, value)
+        .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
+    writer.write_all(b"\n")
 }
 
 #[cfg(test)]
 mod tests {
     use serde::Serialize;
 
-    use serde_json::json;
-
-    use super::{
-        OutputFormat, escape_tsv_field, print_records, records_to_values, selected_fields,
-        write_json, write_record_values, write_tsv_single,
-    };
+    use super::{print_records, records_to_values, selected_fields, values_to_table, write_json};
 
     #[derive(Debug, Serialize)]
     struct TestRecord {
@@ -412,7 +351,7 @@ mod tests {
     fn output_compact_json() {
         let record = &sample_records()[0];
         let mut buf = Vec::new();
-        write_json(&mut buf, record, false).unwrap();
+        write_json(&mut buf, record).unwrap();
         let output = String::from_utf8(buf).unwrap();
 
         // Compact JSON is a single line plus trailing newline.
@@ -424,26 +363,6 @@ mod tests {
         assert_eq!(parsed["symbol"], "AAPL");
         assert_eq!(parsed["price"], 150.5);
         assert_eq!(parsed["volume"], 1_000_000);
-    }
-
-    #[test]
-    fn output_pretty_json() {
-        let record = &sample_records()[0];
-        let mut buf = Vec::new();
-        write_json(&mut buf, record, true).unwrap();
-        let output = String::from_utf8(buf).unwrap();
-
-        // Pretty JSON is multi-line with 2-space indentation.
-        let lines: Vec<&str> = output.lines().collect();
-        assert!(lines.len() > 1, "pretty JSON should be multi-line");
-        assert!(
-            output.contains("  \"symbol\""),
-            "should use 2-space indentation"
-        );
-        assert!(output.ends_with('\n'));
-
-        let parsed: serde_json::Value = serde_json::from_str(&output).unwrap();
-        assert_eq!(parsed["symbol"], "AAPL");
     }
 
     #[test]
@@ -475,109 +394,83 @@ mod tests {
     }
 
     #[test]
-    fn write_record_values_outputs_tsv_records() {
-        let records = sample_records();
-        let values = records_to_values(&records, None);
-        let mut output = Vec::new();
-
-        write_record_values(
-            &mut output,
-            &values,
-            &OutputFormat::Tsv,
-            &["symbol", "price"],
-            None,
-            false,
-        )
-        .unwrap();
-
-        assert_eq!(
-            String::from_utf8(output).unwrap(),
-            "symbol\tprice\nAAPL\t150.5\nMSFT\t320.75\n"
-        );
-    }
-
-    #[test]
-    fn write_tsv_single_outputs_object_header_and_values() {
-        let value = json!({"success": true, "action": "created", "key": null});
-        let mut output = Vec::new();
-
-        write_tsv_single(&mut output, &value).unwrap();
-
-        let rendered = String::from_utf8(output).unwrap();
-        let mut lines = rendered.lines();
-        let headers: Vec<&str> = lines.next().unwrap().split('\t').collect();
-        let vals: Vec<&str> = lines.next().unwrap().split('\t').collect();
-        let value_for =
-            |name: &str| vals[headers.iter().position(|header| *header == name).unwrap()];
-
-        assert_eq!(lines.next(), None);
-        assert_eq!(value_for("action"), "created");
-        assert_eq!(value_for("key"), "");
-        assert_eq!(value_for("success"), "true");
-    }
-
-    #[test]
-    fn escape_tsv_field_handles_special_characters() {
-        assert_eq!(escape_tsv_field("plain"), "plain");
-        assert_eq!(escape_tsv_field("tab\there"), "tab\\there");
-        assert_eq!(escape_tsv_field("new\nline"), "new\\nline");
-        assert_eq!(escape_tsv_field("cr\rreturn"), "cr\\rreturn");
-        assert_eq!(escape_tsv_field("back\\slash"), "back\\\\slash");
-        assert_eq!(
-            escape_tsv_field("all\t\n\r\\mixed"),
-            "all\\t\\n\\r\\\\mixed"
-        );
-    }
-
-    #[test]
-    fn write_record_values_tsv_escapes_special_characters() {
-        let values = vec![json!({"name": "Tab\there", "desc": "New\nline"})];
-        let mut output = Vec::new();
-
-        write_record_values(
-            &mut output,
-            &values,
-            &OutputFormat::Tsv,
-            &["name", "desc"],
-            None,
-            false,
-        )
-        .unwrap();
-
-        assert_eq!(
-            String::from_utf8(output).unwrap(),
-            "name\tdesc\nTab\\there\tNew\\nline\n"
-        );
-    }
-
-    #[test]
-    fn write_tsv_single_escapes_special_characters() {
-        let value = json!({"note": "has\ttab\nand\nnewlines"});
-        let mut output = Vec::new();
-
-        write_tsv_single(&mut output, &value).unwrap();
-
-        let rendered = String::from_utf8(output).unwrap();
-        let lines: Vec<&str> = rendered.lines().collect();
-        assert_eq!(lines.len(), 2);
-        assert_eq!(lines[0], "note");
-        assert_eq!(lines[1], "has\\ttab\\nand\\nnewlines");
-    }
-
-    #[test]
     fn print_records_rejects_unknown_custom_fields() {
         let records = sample_records();
-        let err = print_records(
-            &records,
-            &OutputFormat::Tsv,
-            &["symbol"],
-            Some("ticker"),
-            false,
-        )
-        .unwrap_err();
+        let err = print_records(&records, &["symbol"], Some("ticker"), false, false).unwrap_err();
 
         assert_eq!(err.kind(), std::io::ErrorKind::InvalidInput);
         assert!(err.to_string().contains("unknown output field"));
         assert!(err.to_string().contains("symbol"));
+    }
+
+    #[test]
+    fn values_to_table_converts_array_of_objects() {
+        let records = sample_records();
+        let values: Vec<serde_json::Value> = records
+            .iter()
+            .map(|r| serde_json::to_value(r).unwrap())
+            .collect();
+        let table = values_to_table(&values);
+        let rows = table.as_array().unwrap();
+
+        assert_eq!(rows.len(), 3, "header row + 2 data rows");
+
+        let headers = rows[0].as_array().unwrap();
+        assert!(headers.contains(&serde_json::Value::String("symbol".to_string())));
+        assert!(headers.contains(&serde_json::Value::String("price".to_string())));
+        assert!(headers.contains(&serde_json::Value::String("volume".to_string())));
+
+        let first_row = rows[1].as_array().unwrap();
+        assert_eq!(first_row.len(), headers.len());
+        assert!(first_row.contains(&serde_json::json!("AAPL")));
+        assert!(first_row.contains(&serde_json::json!(150.5)));
+    }
+
+    #[test]
+    fn values_to_table_returns_non_object_array_unchanged() {
+        let values = vec![serde_json::json!(1), serde_json::json!(2)];
+        let result = values_to_table(&values);
+        assert_eq!(result, serde_json::json!([1, 2]));
+    }
+
+    #[test]
+    fn values_to_table_handles_empty_array() {
+        let result = values_to_table(&[]);
+        assert_eq!(result, serde_json::json!([]));
+    }
+
+    #[test]
+    fn values_to_table_builds_union_of_all_keys() {
+        use serde_json::json;
+
+        let records = vec![
+            json!({"a": 1, "b": 2}),
+            json!({"a": 3, "c": 4}),
+            json!({"b": 5, "d": 6}),
+        ];
+        let table = values_to_table(&records);
+        let rows = table.as_array().unwrap();
+
+        assert_eq!(rows.len(), 4, "header + 3 data rows");
+
+        let headers: Vec<&str> = rows[0]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|v| v.as_str().unwrap())
+            .collect();
+        assert_eq!(headers, ["a", "b", "c", "d"]);
+
+        // Row 0: has a,b; missing c,d
+        let r0 = rows[1].as_array().unwrap();
+        assert_eq!(r0, &[json!(1), json!(2), json!(null), json!(null)]);
+
+        // Row 1: has a,c; missing b,d
+        let r1 = rows[2].as_array().unwrap();
+        assert_eq!(r1, &[json!(3), json!(null), json!(4), json!(null)]);
+
+        // Row 2: has b,d; missing a,c
+        let r2 = rows[3].as_array().unwrap();
+        assert_eq!(r2, &[json!(null), json!(5), json!(null), json!(6)]);
     }
 }

@@ -15,7 +15,7 @@ use crate::common::dates::resolve_date_range;
 use crate::common::tickers::parse_tickers;
 use crate::common::trade_transforms::TradeRecordKind;
 use crate::common::types::SummaryGroup;
-use crate::output::{OutputFormat, finish_output, print_transformed_record_values, print_value};
+use crate::output::{finish_output, print_json, print_transformed_record_values};
 
 /// Default trade limit when none is specified on the command line.
 const DEFAULT_LIMIT: usize = 500;
@@ -514,16 +514,16 @@ impl ReportCommand {
 
 /// Handles the report command group.
 #[instrument(skip_all)]
-pub async fn handle(args: &ReportArgs, format: &OutputFormat) -> i32 {
+pub async fn handle(args: &ReportArgs, json_table: bool) -> i32 {
     match &args.command {
-        ReportCommand::List => execute_list(format),
-        _ => execute_preset(args, format).await,
+        ReportCommand::List => execute_list(json_table),
+        _ => execute_preset(args, json_table).await,
     }
 }
 
 /// Lists all available report presets.
 #[instrument(skip_all)]
-fn execute_list(format: &OutputFormat) -> i32 {
+fn execute_list(json_table: bool) -> i32 {
     let entries: Vec<PresetListEntry> = REPORT_PRESETS
         .iter()
         .map(|p| PresetListEntry {
@@ -533,13 +533,13 @@ fn execute_list(format: &OutputFormat) -> i32 {
         })
         .collect();
 
-    finish_output(print_value(&entries, format))
+    finish_output(print_json(&entries, json_table))
 }
 
 /// Runs a preset report: builds request from preset filters + CLI overrides,
 /// fetches trades, and outputs results.
 #[instrument(skip_all)]
-async fn execute_preset(args: &ReportArgs, format: &OutputFormat) -> i32 {
+async fn execute_preset(args: &ReportArgs, json_table: bool) -> i32 {
     let preset_name = match args.command.preset_name() {
         Some(name) => name,
         None => {
@@ -612,15 +612,15 @@ async fn execute_preset(args: &ReportArgs, format: &OutputFormat) -> i32 {
     // Output results.
     let result = if let Some(group) = flags.summary_group {
         let summary = build_summary(&trades, group, &start, &end);
-        print_value(&summary, format)
+        print_json(&summary, json_table)
     } else {
         print_transformed_record_values(
             &trades,
             TradeRecordKind::Trade,
-            format,
             &TRADE_HEADERS,
             flags.fields.as_deref(),
             flags.all_fields,
+            json_table,
         )
     };
 
