@@ -7,10 +7,11 @@ use volumeleaders_client::VolumeRequest;
 use crate::cli::VolumeArgs;
 use crate::common::auth::{handle_api_error, make_client};
 use crate::common::tickers::parse_tickers;
+use crate::common::trade_transforms::{TradeRecordKind, transformed_trade_values};
 use crate::common::types::{OrderDirection, OutputFormat};
-use crate::output::{finish_output, print_records};
+use crate::output::{finish_output, print_record_values};
 
-const VOLUME_HEADERS: [&str; 21] = [
+const VOLUME_HEADERS: [&str; 20] = [
     "Date",
     "FullDateTime",
     "Ticker",
@@ -25,13 +26,12 @@ const VOLUME_HEADERS: [&str; 21] = [
     "RelativeSize",
     "CumulativeDistribution",
     "TradeRank",
-    "DarkPool",
-    "Sweep",
+    "type",
+    "venue",
     "LatePrint",
     "SignaturePrint",
-    "OpeningTrade",
-    "ClosingTrade",
     "PhantomPrint",
+    "events",
 ];
 
 /// Shared volume command flags.
@@ -61,7 +61,7 @@ pub struct VolumeOptions {
     #[arg(long, conflicts_with = "all_fields")]
     pub fields: Option<String>,
 
-    /// Return every field from the VolumeLeaders API response.
+    /// Return every field after semantic trade transforms.
     #[arg(long)]
     pub all_fields: bool,
 }
@@ -192,14 +192,13 @@ fn output_records<T: serde::Serialize>(
     fields: Option<&str>,
     all_fields: bool,
 ) -> i32 {
-    finish_output(print_records(
-        records,
-        format,
-        pretty,
-        &VOLUME_HEADERS,
-        fields,
-        all_fields,
-    ))
+    finish_output(
+        transformed_trade_values(records, TradeRecordKind::Trade)
+            .map_err(|err| std::io::Error::new(std::io::ErrorKind::InvalidData, err))
+            .and_then(|values| {
+                print_record_values(&values, format, pretty, &VOLUME_HEADERS, fields, all_fields)
+            }),
+    )
 }
 
 #[cfg(test)]

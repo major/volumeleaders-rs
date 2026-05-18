@@ -20,6 +20,7 @@
 | Shared CLI args/types | `src/common/` | Dates, tickers, output enums, tri-state filters |
 | Browser auth bridge | `src/common/auth.rs` | Builds client sessions from browser cookies |
 | Output formatting | `src/output.rs` | JSON, CSV, TSV, field selection, validation |
+| Trade output transforms | `src/common/trade_transforms.rs` | Shared semantic cleanup for trade-shaped rows before field selection |
 
 ## COMMAND SURFACE
 
@@ -34,6 +35,7 @@
 - `src/commands/report.rs` owns report preset definitions and summary aggregation. Tests pin preset count, names, and filter contents.
 - `src/commands/alert.rs` and `src/commands/watchlist.rs` are mapping-heavy create/edit flows. Keep CLI field names aligned with client request structs.
 - `src/output.rs` validates requested fields against serialized record keys and controls compact vs all-fields output.
+- `src/common/trade_transforms.rs` owns reusable trade-shaped row transforms. Use it for commands that emit trades, trade clusters, trade levels, cluster bombs, or institutional volume rows.
 
 ## TESTS
 

@@ -16,8 +16,11 @@ use crate::cli::TradeArgs;
 use crate::common::auth::{handle_api_error, make_client};
 use crate::common::dates::resolve_date_range;
 use crate::common::tickers::{parse_single_ticker, parse_tickers};
+use crate::common::trade_transforms::{
+    TradeRecordKind, transform_trade_dashboard, transformed_trade_values,
+};
 use crate::common::types::{OrderDirection, OutputFormat, SummaryGroup, TriStateFilter};
-use crate::output::{finish_output, print_delimited, print_json, print_records};
+use crate::output::{finish_output, print_delimited, print_json, print_record_values};
 
 const DEFAULT_TRADE_LIMIT: usize = 1_000;
 const TRADE_LIST_TICKER_LOOKBACK_DAYS: u32 = 90;
@@ -40,11 +43,11 @@ const TRADE_HEADERS: [&str; 15] = [
     "CumulativeDistribution",
     "TradeRank",
     "RelativeSize",
-    "DarkPool",
-    "Sweep",
+    "type",
+    "venue",
     "Sector",
     "Industry",
-    "TradeConditions",
+    "events",
 ];
 const CLUSTER_HEADERS: [&str; 11] = [
     "Date",
@@ -56,8 +59,8 @@ const CLUSTER_HEADERS: [&str; 11] = [
     "DollarsMultiplier",
     "CumulativeDistribution",
     "TradeClusterRank",
-    "MinFullDateTime",
-    "MaxFullDateTime",
+    "window",
+    "events",
 ];
 const BOMB_HEADERS: [&str; 10] = [
     "Date",
@@ -68,8 +71,8 @@ const BOMB_HEADERS: [&str; 10] = [
     "DollarsMultiplier",
     "CumulativeDistribution",
     "TradeClusterBombRank",
-    "MinFullDateTime",
-    "MaxFullDateTime",
+    "window",
+    "events",
 ];
 const LEVEL_HEADERS: [&str; 8] = [
     "Ticker",
@@ -81,7 +84,7 @@ const LEVEL_HEADERS: [&str; 8] = [
     "CumulativeDistribution",
     "TradeLevelRank",
 ];
-const ALERT_HEADERS: [&str; 9] = [
+const ALERT_HEADERS: [&str; 12] = [
     "Ticker",
     "Date",
     "FullTimeString24",
@@ -91,6 +94,9 @@ const ALERT_HEADERS: [&str; 9] = [
     "Volume",
     "Dollars",
     "TradeRank",
+    "type",
+    "venue",
+    "events",
 ];
 const SENTIMENT_HEADERS: [&str; 9] = [
     "date",
@@ -216,7 +222,7 @@ pub struct ListArgs {
     /// Comma-separated field list for output.
     #[arg(long, conflicts_with = "all_fields")]
     pub fields: Option<String>,
-    /// Return every field from the VolumeLeaders API response.
+    /// Return every field after semantic trade transforms.
     #[arg(long)]
     pub all_fields: bool,
 }
@@ -291,7 +297,7 @@ pub struct ClustersArgs {
     /// Comma-separated field list for output.
     #[arg(long, conflicts_with = "all_fields")]
     pub fields: Option<String>,
-    /// Return every field from the VolumeLeaders API response.
+    /// Return every field after semantic trade transforms.
     #[arg(long)]
     pub all_fields: bool,
 }
@@ -327,7 +333,7 @@ pub struct ClusterBombsArgs {
     /// Comma-separated field list for output.
     #[arg(long, conflicts_with = "all_fields")]
     pub fields: Option<String>,
-    /// Return every field from the VolumeLeaders API response.
+    /// Return every field after semantic trade transforms.
     #[arg(long)]
     pub all_fields: bool,
 }
@@ -345,7 +351,7 @@ pub struct AlertsArgs {
     /// Comma-separated field list for output.
     #[arg(long, conflicts_with = "all_fields")]
     pub fields: Option<String>,
-    /// Return every field from the VolumeLeaders API response.
+    /// Return every field after semantic trade transforms.
     #[arg(long)]
     pub all_fields: bool,
 }
@@ -365,7 +371,7 @@ pub struct LevelsArgs {
     /// Comma-separated field list for output.
     #[arg(long, conflicts_with = "all_fields")]
     pub fields: Option<String>,
-    /// Return every field from the VolumeLeaders API response.
+    /// Return every field after semantic trade transforms.
     #[arg(long)]
     pub all_fields: bool,
 }
@@ -398,7 +404,7 @@ pub struct LevelTouchesArgs {
     /// Comma-separated field list for output.
     #[arg(long, conflicts_with = "all_fields")]
     pub fields: Option<String>,
-    /// Return every field from the VolumeLeaders API response.
+    /// Return every field after semantic trade transforms.
     #[arg(long)]
     pub all_fields: bool,
 }
@@ -629,8 +635,9 @@ async fn execute_list(args: &ListArgs, pretty: bool) -> i32 {
         let summary = build_summary(&trades, group, &start, &end);
         print_json(&summary, pretty)
     } else {
-        print_records(
+        print_trade_records(
             &trades,
+            TradeRecordKind::Trade,
             args.format,
             pretty,
             &TRADE_HEADERS,
@@ -761,8 +768,9 @@ async fn execute_clusters(args: &ClustersArgs, pretty: bool) -> i32 {
         Ok(response) => response,
         Err(err) => return handle_api_error(err),
     };
-    output_records(
+    output_trade_records(
         &response.data,
+        TradeRecordKind::Cluster,
         args.format,
         pretty,
         &CLUSTER_HEADERS,
@@ -793,8 +801,9 @@ async fn execute_cluster_bombs(args: &ClusterBombsArgs, pretty: bool) -> i32 {
         Ok(response) => response,
         Err(err) => return handle_api_error(err),
     };
-    output_records(
+    output_trade_records(
         &response.data,
+        TradeRecordKind::ClusterBomb,
         args.format,
         pretty,
         &BOMB_HEADERS,
@@ -818,8 +827,9 @@ async fn execute_alerts(args: &AlertsArgs, pretty: bool) -> i32 {
         Ok(response) => response,
         Err(err) => return handle_api_error(err),
     };
-    output_records(
+    output_trade_records(
         &response.data,
+        TradeRecordKind::Trade,
         args.format,
         pretty,
         &ALERT_HEADERS,
@@ -843,8 +853,9 @@ async fn execute_cluster_alerts(args: &AlertsArgs, pretty: bool) -> i32 {
         Ok(response) => response,
         Err(err) => return handle_api_error(err),
     };
-    output_records(
+    output_trade_records(
         &response.data,
+        TradeRecordKind::Cluster,
         args.format,
         pretty,
         &CLUSTER_HEADERS,
@@ -873,8 +884,9 @@ async fn execute_levels(args: &LevelsArgs, pretty: bool) -> i32 {
     };
     let mut levels = response.data;
     levels.truncate(args.trade_level_count);
-    output_records(
+    output_trade_records(
         &levels,
+        TradeRecordKind::Level,
         args.format,
         pretty,
         &LEVEL_HEADERS,
@@ -914,8 +926,9 @@ async fn execute_level_touches(args: &LevelTouchesArgs, pretty: bool) -> i32 {
         Ok(response) => response,
         Err(err) => return handle_api_error(err),
     };
-    output_records(
+    output_trade_records(
         &response.data,
+        TradeRecordKind::Level,
         args.format,
         pretty,
         &LEVEL_HEADERS,
@@ -924,16 +937,31 @@ async fn execute_level_touches(args: &LevelTouchesArgs, pretty: bool) -> i32 {
     )
 }
 
-fn output_records<T: Serialize>(
+fn output_trade_records<T: Serialize>(
     records: &[T],
+    kind: TradeRecordKind,
     format: OutputFormat,
     pretty: bool,
     headers: &[&str],
     fields: Option<&str>,
     all_fields: bool,
 ) -> i32 {
-    let result = print_records(records, format, pretty, headers, fields, all_fields);
+    let result = print_trade_records(records, kind, format, pretty, headers, fields, all_fields);
     finish_output(result)
+}
+
+fn print_trade_records<T: Serialize>(
+    records: &[T],
+    kind: TradeRecordKind,
+    format: OutputFormat,
+    pretty: bool,
+    headers: &[&str],
+    fields: Option<&str>,
+    all_fields: bool,
+) -> std::io::Result<()> {
+    let values = transformed_trade_values(records, kind)
+        .map_err(|err| std::io::Error::new(std::io::ErrorKind::InvalidData, err))?;
+    print_record_values(&values, format, pretty, headers, fields, all_fields)
 }
 
 fn parse_tri_state_filter(value: &str) -> Result<TriStateFilter, String> {
@@ -1500,223 +1528,6 @@ struct DashboardFieldSelection {
     cluster_bombs: Vec<String>,
 }
 
-const CURRENCY_FIELDS: &[&str] = &[
-    "Price",
-    "Dollars",
-    "ClosePrice",
-    "Bid",
-    "Ask",
-    "AverageBlockSizeDollars",
-    "AHInstitutionalDollars",
-    "TotalInstitutionalDollars",
-    "ClosingTradeDollars",
-    "TotalDollars",
-];
-
-const NON_CURRENCY_FLOAT_FIELDS: &[&str] = &[
-    "DollarsMultiplier",
-    "PercentDailyVolume",
-    "RelativeSize",
-    "CumulativeDistribution",
-    "RSIHour",
-    "RSIDay",
-];
-
-const RANK_SENTINEL_FIELDS: &[&str] = &[
-    "TradeRank",
-    "TradeClusterRank",
-    "TradeLevelRank",
-    "TradeClusterBombRank",
-];
-
-/// Apply semantic transforms to dashboard rows before field filtering.
-///
-/// Transforms run universally (including `--all-fields`). They collapse
-/// redundant boolean groups into richer fields (e.g. `DarkPool` + `Sweep`
-/// become `venue`) and strip noise (sentinels, excess precision, verbose
-/// timestamps). The raw API keys they replace are not preserved.
-fn transform_dashboard(map: &mut Map<String, Value>) {
-    for section in ["trades", "clusters", "levels", "cluster_bombs"] {
-        let Some(Value::Array(rows)) = map.get_mut(section) else {
-            continue;
-        };
-        for row in rows {
-            let Some(row_map) = row.as_object_mut() else {
-                continue;
-            };
-            if section == "trades" {
-                collapse_trade_type(row_map);
-                collapse_venue(row_map);
-                omit_redundant_time(row_map);
-            }
-            if section == "clusters" || section == "cluster_bombs" {
-                collapse_time_window(row_map);
-            }
-            collapse_calendar_events(row_map);
-            omit_sentinel_ranks(row_map);
-            round_currency_fields(row_map);
-            round_float_fields(row_map);
-            compact_date_timezone(row_map);
-        }
-    }
-}
-
-/// Collapse `OpeningTrade` and `ClosingTrade` booleans into a single
-/// `"type"` field: `"opening"`, `"closing"`, or omitted when neither.
-fn collapse_trade_type(row: &mut Map<String, Value>) {
-    let opening = row
-        .remove("OpeningTrade")
-        .and_then(|v| v.as_bool())
-        .unwrap_or(false);
-    let closing = row
-        .remove("ClosingTrade")
-        .and_then(|v| v.as_bool())
-        .unwrap_or(false);
-    if opening {
-        row.insert("type".to_string(), Value::String("opening".to_string()));
-    } else if closing {
-        row.insert("type".to_string(), Value::String("closing".to_string()));
-    }
-}
-
-/// Remove rank fields whose value is a sentinel (9999 or 0 both mean unranked).
-fn omit_sentinel_ranks(row: &mut Map<String, Value>) {
-    for &field in RANK_SENTINEL_FIELDS {
-        let is_sentinel = row
-            .get(field)
-            .and_then(Value::as_i64)
-            .is_some_and(|n| n == 9999 || n == 0);
-        if is_sentinel {
-            row.remove(field);
-        }
-    }
-}
-
-/// Round currency fields to 2 decimal places.
-fn round_currency_fields(row: &mut Map<String, Value>) {
-    for &field in CURRENCY_FIELDS {
-        let rounded = row
-            .get(field)
-            .and_then(Value::as_f64)
-            .map(|f| (f * 100.0).round() / 100.0);
-        if let Some(n) = rounded.and_then(serde_json::Number::from_f64) {
-            row.insert(field.to_string(), Value::Number(n));
-        }
-    }
-}
-
-/// Round non-currency float fields to 2 decimal places.
-fn round_float_fields(row: &mut Map<String, Value>) {
-    for &field in NON_CURRENCY_FLOAT_FIELDS {
-        let rounded = row
-            .get(field)
-            .and_then(Value::as_f64)
-            .map(|f| (f * 100.0).round() / 100.0);
-        if let Some(n) = rounded.and_then(serde_json::Number::from_f64) {
-            row.insert(field.to_string(), Value::Number(n));
-        }
-    }
-}
-
-/// Compact date-time string values: strip `+00:00` to `Z`, and collapse
-/// midnight timestamps (`T00:00:00Z`) to date-only (`2026-05-08`).
-fn compact_date_timezone(row: &mut Map<String, Value>) {
-    for value in row.values_mut() {
-        let Some(s) = value.as_str() else { continue };
-        if let Some(prefix) = s.strip_suffix("+00:00") {
-            // Check for midnight after stripping timezone
-            if let Some(date) = prefix.strip_suffix("T00:00:00") {
-                *value = Value::String(date.to_string());
-            } else {
-                *value = Value::String(format!("{prefix}Z"));
-            }
-        } else if let Some(date) = s.strip_suffix("T00:00:00Z") {
-            *value = Value::String(date.to_string());
-        }
-    }
-}
-
-const CALENDAR_EVENT_FIELDS: &[&str] = &["EOM", "EOQ", "EOY", "OPEX", "VOLEX"];
-
-/// Collapse calendar-marker booleans into an `"events"` array.
-///
-/// Produces `"events": ["EOQ", "OPEX"]` when active; omitted entirely when
-/// no calendar events apply.
-fn collapse_calendar_events(row: &mut Map<String, Value>) {
-    let mut events = Vec::new();
-    for &field in CALENDAR_EVENT_FIELDS {
-        let is_true = row.remove(field).and_then(|v| v.as_bool()).unwrap_or(false);
-        if is_true {
-            events.push(Value::String(field.to_string()));
-        }
-    }
-    if !events.is_empty() {
-        row.insert("events".to_string(), Value::Array(events));
-    }
-}
-
-/// Collapse `DarkPool` and `Sweep` booleans into a single `"venue"` field.
-///
-/// Lit (the common case) is omitted to save tokens. Only non-default venues
-/// are emitted: `"lit_sweep"`, `"dark_pool"`, `"dark_pool_sweep"`.
-fn collapse_venue(row: &mut Map<String, Value>) {
-    let dark_pool = row
-        .remove("DarkPool")
-        .and_then(|v| v.as_bool())
-        .unwrap_or(false);
-    let sweep = row
-        .remove("Sweep")
-        .and_then(|v| v.as_bool())
-        .unwrap_or(false);
-    let venue = match (dark_pool, sweep) {
-        (false, false) => return,
-        (false, true) => "lit_sweep",
-        (true, false) => "dark_pool",
-        (true, true) => "dark_pool_sweep",
-    };
-    row.insert("venue".to_string(), Value::String(venue.to_string()));
-}
-
-/// Remove `FullTimeString24` when its value is implied by the trade type:
-/// closing trades are always `"16:00:00"`, opening trades always `"09:30:01"`.
-fn omit_redundant_time(row: &mut Map<String, Value>) {
-    let trade_type = row.get("type").and_then(Value::as_str);
-    let time = row.get("FullTimeString24").and_then(Value::as_str);
-    let redundant = matches!(
-        (trade_type, time),
-        (Some("closing"), Some("16:00:00")) | (Some("opening"), Some("09:30:01"))
-    );
-    if redundant {
-        row.remove("FullTimeString24");
-    }
-}
-
-/// Collapse `MinFullDateTime` and `MaxFullDateTime` into a single
-/// `"window"` field showing the time range (e.g. `"16:00:00-16:49:31"`).
-///
-/// The date portion is redundant with `Date`. If either field is missing
-/// or the time portion cannot be extracted, the originals are preserved.
-fn collapse_time_window(row: &mut Map<String, Value>) {
-    let extract_time = |v: &Value| -> Option<String> {
-        let s = v.as_str()?;
-        let after_t = s.split('T').nth(1)?;
-        let time = after_t
-            .strip_suffix("+00:00")
-            .or_else(|| after_t.strip_suffix("Z"))
-            .unwrap_or(after_t);
-        Some(time.to_string())
-    };
-
-    let min_time = row.get("MinFullDateTime").and_then(&extract_time);
-    let max_time = row.get("MaxFullDateTime").and_then(&extract_time);
-
-    if let (Some(min), Some(max)) = (min_time, max_time) {
-        row.remove("MinFullDateTime");
-        row.remove("MaxFullDateTime");
-        row.insert("window".to_string(), Value::String(format!("{min}-{max}")));
-    }
-}
-
 fn dashboard_output_value(
     dashboard: &TradeDashboard,
     args: &DashboardArgs,
@@ -1726,7 +1537,7 @@ fn dashboard_output_value(
         return Ok(value);
     };
 
-    transform_dashboard(map);
+    transform_trade_dashboard(map);
 
     match args.fields.as_deref().map(str::trim) {
         _ if args.all_fields => Ok(value),
@@ -2972,6 +2783,23 @@ mod tests {
         let bomb = output["cluster_bombs"][0].as_object().unwrap();
         assert_eq!(bomb["TradeClusterBombRank"], 1);
         assert!(!bomb.contains_key("ExternalFeed"));
+    }
+
+    #[test]
+    fn compact_headers_use_transformed_trade_fields() {
+        assert!(CLUSTER_HEADERS.contains(&"window"));
+        assert!(CLUSTER_HEADERS.contains(&"events"));
+        assert!(!CLUSTER_HEADERS.contains(&"MinFullDateTime"));
+        assert!(!CLUSTER_HEADERS.contains(&"MaxFullDateTime"));
+
+        assert!(BOMB_HEADERS.contains(&"window"));
+        assert!(BOMB_HEADERS.contains(&"events"));
+        assert!(!BOMB_HEADERS.contains(&"MinFullDateTime"));
+        assert!(!BOMB_HEADERS.contains(&"MaxFullDateTime"));
+
+        assert!(ALERT_HEADERS.contains(&"type"));
+        assert!(ALERT_HEADERS.contains(&"venue"));
+        assert!(ALERT_HEADERS.contains(&"events"));
     }
 
     #[test]
