@@ -33,8 +33,7 @@ const NON_CURRENCY_FLOAT_FIELDS: &[&str] = &[
     "DollarsMultiplier",
     "RelativeSize",
     "CumulativeDistribution",
-    "RSIHour",
-    "RSIDay",
+    "RSI",
 ];
 
 const RANK_SENTINEL_FIELDS: &[&str] = &[
@@ -50,7 +49,7 @@ const CALENDAR_EVENT_FIELDS: &[&str] = &["EOM", "EOQ", "EOY", "OPEX", "VOLEX"];
 ///
 /// Shared by commands that display individual institutional trades (e.g. `trade
 /// list` and `report` presets).
-pub const TRADE_HEADERS: [&str; 13] = [
+pub const TRADE_HEADERS: [&str; 14] = [
     "Ticker",
     "Date",
     "FullTimeString24",
@@ -59,6 +58,7 @@ pub const TRADE_HEADERS: [&str; 13] = [
     "DollarsMultiplier",
     "CumulativeDistribution",
     "TradeRank",
+    "RSI",
     "type",
     "venue",
     "Sector",
@@ -117,11 +117,26 @@ pub fn transform_trade_row(row: &mut Map<String, Value>, kind: TradeRecordKind) 
         }
         TradeRecordKind::Level => {}
     }
+    normalize_rsi(row);
+    strip_question_marks(row);
     collapse_calendar_events(row);
     omit_sentinel_ranks(row);
     round_currency_fields(row);
     round_float_fields(row);
     compact_date_timezone(row);
+}
+
+/// Rename `RSIDay` to `RSI` and remove `RSIHour`.
+fn normalize_rsi(row: &mut Map<String, Value>) {
+    row.remove("RSIHour");
+    if let Some(value) = row.remove("RSIDay") {
+        row.insert("RSI".to_string(), value);
+    }
+}
+
+/// Remove fields whose value is the literal string `"?"`.
+fn strip_question_marks(row: &mut Map<String, Value>) {
+    row.retain(|_, v| v.as_str() != Some("?"));
 }
 
 /// Collapse `OpeningTrade` and `ClosingTrade` booleans into a single
@@ -282,7 +297,9 @@ mod tests {
             "Sweep": true,
             "ClosingTrade": true,
             "OPEX": true,
-            "EOM": false
+            "EOM": false,
+            "RSIDay": 72.456,
+            "RSIHour": 65.123
         });
 
         let row = value.as_object_mut().unwrap();
@@ -292,6 +309,9 @@ mod tests {
         assert_eq!(row["type"], "closing");
         assert_eq!(row["venue"], "dark_pool_sweep");
         assert_eq!(row["events"], json!(["OPEX"]));
+        assert_eq!(row["RSI"], 72.46);
+        assert!(!row.contains_key("RSIDay"));
+        assert!(!row.contains_key("RSIHour"));
         assert!(!row.contains_key("FullTimeString24"));
         assert!(!row.contains_key("TradeRank"));
         assert!(!row.contains_key("DarkPool"));
@@ -313,6 +333,65 @@ mod tests {
         assert_eq!(row["window"], "16:00:00-16:49:31");
         assert!(!row.contains_key("MinFullDateTime"));
         assert!(!row.contains_key("MaxFullDateTime"));
+    }
+
+    #[test]
+    fn normalize_rsi_renames_day_and_removes_hour() {
+        let mut value = json!({
+            "RSIDay": 55.5,
+            "RSIHour": 42.0,
+            "Ticker": "AAPL"
+        });
+        let row = value.as_object_mut().unwrap();
+        normalize_rsi(row);
+
+        assert_eq!(row["RSI"], 55.5);
+        assert!(!row.contains_key("RSIDay"));
+        assert!(!row.contains_key("RSIHour"));
+        assert_eq!(row["Ticker"], "AAPL");
+    }
+
+    #[test]
+    fn normalize_rsi_handles_missing_fields() {
+        let mut value = json!({"Ticker": "AMD"});
+        let row = value.as_object_mut().unwrap();
+        normalize_rsi(row);
+
+        assert!(!row.contains_key("RSI"));
+        assert!(!row.contains_key("RSIDay"));
+        assert!(!row.contains_key("RSIHour"));
+    }
+
+    #[test]
+    fn strip_question_marks_removes_placeholder_values() {
+        let mut value = json!({
+            "type": "?",
+            "venue": "?",
+            "Ticker": "AAPL",
+            "Price": 200.0
+        });
+        let row = value.as_object_mut().unwrap();
+        strip_question_marks(row);
+
+        assert!(!row.contains_key("type"));
+        assert!(!row.contains_key("venue"));
+        assert_eq!(row["Ticker"], "AAPL");
+        assert_eq!(row["Price"], 200.0);
+    }
+
+    #[test]
+    fn strip_question_marks_preserves_non_placeholder_strings() {
+        let mut value = json!({
+            "Ticker": "AAPL",
+            "Sector": "Technology",
+            "type": "closing"
+        });
+        let row = value.as_object_mut().unwrap();
+        strip_question_marks(row);
+
+        assert_eq!(row["Ticker"], "AAPL");
+        assert_eq!(row["Sector"], "Technology");
+        assert_eq!(row["type"], "closing");
     }
 
     #[test]

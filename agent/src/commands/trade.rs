@@ -1186,6 +1186,7 @@ mod tests {
                 "Dollars": 10_000_000.0,
                 "Volume": 50_000,
                 "TradeRank": 3,
+                "RSIDay": 45.67,
                 "RSIHour": 0.0,
                 "DarkPool": false,
                 "Sweep": true,
@@ -1374,6 +1375,8 @@ mod tests {
         assert!(!trade.contains_key("DollarsMultiplier"));
         assert!(!trade.contains_key("Ticker"));
         assert!(!trade.contains_key("SecurityKey"));
+        assert!(!trade.contains_key("RSI"));
+        assert!(!trade.contains_key("RSIDay"));
         assert!(!trade.contains_key("RSIHour"));
         assert!(!trade.contains_key("DarkPool"));
         assert!(!trade.contains_key("Sweep"));
