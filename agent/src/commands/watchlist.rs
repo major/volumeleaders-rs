@@ -11,7 +11,7 @@ use volumeleaders_client::{
 use crate::cli::WatchlistArgs;
 use crate::commands::scaffold::run_client_command;
 use crate::common::auth::{handle_api_error, make_client};
-use crate::output::{finish_output, print_json, print_records};
+use crate::output::{OutputFormat, finish_output, print_records, print_value};
 
 const DEFAULT_CONFIGS_FIELDS: [&str; 4] = ["SearchTemplateKey", "Name", "Tickers", "Criteria"];
 const DEFAULT_TICKERS_FIELDS: [&str; 5] = [
@@ -241,19 +241,19 @@ pub struct WatchlistConfigFlags {
 
 /// Handles the watchlist command group.
 #[instrument(skip_all)]
-pub async fn handle(args: &WatchlistArgs, pretty: bool) -> i32 {
+pub async fn handle(args: &WatchlistArgs, format: &OutputFormat) -> i32 {
     match &args.command {
-        WatchlistCommand::Configs(a) => execute_configs(a, pretty).await,
-        WatchlistCommand::Tickers(a) => execute_tickers(a, pretty).await,
-        WatchlistCommand::Create(a) => execute_create(a, pretty).await,
-        WatchlistCommand::Edit(a) => execute_edit(a, pretty).await,
-        WatchlistCommand::Delete(a) => execute_delete(a, pretty).await,
-        WatchlistCommand::AddTicker(a) => execute_add_ticker(a, pretty).await,
+        WatchlistCommand::Configs(a) => execute_configs(a, format).await,
+        WatchlistCommand::Tickers(a) => execute_tickers(a, format).await,
+        WatchlistCommand::Create(a) => execute_create(a, format).await,
+        WatchlistCommand::Edit(a) => execute_edit(a, format).await,
+        WatchlistCommand::Delete(a) => execute_delete(a, format).await,
+        WatchlistCommand::AddTicker(a) => execute_add_ticker(a, format).await,
     }
 }
 
 #[instrument(skip_all)]
-async fn execute_configs(args: &ConfigsArgs, pretty: bool) -> i32 {
+async fn execute_configs(args: &ConfigsArgs, format: &OutputFormat) -> i32 {
     let client = match make_client().await {
         Ok(c) => c,
         Err(code) => return code,
@@ -269,7 +269,7 @@ async fn execute_configs(args: &ConfigsArgs, pretty: bool) -> i32 {
 
     finish_output(print_records(
         &configs,
-        pretty,
+        format,
         &DEFAULT_CONFIGS_FIELDS,
         args.fields.as_deref(),
         args.all_fields,
@@ -277,7 +277,7 @@ async fn execute_configs(args: &ConfigsArgs, pretty: bool) -> i32 {
 }
 
 #[instrument(skip_all)]
-async fn execute_tickers(args: &TickersArgs, pretty: bool) -> i32 {
+async fn execute_tickers(args: &TickersArgs, format: &OutputFormat) -> i32 {
     let client = match make_client().await {
         Ok(c) => c,
         Err(code) => return code,
@@ -294,7 +294,7 @@ async fn execute_tickers(args: &TickersArgs, pretty: bool) -> i32 {
 
     finish_output(print_records(
         &tickers,
-        pretty,
+        format,
         &DEFAULT_TICKERS_FIELDS,
         args.fields.as_deref(),
         args.all_fields,
@@ -302,7 +302,7 @@ async fn execute_tickers(args: &TickersArgs, pretty: bool) -> i32 {
 }
 
 #[instrument(skip_all)]
-async fn execute_create(args: &CreateArgs, pretty: bool) -> i32 {
+async fn execute_create(args: &CreateArgs, format: &OutputFormat) -> i32 {
     let request = build_config_request(0, &args.name, &args.config);
     run_client_command(
         move |client| {
@@ -311,13 +311,13 @@ async fn execute_create(args: &CreateArgs, pretty: bool) -> i32 {
                 Ok(serde_json::json!({"success": true, "action": "created"}))
             })
         },
-        move |result| print_json(&result, pretty),
+        move |result| print_value(&result, format),
     )
     .await
 }
 
 #[instrument(skip_all)]
-async fn execute_edit(args: &EditArgs, pretty: bool) -> i32 {
+async fn execute_edit(args: &EditArgs, format: &OutputFormat) -> i32 {
     let key = args.key;
     let name = args.name.as_deref().unwrap_or("");
     let request = build_config_request(key, name, &args.config);
@@ -328,13 +328,13 @@ async fn execute_edit(args: &EditArgs, pretty: bool) -> i32 {
                 Ok(serde_json::json!({"success": true, "action": "updated", "key": key}))
             })
         },
-        move |result| print_json(&result, pretty),
+        move |result| print_value(&result, format),
     )
     .await
 }
 
 #[instrument(skip_all)]
-async fn execute_delete(args: &DeleteArgs, pretty: bool) -> i32 {
+async fn execute_delete(args: &DeleteArgs, format: &OutputFormat) -> i32 {
     let key = args.key;
     let request = DeleteWatchListRequest {
         watch_list_key: key,
@@ -346,13 +346,13 @@ async fn execute_delete(args: &DeleteArgs, pretty: bool) -> i32 {
                 Ok(serde_json::json!({"success": true, "action": "deleted", "key": key}))
             })
         },
-        move |result| print_json(&result, pretty),
+        move |result| print_value(&result, format),
     )
     .await
 }
 
 #[instrument(skip_all)]
-async fn execute_add_ticker(args: &AddTickerArgs, pretty: bool) -> i32 {
+async fn execute_add_ticker(args: &AddTickerArgs, format: &OutputFormat) -> i32 {
     let request = AddTickerToWatchListRequest {
         watch_list_key: args.watchlist_key,
         ticker: args.ticker.clone(),
@@ -361,7 +361,7 @@ async fn execute_add_ticker(args: &AddTickerArgs, pretty: bool) -> i32 {
         move |client| Box::pin(async move { client.add_ticker_to_watchlist(&request).await }),
         move |response| {
             let json = serde_json::to_value(&response).unwrap_or(Value::Null);
-            print_json(&json, pretty)
+            print_value(&json, format)
         },
     )
     .await

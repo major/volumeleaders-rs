@@ -61,7 +61,7 @@ cargo run -p volumeleaders-agent -- report list
 cargo run -p volumeleaders-agent -- completions bash
 ```
 
-The CLI reads browser cookies automatically. If auth fails, log in to VolumeLeaders in the browser and retry. Command output goes to stdout as compact JSON by default. Use `--pretty` for indented JSON. Errors and logs go to stderr.
+The CLI reads browser cookies automatically. If auth fails, log in to VolumeLeaders in the browser and retry. Command output goes to stdout as tab-separated values (TSV) by default. Use `--json` for compact JSON or `--pretty` for indented JSON. Errors and logs go to stderr.
 
 Trade-shaped outputs intentionally omit the upstream `PercentDailyVolume` field. Live report data returns that value as `0.0` for current and prior trading days, so returning it would suggest a meaningful percentage where the source data does not provide one. Compact defaults also omit `TradeConditions`, `RelativeSize`, `Name`, and `Volume` on trade-shaped rows to avoid surfacing fields that are consistently null or misleadingly sparse in those surfaces. `RelativeSize` remains in full output and is still surfaced in level-centric data when requested.
 
