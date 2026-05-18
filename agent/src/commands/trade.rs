@@ -86,7 +86,7 @@ const LEVEL_HEADERS: [&str; 7] = [
 const ALERT_HEADERS: [&str; 12] = [
     "Ticker",
     "Date",
-    "FullTimeString24",
+    "Time",
     "AlertType",
     "TradeID",
     "Price",
@@ -1372,6 +1372,7 @@ mod tests {
         assert_eq!(trade["venue"], "lit_sweep");
         assert_eq!(trade["type"], "closing");
         assert!(!trade.contains_key("FullTimeString24"));
+        assert!(!trade.contains_key("Time"));
         assert!(!trade.contains_key("DollarsMultiplier"));
         assert!(!trade.contains_key("Ticker"));
         assert!(!trade.contains_key("SecurityKey"));
@@ -1389,6 +1390,8 @@ mod tests {
         assert_eq!(cluster["window"], "16:00:00-16:49:31");
         assert!(!cluster.contains_key("MinFullDateTime"));
         assert!(!cluster.contains_key("MaxFullDateTime"));
+        assert!(!cluster.contains_key("MinDateTime"));
+        assert!(!cluster.contains_key("MaxDateTime"));
         assert!(!cluster.contains_key("DollarsMultiplier"));
         assert!(!cluster.contains_key("Ticker"));
 
@@ -1408,15 +1411,21 @@ mod tests {
         assert!(CLUSTER_HEADERS.contains(&"events"));
         assert!(!CLUSTER_HEADERS.contains(&"MinFullDateTime"));
         assert!(!CLUSTER_HEADERS.contains(&"MaxFullDateTime"));
+        assert!(!CLUSTER_HEADERS.contains(&"MinDateTime"));
+        assert!(!CLUSTER_HEADERS.contains(&"MaxDateTime"));
 
         assert!(BOMB_HEADERS.contains(&"window"));
         assert!(BOMB_HEADERS.contains(&"events"));
         assert!(!BOMB_HEADERS.contains(&"MinFullDateTime"));
         assert!(!BOMB_HEADERS.contains(&"MaxFullDateTime"));
+        assert!(!BOMB_HEADERS.contains(&"MinDateTime"));
+        assert!(!BOMB_HEADERS.contains(&"MaxDateTime"));
 
+        assert!(ALERT_HEADERS.contains(&"Time"));
         assert!(ALERT_HEADERS.contains(&"type"));
         assert!(ALERT_HEADERS.contains(&"venue"));
         assert!(ALERT_HEADERS.contains(&"events"));
+        assert!(!ALERT_HEADERS.contains(&"FullTimeString24"));
     }
 
     #[test]
@@ -1434,6 +1443,8 @@ mod tests {
         assert_eq!(row["events"], json!(["EOM"]));
         assert!(!row.contains_key("MinFullDateTime"));
         assert!(!row.contains_key("MaxFullDateTime"));
+        assert!(!row.contains_key("MinDateTime"));
+        assert!(!row.contains_key("MaxDateTime"));
         assert!(!row.contains_key("EOM"));
         assert!(!row.contains_key("OPEX"));
         assert!(!row.contains_key("SecurityKey"));
@@ -1460,6 +1471,8 @@ mod tests {
         assert_eq!(row["events"], json!(["EOM"]));
         assert!(!row.contains_key("MinFullDateTime"));
         assert!(!row.contains_key("MaxFullDateTime"));
+        assert!(!row.contains_key("MinDateTime"));
+        assert!(!row.contains_key("MaxDateTime"));
         assert!(!row.contains_key("EOM"));
         assert!(!row.contains_key("OPEX"));
     }
@@ -1487,6 +1500,8 @@ mod tests {
         assert_eq!(row["events"], json!(["VOLEX"]));
         assert!(!row.contains_key("MinFullDateTime"));
         assert!(!row.contains_key("MaxFullDateTime"));
+        assert!(!row.contains_key("MinDateTime"));
+        assert!(!row.contains_key("MaxDateTime"));
     }
 
     #[test]
@@ -1542,6 +1557,7 @@ mod tests {
         assert_eq!(trade["venue"], "lit_sweep");
         assert_eq!(trade["type"], "closing");
         assert!(!trade.contains_key("FullTimeString24"));
+        assert!(!trade.contains_key("Time"));
         assert!(!trade.contains_key("DarkPool"));
         assert!(!trade.contains_key("Sweep"));
         assert!(!trade.contains_key("ClosingTrade"));
@@ -1552,6 +1568,8 @@ mod tests {
         assert_eq!(cluster["window"], "16:00:00-16:49:31");
         assert!(!cluster.contains_key("MinFullDateTime"));
         assert!(!cluster.contains_key("MaxFullDateTime"));
+        assert!(!cluster.contains_key("MinDateTime"));
+        assert!(!cluster.contains_key("MaxDateTime"));
     }
 
     #[test]

@@ -52,7 +52,7 @@ const CALENDAR_EVENT_FIELDS: &[&str] = &["EOM", "EOQ", "EOY", "OPEX", "VOLEX"];
 pub const TRADE_HEADERS: [&str; 14] = [
     "Ticker",
     "Date",
-    "FullTimeString24",
+    "Time",
     "Price",
     "Dollars",
     "DollarsMultiplier",
@@ -111,8 +111,10 @@ pub fn transform_trade_row(row: &mut Map<String, Value>, kind: TradeRecordKind) 
             collapse_trade_type(row);
             collapse_venue(row);
             omit_redundant_time(row);
+            rename_trade_time_fields(row);
         }
         TradeRecordKind::Cluster | TradeRecordKind::ClusterBomb => {
+            rename_cluster_time_fields(row);
             collapse_time_window(row);
         }
         TradeRecordKind::Level => {}
@@ -189,6 +191,35 @@ fn omit_redundant_time(row: &mut Map<String, Value>) {
     }
 }
 
+/// Rename verbose trade time fields to shorter display names.
+///
+/// `FullTimeString24` -> `Time`, `FullDateTime` -> `DateTime`.
+fn rename_trade_time_fields(row: &mut Map<String, Value>) {
+    if let Some(v) = row.remove("FullTimeString24") {
+        row.insert("Time".to_string(), v);
+    }
+    if let Some(v) = row.remove("FullDateTime") {
+        row.insert("DateTime".to_string(), v);
+    }
+}
+
+/// Rename verbose cluster/bomb time fields to shorter display names.
+///
+/// Runs before `collapse_time_window` so both the collapsed `window` path
+/// and the `--all-fields` raw path see consistent short names.
+fn rename_cluster_time_fields(row: &mut Map<String, Value>) {
+    for (old, new) in [
+        ("MinFullDateTime", "MinDateTime"),
+        ("MaxFullDateTime", "MaxDateTime"),
+        ("MinFullTimeString24", "MinTime"),
+        ("MaxFullTimeString24", "MaxTime"),
+    ] {
+        if let Some(v) = row.remove(old) {
+            row.insert(new.to_string(), v);
+        }
+    }
+}
+
 /// Collapse calendar-marker booleans into an `"events"` array.
 fn collapse_calendar_events(row: &mut Map<String, Value>) {
     let mut events = Vec::new();
@@ -258,7 +289,9 @@ fn compact_date_timezone(row: &mut Map<String, Value>) {
     }
 }
 
-/// Collapse `MinFullDateTime` and `MaxFullDateTime` into a `"window"` field.
+/// Collapse `MinDateTime` and `MaxDateTime` into a `"window"` field.
+///
+/// Runs after `rename_cluster_time_fields` so the keys are already shortened.
 fn collapse_time_window(row: &mut Map<String, Value>) {
     let extract_time = |v: &Value| -> Option<String> {
         let s = v.as_str()?;
@@ -270,12 +303,12 @@ fn collapse_time_window(row: &mut Map<String, Value>) {
         Some(time.to_string())
     };
 
-    let min_time = row.get("MinFullDateTime").and_then(&extract_time);
-    let max_time = row.get("MaxFullDateTime").and_then(&extract_time);
+    let min_time = row.get("MinDateTime").and_then(&extract_time);
+    let max_time = row.get("MaxDateTime").and_then(&extract_time);
 
     if let (Some(min), Some(max)) = (min_time, max_time) {
-        row.remove("MinFullDateTime");
-        row.remove("MaxFullDateTime");
+        row.remove("MinDateTime");
+        row.remove("MaxDateTime");
         row.insert("window".to_string(), Value::String(format!("{min}-{max}")));
     }
 }
@@ -313,10 +346,28 @@ mod tests {
         assert!(!row.contains_key("RSIDay"));
         assert!(!row.contains_key("RSIHour"));
         assert!(!row.contains_key("FullTimeString24"));
+        assert!(!row.contains_key("Time"));
         assert!(!row.contains_key("TradeRank"));
         assert!(!row.contains_key("DarkPool"));
         assert!(!row.contains_key("Sweep"));
         assert!(!row.contains_key("ClosingTrade"));
+    }
+
+    #[test]
+    fn trade_transform_renames_time_fields() {
+        let mut value = json!({
+            "FullTimeString24": "14:30:00",
+            "FullDateTime": "2026-01-02T14:30:00",
+            "Ticker": "AAPL"
+        });
+
+        let row = value.as_object_mut().unwrap();
+        transform_trade_row(row, TradeRecordKind::Trade);
+
+        assert_eq!(row["Time"], "14:30:00");
+        assert_eq!(row["DateTime"], "2026-01-02T14:30:00");
+        assert!(!row.contains_key("FullTimeString24"));
+        assert!(!row.contains_key("FullDateTime"));
     }
 
     #[test]
@@ -333,6 +384,25 @@ mod tests {
         assert_eq!(row["window"], "16:00:00-16:49:31");
         assert!(!row.contains_key("MinFullDateTime"));
         assert!(!row.contains_key("MaxFullDateTime"));
+        assert!(!row.contains_key("MinDateTime"));
+        assert!(!row.contains_key("MaxDateTime"));
+    }
+
+    #[test]
+    fn cluster_transform_renames_time_fields_for_all_fields() {
+        let mut value = json!({
+            "MinFullTimeString24": "16:00:00",
+            "MaxFullTimeString24": "16:49:31",
+            "Ticker": "AAPL"
+        });
+
+        let row = value.as_object_mut().unwrap();
+        transform_trade_row(row, TradeRecordKind::Cluster);
+
+        assert_eq!(row["MinTime"], "16:00:00");
+        assert_eq!(row["MaxTime"], "16:49:31");
+        assert!(!row.contains_key("MinFullTimeString24"));
+        assert!(!row.contains_key("MaxFullTimeString24"));
     }
 
     #[test]
