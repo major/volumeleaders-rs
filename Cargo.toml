@@ -4,3 +4,8 @@ members = [
     "client",
     "agent",
 ]
+
+# Config for 'dist'
+[profile.dist]
+inherits = "release"
+lto = "thin"
