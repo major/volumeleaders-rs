@@ -7,6 +7,7 @@ use volumeleaders_client::{
 };
 
 use crate::cli::AlertArgs;
+use crate::commands::scaffold::run_client_command;
 use crate::common::auth::{handle_api_error, make_client};
 use crate::output::{finish_output, print_json, print_records};
 
@@ -340,52 +341,51 @@ async fn execute_configs(args: &ConfigsArgs, pretty: bool) -> i32 {
 
 #[instrument(skip_all)]
 async fn execute_create(args: &CreateArgs, pretty: bool) -> i32 {
-    let client = match make_client().await {
-        Ok(c) => c,
-        Err(code) => return code,
-    };
-
     let request = build_create_request(args);
-    if let Err(err) = client.save_alert_config(request).await {
-        return handle_api_error(err);
-    }
-
-    let result = serde_json::json!({"success": true, "action": "created", "key": 0});
-    finish_output(print_json(&result, pretty))
+    run_client_command(
+        move |client| {
+            Box::pin(async move {
+                client.save_alert_config(request).await?;
+                Ok(serde_json::json!({"success": true, "action": "created", "key": 0}))
+            })
+        },
+        move |result| print_json(&result, pretty),
+    )
+    .await
 }
 
 #[instrument(skip_all)]
 async fn execute_edit(args: &EditArgs, pretty: bool) -> i32 {
-    let client = match make_client().await {
-        Ok(c) => c,
-        Err(code) => return code,
-    };
-
     let request = build_edit_request(args);
-    if let Err(err) = client.save_alert_config(request).await {
-        return handle_api_error(err);
-    }
-
-    let result = serde_json::json!({"success": true, "action": "updated", "key": args.key});
-    finish_output(print_json(&result, pretty))
+    let key = args.key;
+    run_client_command(
+        move |client| {
+            Box::pin(async move {
+                client.save_alert_config(request).await?;
+                Ok(serde_json::json!({"success": true, "action": "updated", "key": key}))
+            })
+        },
+        move |result| print_json(&result, pretty),
+    )
+    .await
 }
 
 #[instrument(skip_all)]
 async fn execute_delete(args: &DeleteArgs, pretty: bool) -> i32 {
-    let client = match make_client().await {
-        Ok(c) => c,
-        Err(code) => return code,
-    };
-
+    let key = args.key;
     let request = DeleteAlertConfigRequest {
-        alert_config_key: args.key,
+        alert_config_key: key,
     };
-    if let Err(err) = client.delete_alert_config(&request).await {
-        return handle_api_error(err);
-    }
-
-    let result = serde_json::json!({"success": true, "action": "deleted", "key": args.key});
-    finish_output(print_json(&result, pretty))
+    run_client_command(
+        move |client| {
+            Box::pin(async move {
+                client.delete_alert_config(&request).await?;
+                Ok(serde_json::json!({"success": true, "action": "deleted", "key": key}))
+            })
+        },
+        move |result| print_json(&result, pretty),
+    )
+    .await
 }
 
 fn build_create_request(args: &CreateArgs) -> SaveAlertConfigRequest {

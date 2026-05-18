@@ -1,11 +1,11 @@
 //! Market commands: earnings and exhaustion.
 
 use clap::{Args, Subcommand};
-use serde_json::Value;
 use tracing::instrument;
 use volumeleaders_client::{EarningsRequest, ExhaustionScoresRequest};
 
 use crate::cli::MarketArgs;
+use crate::commands::scaffold::run_client_command;
 use crate::common::auth::{handle_api_error, make_client};
 use crate::common::dates::resolve_date_range;
 use crate::output::{finish_output, print_json, print_records};
@@ -94,17 +94,14 @@ async fn execute_exhaustion(args: &ExhaustionArgs, pretty: bool) -> i32 {
     let request = ExhaustionScoresRequest {
         date: args.date.clone().unwrap_or_default(),
     };
-    let client = match make_client().await {
-        Ok(client) => client,
-        Err(code) => return code,
-    };
-    let scores = match client.get_exhaustion_scores(&request).await {
-        Ok(scores) => scores,
-        Err(err) => return handle_api_error(err),
-    };
-
-    let json = serde_json::to_value(&scores).unwrap_or(Value::Null);
-    finish_output(print_json(&json, pretty))
+    run_client_command(
+        move |client| Box::pin(async move { client.get_exhaustion_scores(&request).await }),
+        move |scores| {
+            let json = serde_json::to_value(&scores).unwrap_or(serde_json::Value::Null);
+            print_json(&json, pretty)
+        },
+    )
+    .await
 }
 
 fn build_earnings_request(args: &EarningsArgs) -> EarningsRequest {
