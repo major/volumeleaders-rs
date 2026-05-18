@@ -50,6 +50,7 @@ reviews:
       instructions: |
         Client crate review:
         - Preserve exact VolumeLeaders wire contracts, form field names, cookie names, and DataTables bracketed encoding.
+        - Currency fields use rust_decimal::Decimal; ratios and indicators stay f64.
         - Never expose cookie values, auth cookies, or XSRF tokens in logs, errors, tests, docs, Debug, or Display output.
         - Prefer focused API-boundary feedback over broad architecture rewrites.
         - Don't nitpick style because rustfmt and clippy handle formatting and lint.
@@ -58,6 +59,8 @@ reviews:
       instructions: |
         CLI crate review:
         - stdout is machine-readable output only; diagnostics and logs belong on stderr.
+        - Dashboard output should be token-efficient with compact fields unless `--all-fields` is requested.
+        - Dashboard transforms (type collapsing, venue, events, sentinel omission, rounding) apply universally before field filtering.
         - Keep compact JSON defaults stable unless tests and README examples are updated.
         - Ensure new commands wire clap, command dispatch, tests, and README notes together.
         - Don't duplicate client wire-contract rules in the CLI layer.
