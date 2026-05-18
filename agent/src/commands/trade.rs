@@ -2496,7 +2496,11 @@ fn apply_large_preset_filters(filters: &mut Vec<(String, String)>) {
 #[cfg(test)]
 mod tests {
     use serde_json::json;
-    use volumeleaders_client::{Trade, TradeCluster, TradeClusterBomb, TradeLevel};
+    use volumeleaders_client::{
+        Trade, TradeCluster, TradeClusterAlert, TradeClusterBomb, TradeLevel,
+    };
+
+    use crate::output::write_record_values;
 
     use super::*;
 
@@ -2508,12 +2512,67 @@ mod tests {
         serde_json::from_value(value).unwrap()
     }
 
+    fn cluster_alert(value: serde_json::Value) -> TradeClusterAlert {
+        serde_json::from_value(value).unwrap()
+    }
+
     fn level(value: serde_json::Value) -> TradeLevel {
         serde_json::from_value(value).unwrap()
     }
 
     fn cluster_bomb(value: serde_json::Value) -> TradeClusterBomb {
         serde_json::from_value(value).unwrap()
+    }
+
+    fn cluster_fixture() -> TradeCluster {
+        cluster(json!({
+            "Ticker": "AAPL",
+            "Date": "/Date(1767312000000)/",
+            "Price": 199.125,
+            "Dollars": 20_000_000.126,
+            "Volume": 100_000,
+            "TradeCount": 4,
+            "DollarsMultiplier": 12.345,
+            "TradeClusterRank": 2,
+            "MinFullDateTime": "2026-01-02T16:00:00+00:00",
+            "MaxFullDateTime": "2026-01-02T16:49:31+00:00",
+            "EOM": true,
+            "OPEX": false,
+            "SecurityKey": 123
+        }))
+    }
+
+    fn cluster_alert_fixture() -> TradeClusterAlert {
+        cluster_alert(json!({
+            "Ticker": "MSFT",
+            "Date": "/Date(1767312000000)/",
+            "Price": 312.25,
+            "Dollars": 12_000_000.0,
+            "Volume": 75_000,
+            "TradeCount": 3,
+            "TradeClusterRank": 8,
+            "MinFullDateTime": "2026-01-02T15:00:00+00:00",
+            "MaxFullDateTime": "2026-01-02T15:07:30+00:00",
+            "VOLEX": true
+        }))
+    }
+
+    fn render_cluster_json(fields: Option<&str>, all_fields: bool) -> serde_json::Value {
+        let values = transformed_trade_values(&[cluster_fixture()], TradeRecordKind::Cluster)
+            .expect("cluster serializes");
+        let mut output = Vec::new();
+        write_record_values(
+            &mut output,
+            &values,
+            OutputFormat::Json,
+            false,
+            &CLUSTER_HEADERS,
+            fields,
+            all_fields,
+        )
+        .expect("cluster output renders");
+
+        serde_json::from_slice(&output).expect("valid cluster json")
     }
 
     fn dashboard_args() -> DashboardArgs {
@@ -2800,6 +2859,77 @@ mod tests {
         assert!(ALERT_HEADERS.contains(&"type"));
         assert!(ALERT_HEADERS.contains(&"venue"));
         assert!(ALERT_HEADERS.contains(&"events"));
+    }
+
+    #[test]
+    fn cluster_output_defaults_to_transformed_compact_fields() {
+        let output = render_cluster_json(None, false);
+        let row = output[0].as_object().unwrap();
+
+        assert_eq!(row["Date"], "2026-01-02");
+        assert_eq!(row["Ticker"], "AAPL");
+        assert_eq!(row["Price"], 199.13);
+        assert_eq!(row["Dollars"], 20_000_000.13);
+        assert_eq!(row["TradeCount"], 4);
+        assert_eq!(row["TradeClusterRank"], 2);
+        assert_eq!(row["window"], "16:00:00-16:49:31");
+        assert_eq!(row["events"], json!(["EOM"]));
+        assert!(!row.contains_key("MinFullDateTime"));
+        assert!(!row.contains_key("MaxFullDateTime"));
+        assert!(!row.contains_key("EOM"));
+        assert!(!row.contains_key("OPEX"));
+        assert!(!row.contains_key("SecurityKey"));
+    }
+
+    #[test]
+    fn cluster_output_accepts_custom_transformed_fields() {
+        let output = render_cluster_json(Some("Date,TradeCount,window"), false);
+        let row = output[0].as_object().unwrap();
+
+        assert_eq!(row.len(), 3);
+        assert_eq!(row["Date"], "2026-01-02");
+        assert_eq!(row["TradeCount"], 4);
+        assert_eq!(row["window"], "16:00:00-16:49:31");
+    }
+
+    #[test]
+    fn cluster_output_all_fields_keeps_extra_fields_after_transforms() {
+        let output = render_cluster_json(None, true);
+        let row = output[0].as_object().unwrap();
+
+        assert_eq!(row["SecurityKey"], 123);
+        assert_eq!(row["window"], "16:00:00-16:49:31");
+        assert_eq!(row["events"], json!(["EOM"]));
+        assert!(!row.contains_key("MinFullDateTime"));
+        assert!(!row.contains_key("MaxFullDateTime"));
+        assert!(!row.contains_key("EOM"));
+        assert!(!row.contains_key("OPEX"));
+    }
+
+    #[test]
+    fn cluster_alert_output_uses_cluster_transform_headers() {
+        let values = transformed_trade_values(&[cluster_alert_fixture()], TradeRecordKind::Cluster)
+            .expect("cluster alert serializes");
+        let mut output = Vec::new();
+        write_record_values(
+            &mut output,
+            &values,
+            OutputFormat::Csv,
+            false,
+            &CLUSTER_HEADERS,
+            None,
+            false,
+        )
+        .expect("cluster alert output renders");
+        let output = String::from_utf8(output).unwrap();
+        let lines: Vec<&str> = output.lines().collect();
+
+        assert_eq!(lines[0], CLUSTER_HEADERS.join(","));
+        assert!(lines[1].contains("MSFT"));
+        assert!(lines[1].contains("15:00:00-15:07:30"));
+        assert!(lines[1].contains("VOLEX"));
+        assert!(!lines[1].contains("MinFullDateTime"));
+        assert!(!lines[1].contains("MaxFullDateTime"));
     }
 
     #[test]
