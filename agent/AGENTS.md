@@ -2,7 +2,7 @@
 
 ## OVERVIEW
 
-`volumeleaders-agent` is the CLI boundary. It parses clap commands, bootstraps browser auth, translates arguments into `volumeleaders-client` requests, and writes JSON/CSV/TSV to stdout.
+`volumeleaders-agent` is the CLI boundary. It parses clap commands, bootstraps browser auth, translates arguments into `volumeleaders-client` requests, and writes JSON to stdout.
 
 ## DOC FRESHNESS
 
@@ -17,15 +17,15 @@
 | Dispatch | `src/lib.rs` | Parses CLI and routes to command handlers |
 | Command tree | `src/cli.rs` | Top-level clap groups and global `--pretty` |
 | Command handlers | `src/commands/*.rs` | `handle(args, pretty) -> i32` per group |
-| Shared CLI args/types | `src/common/` | Dates, tickers, output enums, tri-state filters |
+| Shared CLI args/types | `src/common/` | Dates, tickers, order direction, summary groups, tri-state filters |
 | Browser auth bridge | `src/common/auth.rs` | Builds client sessions from browser cookies |
-| Output formatting | `src/output.rs` | JSON, CSV, TSV, field selection, validation |
+| Output formatting | `src/output.rs` | JSON, field selection, validation |
 | Trade output transforms | `src/common/trade_transforms.rs` | Shared semantic cleanup for trade-shaped rows before field selection |
 
 ## COMMAND SURFACE
 
 - Top-level groups: `report`, `trade`, `volume`, `market`, `alert`, `watchlist`, `completions`.
-- Default output is compact JSON. `--pretty` indents JSON. CSV/TSV require stable headers or selected fields.
+- Default output is compact JSON. `--pretty` indents JSON.
 - Errors and logs go to stderr. Data goes to stdout.
 - Auth failure text tells users to log in at `https://www.volumeleaders.com` and retry.
 

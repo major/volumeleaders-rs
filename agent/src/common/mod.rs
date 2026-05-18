@@ -5,4 +5,4 @@ pub mod tickers;
 pub mod trade_transforms;
 pub mod types;
 
-pub use types::{OrderDirection, OutputFormat, SummaryGroup, TriStateFilter};
+pub use types::{OrderDirection, SummaryGroup, TriStateFilter};

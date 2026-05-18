@@ -8,7 +8,6 @@ use volumeleaders_client::{
 
 use crate::cli::AlertArgs;
 use crate::common::auth::{handle_api_error, make_client};
-use crate::common::types::OutputFormat;
 use crate::output::{finish_output, print_json, print_records};
 
 const DEFAULT_CONFIGS_FIELDS: [&str; 9] = [
@@ -39,10 +38,6 @@ pub enum AlertCommand {
 /// Arguments for `alert configs`.
 #[derive(Debug, Args)]
 pub struct ConfigsArgs {
-    /// Output format.
-    #[arg(long, value_enum, default_value = "json")]
-    pub format: OutputFormat,
-
     /// Comma-separated field list for output.
     #[arg(long, conflicts_with = "all_fields")]
     pub fields: Option<String>,
@@ -336,7 +331,6 @@ async fn execute_configs(args: &ConfigsArgs, pretty: bool) -> i32 {
 
     finish_output(print_records(
         &configs,
-        args.format,
         pretty,
         &DEFAULT_CONFIGS_FIELDS,
         args.fields.as_deref(),

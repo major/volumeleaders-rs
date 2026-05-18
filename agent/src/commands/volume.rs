@@ -8,7 +8,7 @@ use crate::cli::VolumeArgs;
 use crate::common::auth::{handle_api_error, make_client};
 use crate::common::tickers::parse_tickers;
 use crate::common::trade_transforms::{TradeRecordKind, transformed_trade_values};
-use crate::common::types::{OrderDirection, OutputFormat};
+use crate::common::types::OrderDirection;
 use crate::output::{finish_output, print_record_values};
 
 const VOLUME_HEADERS: [&str; 20] = [
@@ -44,10 +44,6 @@ pub struct VolumeOptions {
     /// Comma-separated ticker symbols.
     #[arg(long)]
     pub tickers: Option<String>,
-
-    /// Output format.
-    #[arg(long, value_enum, default_value = "json")]
-    pub format: OutputFormat,
 
     /// Maximum number of rows to return.
     #[arg(long, default_value_t = 100)]
@@ -111,13 +107,7 @@ async fn execute_institutional(args: &VolumeOptions, pretty: bool) -> i32 {
         Err(err) => return handle_api_error(err),
     };
 
-    output_records(
-        &trades,
-        args.format,
-        pretty,
-        args.fields.as_deref(),
-        args.all_fields,
-    )
+    output_records(&trades, pretty, args.fields.as_deref(), args.all_fields)
 }
 
 #[instrument(skip_all)]
@@ -135,13 +125,7 @@ async fn execute_ah_institutional(args: &VolumeOptions, pretty: bool) -> i32 {
         Err(err) => return handle_api_error(err),
     };
 
-    output_records(
-        &trades,
-        args.format,
-        pretty,
-        args.fields.as_deref(),
-        args.all_fields,
-    )
+    output_records(&trades, pretty, args.fields.as_deref(), args.all_fields)
 }
 
 #[instrument(skip_all)]
@@ -156,13 +140,7 @@ async fn execute_total(args: &VolumeOptions, pretty: bool) -> i32 {
         Err(err) => return handle_api_error(err),
     };
 
-    output_records(
-        &trades,
-        args.format,
-        pretty,
-        args.fields.as_deref(),
-        args.all_fields,
-    )
+    output_records(&trades, pretty, args.fields.as_deref(), args.all_fields)
 }
 
 fn build_request(mut request: VolumeRequest, args: &VolumeOptions) -> VolumeRequest {
@@ -187,7 +165,6 @@ fn order_dir_value(direction: OrderDirection) -> &'static str {
 
 fn output_records<T: serde::Serialize>(
     records: &[T],
-    format: OutputFormat,
     pretty: bool,
     fields: Option<&str>,
     all_fields: bool,
@@ -196,7 +173,7 @@ fn output_records<T: serde::Serialize>(
         transformed_trade_values(records, TradeRecordKind::Trade)
             .map_err(|err| std::io::Error::new(std::io::ErrorKind::InvalidData, err))
             .and_then(|values| {
-                print_record_values(&values, format, pretty, &VOLUME_HEADERS, fields, all_fields)
+                print_record_values(&values, pretty, &VOLUME_HEADERS, fields, all_fields)
             }),
     )
 }
@@ -213,7 +190,6 @@ mod tests {
         VolumeOptions {
             date: "2025-01-15".to_string(),
             tickers: Some("aapl,msft".to_string()),
-            format: OutputFormat::Json,
             limit: 25,
             order_dir: OrderDirection::Asc,
             fields: None,

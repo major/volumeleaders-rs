@@ -12,8 +12,8 @@ use crate::common::auth::{handle_api_error, make_client};
 use crate::common::dates::resolve_date_range;
 use crate::common::tickers::parse_tickers;
 use crate::common::trade_transforms::{TradeRecordKind, transformed_trade_values};
-use crate::common::types::{OutputFormat, SummaryGroup};
-use crate::output::{finish_output, print_delimited, print_json, print_record_values};
+use crate::common::types::SummaryGroup;
+use crate::output::{finish_output, print_json, print_record_values};
 
 /// Default trade limit when none is specified on the command line.
 const DEFAULT_LIMIT: usize = 500;
@@ -402,11 +402,7 @@ pub static REPORT_PRESETS: &[ReportPreset] = &[
 #[derive(Debug, Subcommand)]
 pub enum ReportCommand {
     /// List available report presets.
-    List {
-        /// Output format for the list.
-        #[arg(long, value_enum, default_value = "json")]
-        format: OutputFormat,
-    },
+    List,
     /// Top 100 ranked institutional trades.
     #[command(name = "top-100-rank")]
     Top100Rank(#[command(flatten)] ReportFlags),
@@ -465,10 +461,6 @@ pub struct ReportFlags {
     #[arg(short, long)]
     pub limit: Option<usize>,
 
-    /// Output format.
-    #[arg(long, value_enum, default_value = "json")]
-    pub format: OutputFormat,
-
     /// Group results into a summary by ticker, day, or both.
     #[arg(long, value_enum)]
     pub summary_group: Option<SummaryGroup>,
@@ -484,7 +476,7 @@ impl ReportCommand {
     /// Returns the preset use_name for preset commands, or None for List.
     fn preset_name(&self) -> Option<&'static str> {
         match self {
-            Self::List { .. } => None,
+            Self::List => None,
             Self::Top100Rank(_) => Some("top-100-rank"),
             Self::Top10Rank(_) => Some("top-10-rank"),
             Self::DarkPoolSweeps(_) => Some("dark-pool-sweeps"),
@@ -502,7 +494,7 @@ impl ReportCommand {
     /// Returns the ReportFlags for preset commands, or None for List.
     fn flags(&self) -> Option<&ReportFlags> {
         match self {
-            Self::List { .. } => None,
+            Self::List => None,
             Self::Top100Rank(f)
             | Self::Top10Rank(f)
             | Self::DarkPoolSweeps(f)
@@ -522,14 +514,14 @@ impl ReportCommand {
 #[instrument(skip_all)]
 pub async fn handle(args: &ReportArgs, pretty: bool) -> i32 {
     match &args.command {
-        ReportCommand::List { format } => execute_list(*format, pretty),
+        ReportCommand::List => execute_list(pretty),
         _ => execute_preset(args, pretty).await,
     }
 }
 
 /// Lists all available report presets.
 #[instrument(skip_all)]
-fn execute_list(format: OutputFormat, pretty: bool) -> i32 {
+fn execute_list(pretty: bool) -> i32 {
     let entries: Vec<PresetListEntry> = REPORT_PRESETS
         .iter()
         .map(|p| PresetListEntry {
@@ -539,14 +531,7 @@ fn execute_list(format: OutputFormat, pretty: bool) -> i32 {
         })
         .collect();
 
-    let result = match format {
-        OutputFormat::Json => print_json(&entries, pretty),
-        OutputFormat::Csv | OutputFormat::Tsv => {
-            print_delimited(&entries, format, &["name", "command", "description"])
-        }
-    };
-
-    finish_output(result)
+    finish_output(print_json(&entries, pretty))
 }
 
 /// Runs a preset report: builds request from preset filters + CLI overrides,
@@ -569,13 +554,6 @@ async fn execute_preset(args: &ReportArgs, pretty: bool) -> i32 {
         }
     };
 
-    // Summary mode only supports JSON output.
-    if flags.summary_group.is_some()
-        && matches!(flags.format, OutputFormat::Csv | OutputFormat::Tsv)
-    {
-        eprintln!("summary mode only supports JSON output");
-        return 1;
-    }
     if flags.summary_group.is_some() && (flags.fields.is_some() || flags.all_fields) {
         eprintln!("--fields and --all-fields cannot be used with summary output");
         return 1;
@@ -639,7 +617,6 @@ async fn execute_preset(args: &ReportArgs, pretty: bool) -> i32 {
             .and_then(|values| {
                 print_record_values(
                     &values,
-                    flags.format,
                     pretty,
                     &TRADE_HEADERS,
                     flags.fields.as_deref(),
@@ -651,7 +628,7 @@ async fn execute_preset(args: &ReportArgs, pretty: bool) -> i32 {
     finish_output(result)
 }
 
-/// Column headers for CSV/TSV trade output.
+/// Column headers for trade output.
 const TRADE_HEADERS: [&str; 15] = [
     "Ticker",
     "Date",
@@ -1112,7 +1089,6 @@ mod tests {
             end_date: None,
             days: None,
             limit: None,
-            format: OutputFormat::Json,
             summary_group: None,
             fields: None,
             all_fields: false,
@@ -1124,12 +1100,6 @@ mod tests {
         );
 
         // List has no preset name.
-        assert_eq!(
-            ReportCommand::List {
-                format: OutputFormat::Json
-            }
-            .preset_name(),
-            None
-        );
+        assert_eq!(ReportCommand::List.preset_name(), None);
     }
 }
