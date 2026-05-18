@@ -3,7 +3,7 @@
 use serde::{Deserialize, Serialize};
 use tracing::instrument;
 
-use crate::client::Client;
+use crate::client::{Client, multipart_form_from_fields, push_bool_field};
 use crate::datatables::{
     DataTablesColumn, DataTablesRequest, DataTablesResponse, fetch_limit,
     impl_datatables_request_methods,
@@ -263,12 +263,7 @@ impl SaveWatchListConfigRequest {
     }
 }
 
-fn push_bool_field(fields: &mut Vec<(String, String)>, name: &str, value: bool) {
-    if value {
-        fields.push((name.to_string(), "true".to_string()));
-    }
-    fields.push((name.to_string(), "false".to_string()));
-}
+
 
 /// Form payload for adding a ticker to an existing watchlist.
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -424,13 +419,7 @@ impl Client {
     }
 }
 
-fn multipart_form_from_fields(fields: &[(String, String)]) -> reqwest::multipart::Form {
-    let mut form = reqwest::multipart::Form::new();
-    for (key, value) in fields {
-        form = form.text(key.clone(), value.clone());
-    }
-    form
-}
+
 
 #[cfg(test)]
 mod tests {
