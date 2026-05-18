@@ -29,6 +29,7 @@
 - Errors and logs go to stderr. Data goes to stdout.
 - Auth failure text tells users to log in at `https://www.volumeleaders.com` and retry.
 - Trade-shaped output intentionally omits the upstream `PercentDailyVolume` value because live report payloads return it as `0.0` for current and prior trading days.
+- Compact defaults also omit `TradeConditions`, `RelativeSize`, `Name`, and `Volume` on trade-shaped rows. Keep `RelativeSize` available via `--fields` or `--all-fields`, and keep level-centric RelativeSize behavior intact.
 
 ## HOTSPOTS
 

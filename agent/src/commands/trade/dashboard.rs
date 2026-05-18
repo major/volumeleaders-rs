@@ -6,41 +6,30 @@ use crate::common::trade_transforms::transform_trade_dashboard;
 use super::{DashboardArgs, DateRange};
 
 const DASHBOARD_TOP_LEVEL_FIELDS: [&str; 3] = ["ticker", "date_range", "count"];
-const DASHBOARD_COMPACT_TRADE_FIELDS: [&str; 11] = [
+const DASHBOARD_COMPACT_TRADE_FIELDS: [&str; 9] = [
     "Date",
     "FullTimeString24",
     "Price",
     "Dollars",
-    "Volume",
     "TradeRank",
     "TradeCount",
     "type",
     "venue",
     "events",
-    "TradeConditions",
 ];
-const DASHBOARD_COMPACT_CLUSTER_FIELDS: [&str; 8] = [
+const DASHBOARD_COMPACT_CLUSTER_FIELDS: [&str; 7] = [
     "Date",
     "Price",
     "Dollars",
-    "Volume",
     "TradeCount",
     "TradeClusterRank",
     "window",
     "events",
 ];
-const DASHBOARD_COMPACT_LEVEL_FIELDS: [&str; 6] = [
-    "Price",
-    "Dollars",
-    "Volume",
-    "Trades",
-    "RelativeSize",
-    "TradeLevelRank",
-];
-const DASHBOARD_COMPACT_BOMB_FIELDS: [&str; 7] = [
+const DASHBOARD_COMPACT_LEVEL_FIELDS: [&str; 4] = ["Price", "Dollars", "Trades", "TradeLevelRank"];
+const DASHBOARD_COMPACT_BOMB_FIELDS: [&str; 6] = [
     "Date",
     "Dollars",
-    "Volume",
     "TradeCount",
     "TradeClusterBombRank",
     "window",
