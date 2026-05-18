@@ -717,7 +717,7 @@ async fn execute_clusters(args: &ClustersArgs, pretty: bool) -> i32 {
     let request = TradeClustersRequest::new()
         .with_start(args.page.start)
         .with_length(-1)
-        .with_order(args.page.order_col, order_dir_str(args.page.order_dir), "")
+        .with_order(args.page.order_col, args.page.order_dir.as_str(), "")
         .with_cluster_filters(cluster_filters(args, &start, &end));
     let client = match make_client().await {
         Ok(client) => client,
@@ -749,7 +749,7 @@ async fn execute_cluster_bombs(args: &ClusterBombsArgs, pretty: bool) -> i32 {
     let request = TradeClusterBombsRequest::new()
         .with_start(args.page.start)
         .with_length(-1)
-        .with_order(args.page.order_col, order_dir_str(args.page.order_dir), "")
+        .with_order(args.page.order_col, args.page.order_dir.as_str(), "")
         .with_cluster_bomb_filters(cluster_bomb_filters(args, &start, &end));
     let client = match make_client().await {
         Ok(client) => client,
@@ -774,7 +774,7 @@ async fn execute_alerts(args: &AlertsArgs, pretty: bool) -> i32 {
     let request = volumeleaders_client::TradeAlertsRequest::new()
         .with_start(args.page.start)
         .with_length(args.page.length)
-        .with_order(args.page.order_col, order_dir_str(args.page.order_dir), "")
+        .with_order(args.page.order_col, args.page.order_dir.as_str(), "")
         .with_date(args.date.clone());
     let client = match make_client().await {
         Ok(client) => client,
@@ -799,7 +799,7 @@ async fn execute_cluster_alerts(args: &AlertsArgs, pretty: bool) -> i32 {
     let request = volumeleaders_client::TradeClusterAlertsRequest::new()
         .with_start(args.page.start)
         .with_length(args.page.length)
-        .with_order(args.page.order_col, order_dir_str(args.page.order_dir), "")
+        .with_order(args.page.order_col, args.page.order_dir.as_str(), "")
         .with_date(args.date.clone());
     let client = match make_client().await {
         Ok(client) => client,
@@ -870,7 +870,7 @@ async fn execute_level_touches(args: &LevelTouchesArgs, pretty: bool) -> i32 {
     let request = TradeLevelTouchesRequest::new()
         .with_start(args.page.start)
         .with_length(args.page.length)
-        .with_order(args.page.order_col, order_dir_str(args.page.order_dir), "")
+        .with_order(args.page.order_col, args.page.order_dir.as_str(), "")
         .with_level_touch_filters(level_touch_filters(args, &ticker, &start, &end));
     let client = match make_client().await {
         Ok(client) => client,
@@ -1123,13 +1123,6 @@ fn format_float(value: f64) -> String {
         format!("{value:.0}")
     } else {
         value.to_string()
-    }
-}
-
-fn order_dir_str(dir: OrderDirection) -> &'static str {
-    match dir {
-        OrderDirection::Asc => "asc",
-        OrderDirection::Desc => "desc",
     }
 }
 

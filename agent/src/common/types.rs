@@ -38,6 +38,16 @@ pub enum OrderDirection {
     Desc,
 }
 
+impl OrderDirection {
+    /// Returns the API string value for DataTables sorting.
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::Asc => "asc",
+            Self::Desc => "desc",
+        }
+    }
+}
+
 /// Grouping dimension for summary commands.
 #[derive(Clone, Copy, Debug, PartialEq, clap::ValueEnum)]
 pub enum SummaryGroup {
@@ -66,5 +76,11 @@ mod tests {
     #[test]
     fn tri_state_filter_default_is_all() {
         assert_eq!(TriStateFilter::default(), TriStateFilter::All);
+    }
+
+    #[test]
+    fn order_direction_as_str() {
+        assert_eq!(OrderDirection::Asc.as_str(), "asc");
+        assert_eq!(OrderDirection::Desc.as_str(), "desc");
     }
 }

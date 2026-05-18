@@ -153,14 +153,7 @@ fn build_request(mut request: VolumeRequest, args: &VolumeOptions) -> VolumeRequ
         }
     }
 
-    request.with_order(1, order_dir_value(args.order_dir), "")
-}
-
-fn order_dir_value(direction: OrderDirection) -> &'static str {
-    match direction {
-        OrderDirection::Asc => "asc",
-        OrderDirection::Desc => "desc",
-    }
+    request.with_order(1, args.order_dir.as_str(), "")
 }
 
 fn output_records<T: serde::Serialize>(
