@@ -158,10 +158,8 @@ impl Client {
         &self,
         request: &VolumeRequest,
     ) -> Result<DataTablesResponse<Trade>> {
-        let body = self
-            .post_form(INSTITUTIONAL_VOLUME_PATH, request.to_pairs())
-            .await?;
-        Ok(serde_json::from_str(&body)?)
+        self.post_datatables(INSTITUTIONAL_VOLUME_PATH, request.to_pairs())
+            .await
     }
 
     /// Fetch up to `limit` trades by paginating
@@ -183,10 +181,8 @@ impl Client {
         &self,
         request: &VolumeRequest,
     ) -> Result<DataTablesResponse<Trade>> {
-        let body = self
-            .post_form(AH_INSTITUTIONAL_VOLUME_PATH, request.to_pairs())
-            .await?;
-        Ok(serde_json::from_str(&body)?)
+        self.post_datatables(AH_INSTITUTIONAL_VOLUME_PATH, request.to_pairs())
+            .await
     }
 
     /// Fetch up to `limit` trades by paginating
@@ -207,10 +203,8 @@ impl Client {
         &self,
         request: &VolumeRequest,
     ) -> Result<DataTablesResponse<Trade>> {
-        let body = self
-            .post_form(TOTAL_VOLUME_PATH, request.to_pairs())
-            .await?;
-        Ok(serde_json::from_str(&body)?)
+        self.post_datatables(TOTAL_VOLUME_PATH, request.to_pairs())
+            .await
     }
 
     /// Fetch up to `limit` trades by paginating `/TotalVolume/GetTotalVolume`.

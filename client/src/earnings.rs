@@ -81,10 +81,8 @@ impl Client {
         &self,
         request: &EarningsRequest,
     ) -> Result<DataTablesResponse<Earning>> {
-        let body = self
-            .post_form(EARNINGS_GET_EARNINGS_PATH, request.to_pairs())
-            .await?;
-        Ok(serde_json::from_str(&body)?)
+        self.post_datatables(EARNINGS_GET_EARNINGS_PATH, request.to_pairs())
+            .await
     }
 
     /// Fetch up to `limit` earnings by paginating `/Earnings/GetEarnings`.

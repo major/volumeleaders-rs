@@ -194,13 +194,11 @@ impl Client {
         &self,
         request: &WelcomeTradesRequest,
     ) -> Result<DataTablesResponse<Trade>> {
-        let body = self
-            .post_form(
+        self.post_datatables(
                 EXECUTIVE_SUMMARY_GET_WELCOME_TRADES_PATH,
                 request.to_pairs(),
             )
-            .await?;
-        Ok(serde_json::from_str(&body)?)
+            .await
     }
 
     /// Fetch up to `limit` welcome trades by paginating
@@ -228,13 +226,11 @@ impl Client {
         &self,
         request: &WelcomeTradeClustersRequest,
     ) -> Result<DataTablesResponse<TradeCluster>> {
-        let body = self
-            .post_form(
+        self.post_datatables(
                 EXECUTIVE_SUMMARY_GET_WELCOME_TRADE_CLUSTERS_PATH,
                 request.to_pairs(),
             )
-            .await?;
-        Ok(serde_json::from_str(&body)?)
+            .await
     }
 
     /// Fetch up to `limit` welcome trade clusters by paginating

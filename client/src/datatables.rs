@@ -354,6 +354,21 @@ fn bool_value(value: bool) -> &'static str {
 
 
 
+impl Client {
+    /// Post a DataTables form request and deserialize the JSON response.
+    pub(crate) async fn post_datatables<T>(
+        &self,
+        path: &str,
+        pairs: Vec<(String, String)>,
+    ) -> Result<DataTablesResponse<T>>
+    where
+        T: DeserializeOwned,
+    {
+        let body = self.post_form(path, pairs).await?;
+        Ok(serde_json::from_str(&body)?)
+    }
+}
+
 /// Paginate a DataTables endpoint, collecting up to `limit` records.
 ///
 /// Each page posts `request` with an updated `start` offset and deserializes

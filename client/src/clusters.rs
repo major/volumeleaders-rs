@@ -158,10 +158,8 @@ impl Client {
         &self,
         request: &TradeClustersRequest,
     ) -> Result<DataTablesResponse<TradeCluster>> {
-        let body = self
-            .post_form(TRADE_CLUSTERS_PATH, request.to_pairs())
-            .await?;
-        Ok(serde_json::from_str(&body)?)
+        self.post_datatables(TRADE_CLUSTERS_PATH, request.to_pairs())
+            .await
     }
 
     /// Fetch up to `limit` trade clusters by paginating
@@ -183,10 +181,8 @@ impl Client {
         &self,
         request: &TradeClusterBombsRequest,
     ) -> Result<DataTablesResponse<TradeClusterBomb>> {
-        let body = self
-            .post_form(TRADE_CLUSTER_BOMBS_PATH, request.to_pairs())
-            .await?;
-        Ok(serde_json::from_str(&body)?)
+        self.post_datatables(TRADE_CLUSTER_BOMBS_PATH, request.to_pairs())
+            .await
     }
 
     /// Fetch up to `limit` trade cluster bombs by paginating

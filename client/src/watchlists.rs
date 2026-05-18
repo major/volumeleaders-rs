@@ -328,10 +328,8 @@ impl Client {
         &self,
         request: &WatchListConfigsRequest,
     ) -> Result<DataTablesResponse<WatchListConfig>> {
-        let body = self
-            .post_form(WATCH_LIST_CONFIGS_GET_WATCH_LISTS_PATH, request.to_pairs())
-            .await?;
-        Ok(serde_json::from_str(&body)?)
+        self.post_datatables(WATCH_LIST_CONFIGS_GET_WATCH_LISTS_PATH, request.to_pairs())
+            .await
     }
 
     /// Fetch up to `limit` watchlist configurations by paginating the endpoint.
@@ -356,10 +354,8 @@ impl Client {
         &self,
         request: &WatchListTickersRequest,
     ) -> Result<DataTablesResponse<WatchListTicker>> {
-        let body = self
-            .post_form(WATCH_LISTS_GET_WATCH_LIST_TICKERS_PATH, request.to_pairs())
-            .await?;
-        Ok(serde_json::from_str(&body)?)
+        self.post_datatables(WATCH_LISTS_GET_WATCH_LIST_TICKERS_PATH, request.to_pairs())
+            .await
     }
 
     /// Fetch up to `limit` watchlist tickers by paginating the endpoint.

@@ -303,10 +303,8 @@ impl Client {
         &self,
         request: &AlertConfigsRequest,
     ) -> Result<DataTablesResponse<AlertConfig>> {
-        let body = self
-            .post_form(ALERT_CONFIGS_GET_ALERT_CONFIGS_PATH, request.to_pairs())
-            .await?;
-        Ok(serde_json::from_str(&body)?)
+        self.post_datatables(ALERT_CONFIGS_GET_ALERT_CONFIGS_PATH, request.to_pairs())
+            .await
     }
 
     /// Fetch up to `limit` alert configurations by paginating the endpoint.
@@ -331,10 +329,8 @@ impl Client {
         &self,
         request: &TradeAlertsRequest,
     ) -> Result<DataTablesResponse<TradeAlert>> {
-        let body = self
-            .post_form(TRADE_ALERTS_GET_TRADE_ALERTS_PATH, request.to_pairs())
-            .await?;
-        Ok(serde_json::from_str(&body)?)
+        self.post_datatables(TRADE_ALERTS_GET_TRADE_ALERTS_PATH, request.to_pairs())
+            .await
     }
 
     /// Fetch up to `limit` trade alerts by paginating the endpoint.
@@ -359,13 +355,11 @@ impl Client {
         &self,
         request: &TradeClusterAlertsRequest,
     ) -> Result<DataTablesResponse<TradeClusterAlert>> {
-        let body = self
-            .post_form(
+        self.post_datatables(
                 TRADE_CLUSTER_ALERTS_GET_TRADE_CLUSTER_ALERTS_PATH,
                 request.to_pairs(),
             )
-            .await?;
-        Ok(serde_json::from_str(&body)?)
+            .await
     }
 
     /// Fetch up to `limit` trade cluster alerts by paginating the endpoint.

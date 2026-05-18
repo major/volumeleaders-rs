@@ -91,8 +91,7 @@ impl Client {
     /// typed response envelope.
     #[instrument(skip_all)]
     pub async fn get_trades(&self, request: &TradesRequest) -> Result<DataTablesResponse<Trade>> {
-        let body = self.post_form(TRADES_PATH, request.to_pairs()).await?;
-        Ok(serde_json::from_str(&body)?)
+        self.post_datatables(TRADES_PATH, request.to_pairs()).await
     }
 
     /// Fetch up to `limit` trades by paginating `/Trades/GetTrades`.

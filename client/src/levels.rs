@@ -162,10 +162,8 @@ impl Client {
         &self,
         request: &TradeLevelsRequest,
     ) -> Result<DataTablesResponse<TradeLevel>> {
-        let body = self
-            .post_form(CHART_GET_TRADE_LEVELS_PATH, request.to_pairs())
-            .await?;
-        Ok(serde_json::from_str(&body)?)
+        self.post_datatables(CHART_GET_TRADE_LEVELS_PATH, request.to_pairs())
+            .await
     }
 
     /// Fetch up to `limit` trade levels by paginating
@@ -186,10 +184,8 @@ impl Client {
         &self,
         request: &TradeLevelsRequest,
     ) -> Result<DataTablesResponse<TradeLevel>> {
-        let body = self
-            .post_form(CHART0_GET_TRADE_LEVELS_PATH, request.to_pairs())
-            .await?;
-        Ok(serde_json::from_str(&body)?)
+        self.post_datatables(CHART0_GET_TRADE_LEVELS_PATH, request.to_pairs())
+            .await
     }
 
     /// Fetch up to `limit` trade levels by paginating
@@ -210,10 +206,8 @@ impl Client {
         &self,
         request: &TradeLevelsRequest,
     ) -> Result<DataTablesResponse<TradeLevel>> {
-        let body = self
-            .post_form(TRADE_LEVELS_GET_TRADE_LEVELS_PATH, request.to_pairs())
-            .await?;
-        Ok(serde_json::from_str(&body)?)
+        self.post_datatables(TRADE_LEVELS_GET_TRADE_LEVELS_PATH, request.to_pairs())
+            .await
     }
 
     /// Fetch up to `limit` trade levels by paginating
@@ -241,10 +235,8 @@ impl Client {
         &self,
         request: &TradeLevelTouchesRequest,
     ) -> Result<DataTablesResponse<TradeLevel>> {
-        let body = self
-            .post_form(TRADE_LEVEL_TOUCHES_PATH, request.to_pairs())
-            .await?;
-        Ok(serde_json::from_str(&body)?)
+        self.post_datatables(TRADE_LEVEL_TOUCHES_PATH, request.to_pairs())
+            .await
     }
 
     /// Fetch up to `limit` trade level touches by paginating
