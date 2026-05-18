@@ -21,6 +21,7 @@ use crate::common::dates::resolve_date_range;
 use crate::common::tickers::{parse_single_ticker, parse_tickers};
 use crate::common::trade_transforms::TradeRecordKind;
 use crate::common::types::{OrderDirection, SummaryGroup, TriStateFilter};
+use crate::common::{DATE_FMT, TRADE_HEADERS};
 use crate::output::{finish_output, print_json, print_transformed_record_values};
 
 use self::dashboard::{TradeDashboard, dashboard_output_value};
@@ -50,21 +51,6 @@ pub(super) const DEFAULT_MAX_VOLUME: i64 = 2_000_000_000;
 pub(super) const DEFAULT_MAX_PRICE: f64 = 100_000.0;
 pub(super) const DEFAULT_MAX_DOLLARS: f64 = 30_000_000_000.0;
 
-const TRADE_HEADERS: [&str; 13] = [
-    "Ticker",
-    "Date",
-    "FullTimeString24",
-    "Price",
-    "Dollars",
-    "DollarsMultiplier",
-    "CumulativeDistribution",
-    "TradeRank",
-    "type",
-    "venue",
-    "Sector",
-    "Industry",
-    "events",
-];
 const CLUSTER_HEADERS: [&str; 10] = [
     "Date",
     "Ticker",
@@ -1004,7 +990,7 @@ pub(super) fn trade_day(trade: &volumeleaders_client::Trade) -> String {
     trade
         .date
         .as_ref()
-        .and_then(|date| date.0.map(|dt| dt.format("%Y-%m-%d").to_string()))
+        .and_then(|date| date.0.map(|dt| dt.format(DATE_FMT).to_string()))
         .unwrap_or_else(|| "unknown".to_string())
 }
 

@@ -1,6 +1,6 @@
 use chrono::Local;
 
-const DATE_FMT: &str = "%Y-%m-%d";
+pub const DATE_FMT: &str = "%Y-%m-%d";
 const DEFAULT_LOOKBACK_DAYS: u32 = 5;
 
 /// Returns today's date as a `YYYY-MM-DD` string in local time.

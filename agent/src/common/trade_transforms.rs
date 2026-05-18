@@ -46,6 +46,26 @@ const RANK_SENTINEL_FIELDS: &[&str] = &[
 
 const CALENDAR_EVENT_FIELDS: &[&str] = &["EOM", "EOQ", "EOY", "OPEX", "VOLEX"];
 
+/// Default compact column headers for trade-shaped output.
+///
+/// Shared by commands that display individual institutional trades (e.g. `trade
+/// list` and `report` presets).
+pub const TRADE_HEADERS: [&str; 13] = [
+    "Ticker",
+    "Date",
+    "FullTimeString24",
+    "Price",
+    "Dollars",
+    "DollarsMultiplier",
+    "CumulativeDistribution",
+    "TradeRank",
+    "type",
+    "venue",
+    "Sector",
+    "Industry",
+    "events",
+];
+
 /// Serialize records and apply the transforms for their trade-shaped row kind.
 pub fn transformed_trade_values<T: Serialize>(
     records: &[T],
