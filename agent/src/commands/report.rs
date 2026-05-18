@@ -627,7 +627,6 @@ async fn execute_preset(args: &ReportArgs, pretty: bool) -> i32 {
     finish_output(result)
 }
 
-
 /// Entry for the preset list output.
 #[derive(Debug, Serialize)]
 struct PresetListEntry {
