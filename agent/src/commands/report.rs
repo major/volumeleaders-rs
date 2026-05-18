@@ -626,17 +626,15 @@ async fn execute_preset(args: &ReportArgs, pretty: bool) -> i32 {
 }
 
 /// Column headers for trade output.
-const TRADE_HEADERS: [&str; 15] = [
+const TRADE_HEADERS: [&str; 13] = [
     "Ticker",
     "Date",
     "FullTimeString24",
     "Price",
-    "Volume",
     "Dollars",
     "DollarsMultiplier",
     "CumulativeDistribution",
     "TradeRank",
-    "RelativeSize",
     "type",
     "venue",
     "Sector",

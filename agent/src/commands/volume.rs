@@ -11,19 +11,15 @@ use crate::common::trade_transforms::TradeRecordKind;
 use crate::common::types::OrderDirection;
 use crate::output::{finish_output, print_transformed_record_values};
 
-const VOLUME_HEADERS: [&str; 20] = [
+const VOLUME_HEADERS: [&str; 16] = [
     "Date",
     "FullDateTime",
     "Ticker",
-    "Name",
     "Sector",
     "Industry",
     "Price",
-    "Volume",
     "Dollars",
     "DollarsMultiplier",
-    "PercentDailyVolume",
-    "RelativeSize",
     "CumulativeDistribution",
     "TradeRank",
     "type",

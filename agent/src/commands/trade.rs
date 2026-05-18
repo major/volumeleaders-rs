@@ -50,29 +50,26 @@ pub(super) const DEFAULT_MAX_VOLUME: i64 = 2_000_000_000;
 pub(super) const DEFAULT_MAX_PRICE: f64 = 100_000.0;
 pub(super) const DEFAULT_MAX_DOLLARS: f64 = 30_000_000_000.0;
 
-const TRADE_HEADERS: [&str; 15] = [
+const TRADE_HEADERS: [&str; 13] = [
     "Ticker",
     "Date",
     "FullTimeString24",
     "Price",
-    "Volume",
     "Dollars",
     "DollarsMultiplier",
     "CumulativeDistribution",
     "TradeRank",
-    "RelativeSize",
     "type",
     "venue",
     "Sector",
     "Industry",
     "events",
 ];
-const CLUSTER_HEADERS: [&str; 11] = [
+const CLUSTER_HEADERS: [&str; 10] = [
     "Date",
     "Ticker",
     "Price",
     "Dollars",
-    "Volume",
     "TradeCount",
     "DollarsMultiplier",
     "CumulativeDistribution",
@@ -80,11 +77,10 @@ const CLUSTER_HEADERS: [&str; 11] = [
     "window",
     "events",
 ];
-const BOMB_HEADERS: [&str; 10] = [
+const BOMB_HEADERS: [&str; 9] = [
     "Date",
     "Ticker",
     "Dollars",
-    "Volume",
     "TradeCount",
     "DollarsMultiplier",
     "CumulativeDistribution",
@@ -92,11 +88,10 @@ const BOMB_HEADERS: [&str; 10] = [
     "window",
     "events",
 ];
-const LEVEL_HEADERS: [&str; 8] = [
+const LEVEL_HEADERS: [&str; 7] = [
     "Ticker",
     "Price",
     "Dollars",
-    "Volume",
     "Trades",
     "RelativeSize",
     "CumulativeDistribution",
@@ -1410,7 +1405,7 @@ mod tests {
 
         let level = output["levels"][0].as_object().unwrap();
         assert_eq!(level["TradeLevelRank"], 1);
-        assert_eq!(level["RelativeSize"], 0.0);
+        assert!(!level.contains_key("RelativeSize"));
         assert!(!level.contains_key("Ticker"));
 
         let bomb = output["cluster_bombs"][0].as_object().unwrap();
