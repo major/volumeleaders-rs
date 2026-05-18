@@ -9,6 +9,7 @@ use volumeleaders_client::{
 };
 
 use crate::cli::WatchlistArgs;
+use crate::commands::scaffold::run_client_command;
 use crate::common::auth::{handle_api_error, make_client};
 use crate::output::{finish_output, print_json, print_records};
 
@@ -302,73 +303,68 @@ async fn execute_tickers(args: &TickersArgs, pretty: bool) -> i32 {
 
 #[instrument(skip_all)]
 async fn execute_create(args: &CreateArgs, pretty: bool) -> i32 {
-    let client = match make_client().await {
-        Ok(c) => c,
-        Err(code) => return code,
-    };
-
     let request = build_config_request(0, &args.name, &args.config);
-    if let Err(err) = client.save_watchlist_config(request).await {
-        return handle_api_error(err);
-    }
-
-    let result = serde_json::json!({"success": true, "action": "created"});
-    finish_output(print_json(&result, pretty))
+    run_client_command(
+        move |client| {
+            Box::pin(async move {
+                client.save_watchlist_config(request).await?;
+                Ok(serde_json::json!({"success": true, "action": "created"}))
+            })
+        },
+        move |result| print_json(&result, pretty),
+    )
+    .await
 }
 
 #[instrument(skip_all)]
 async fn execute_edit(args: &EditArgs, pretty: bool) -> i32 {
-    let client = match make_client().await {
-        Ok(c) => c,
-        Err(code) => return code,
-    };
-
+    let key = args.key;
     let name = args.name.as_deref().unwrap_or("");
-    let request = build_config_request(args.key, name, &args.config);
-    if let Err(err) = client.save_watchlist_config(request).await {
-        return handle_api_error(err);
-    }
-
-    let result = serde_json::json!({"success": true, "action": "updated", "key": args.key});
-    finish_output(print_json(&result, pretty))
+    let request = build_config_request(key, name, &args.config);
+    run_client_command(
+        move |client| {
+            Box::pin(async move {
+                client.save_watchlist_config(request).await?;
+                Ok(serde_json::json!({"success": true, "action": "updated", "key": key}))
+            })
+        },
+        move |result| print_json(&result, pretty),
+    )
+    .await
 }
 
 #[instrument(skip_all)]
 async fn execute_delete(args: &DeleteArgs, pretty: bool) -> i32 {
-    let client = match make_client().await {
-        Ok(c) => c,
-        Err(code) => return code,
-    };
-
+    let key = args.key;
     let request = DeleteWatchListRequest {
-        watch_list_key: args.key,
+        watch_list_key: key,
     };
-    if let Err(err) = client.delete_watchlist(&request).await {
-        return handle_api_error(err);
-    }
-
-    let result = serde_json::json!({"success": true, "action": "deleted", "key": args.key});
-    finish_output(print_json(&result, pretty))
+    run_client_command(
+        move |client| {
+            Box::pin(async move {
+                client.delete_watchlist(&request).await?;
+                Ok(serde_json::json!({"success": true, "action": "deleted", "key": key}))
+            })
+        },
+        move |result| print_json(&result, pretty),
+    )
+    .await
 }
 
 #[instrument(skip_all)]
 async fn execute_add_ticker(args: &AddTickerArgs, pretty: bool) -> i32 {
-    let client = match make_client().await {
-        Ok(c) => c,
-        Err(code) => return code,
-    };
-
     let request = AddTickerToWatchListRequest {
         watch_list_key: args.watchlist_key,
         ticker: args.ticker.clone(),
     };
-    let response = match client.add_ticker_to_watchlist(&request).await {
-        Ok(r) => r,
-        Err(err) => return handle_api_error(err),
-    };
-
-    let json = serde_json::to_value(&response).unwrap_or(Value::Null);
-    finish_output(print_json(&json, pretty))
+    run_client_command(
+        move |client| Box::pin(async move { client.add_ticker_to_watchlist(&request).await }),
+        move |response| {
+            let json = serde_json::to_value(&response).unwrap_or(Value::Null);
+            print_json(&json, pretty)
+        },
+    )
+    .await
 }
 
 /// Build a typed watchlist config create or edit request.
