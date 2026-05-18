@@ -2,6 +2,21 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.3.0] - 2026-05-18
+
+### <!-- 0 -->🚀 Features
+
+- [**breaking**] *(agent)* Add --json-table flag and remove --pretty
+
+### <!-- 6 -->🧪 Testing
+
+- Raise test coverage above 90% threshold
+
+### <!-- 7 -->⚙️ Miscellaneous
+
+- Enforce missing_docs lint in both crate roots
+
+
 ## [0.2.2] - 2026-05-18
 
 ### <!-- 1 -->🐛 Bug Fixes
