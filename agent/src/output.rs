@@ -44,7 +44,7 @@ pub fn records_to_values<T: Serialize>(records: &[T], fields: Option<&[String]>)
             if let Some(fields) = fields
                 && let Some(map) = value.as_object_mut()
             {
-                map.retain(|key, _| fields.iter().any(|field| field == key));
+                retain_selected_fields(map, fields);
             }
             value
         })
@@ -103,29 +103,7 @@ pub(crate) fn write_record_values<W: Write>(
 
 /// Checks custom output fields against record keys when records are available.
 pub fn validate_record_fields<T: Serialize>(records: &[T], fields: &[String]) -> io::Result<()> {
-    let available = available_record_fields(records)?;
-    if available.is_empty() {
-        return Ok(());
-    }
-
-    let missing: Vec<&str> = fields
-        .iter()
-        .map(String::as_str)
-        .filter(|field| !available.iter().any(|available| available == field))
-        .collect();
-
-    if missing.is_empty() {
-        return Ok(());
-    }
-
-    Err(io::Error::new(
-        io::ErrorKind::InvalidInput,
-        format!(
-            "unknown output field(s): {}. Available fields: {}",
-            missing.join(", "),
-            available.join(", ")
-        ),
-    ))
+    validate_selected_fields(available_record_fields(records)?, fields)
 }
 
 /// Outputs record lists with compact JSON defaults and optional custom fields.
@@ -164,13 +142,7 @@ fn available_record_fields<T: Serialize>(records: &[T]) -> io::Result<Vec<String
     for record in records {
         let value = serde_json::to_value(record)
             .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
-        if let Some(map) = value.as_object() {
-            for key in map.keys() {
-                if !fields.iter().any(|field| field == key) {
-                    fields.push(key.clone());
-                }
-            }
-        }
+        collect_unique_fields(value.as_object(), &mut fields);
     }
     fields.sort();
     Ok(fields)
@@ -182,7 +154,7 @@ fn filter_record_values(records: &[Value], fields: &[String]) -> Vec<Value> {
         .map(|record| {
             let mut value = record.clone();
             if let Some(map) = value.as_object_mut() {
-                map.retain(|key, _| fields.iter().any(|field| field == key));
+                retain_selected_fields(map, fields);
             }
             value
         })
@@ -190,16 +162,15 @@ fn filter_record_values(records: &[Value], fields: &[String]) -> Vec<Value> {
 }
 
 fn validate_value_fields(records: &[Value], fields: &[String]) -> io::Result<()> {
-    let available = available_value_fields(records);
+    validate_selected_fields(available_value_fields(records), fields)
+}
+
+fn validate_selected_fields(available: Vec<String>, fields: &[String]) -> io::Result<()> {
     if available.is_empty() {
         return Ok(());
     }
 
-    let missing: Vec<&str> = fields
-        .iter()
-        .map(String::as_str)
-        .filter(|field| !available.iter().any(|available| available == field))
-        .collect();
+    let missing = missing_fields(&available, fields);
 
     if missing.is_empty() {
         return Ok(());
@@ -215,19 +186,35 @@ fn validate_value_fields(records: &[Value], fields: &[String]) -> io::Result<()>
     ))
 }
 
+fn missing_fields<'a>(available: &[String], requested: &'a [String]) -> Vec<&'a str> {
+    requested
+        .iter()
+        .map(String::as_str)
+        .filter(|field| !available.iter().any(|available| available == field))
+        .collect()
+}
+
 fn available_value_fields(records: &[Value]) -> Vec<String> {
     let mut fields = Vec::new();
     for record in records {
-        if let Some(map) = record.as_object() {
-            for key in map.keys() {
-                if !fields.iter().any(|field| field == key) {
-                    fields.push(key.clone());
-                }
-            }
-        }
+        collect_unique_fields(record.as_object(), &mut fields);
     }
     fields.sort();
     fields
+}
+
+fn collect_unique_fields(map: Option<&serde_json::Map<String, Value>>, fields: &mut Vec<String>) {
+    if let Some(map) = map {
+        for key in map.keys() {
+            if !fields.iter().any(|field| field == key) {
+                fields.push(key.clone());
+            }
+        }
+    }
+}
+
+fn retain_selected_fields(map: &mut serde_json::Map<String, Value>, fields: &[String]) {
+    map.retain(|key, _| fields.iter().any(|field| field == key));
 }
 
 /// Prints `value` as JSON.
