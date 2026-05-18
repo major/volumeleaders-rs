@@ -2,6 +2,24 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.2.2] - 2026-05-18
+
+### <!-- 1 -->🐛 Bug Fixes
+
+- *(agent)* Omit PercentDailyVolume from trade-shaped output
+- *(agent)* Trim sparse compact default fields
+- *(agent)* Restore daily RSI and strip question-mark placeholders
+
+### <!-- 4 -->🔧 Refactor
+
+- *(agent)* Deduplicate TRADE_HEADERS and DATE_FMT constants
+- *(agent)* Shorten verbose time field names in output
+
+### <!-- 5 -->🎨 Styling
+
+- Remove extra blank line from conflict resolution
+
+
 ## [0.2.1] - 2026-05-18
 
 ### <!-- 7 -->⚙️ Miscellaneous
