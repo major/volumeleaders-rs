@@ -78,7 +78,15 @@ jobs:
         with:
           tool: cargo-llvm-cov
       - name: Enforce 90% line coverage
-        run: cargo llvm-cov --workspace --fail-under-lines 90
+        run: cargo llvm-cov --workspace --fail-under-lines 90 --lcov --output-path lcov.info
+      - name: Upload to Codecov
+        if: ${{ !cancelled() && secrets.CODECOV_TOKEN != '' }}
+        uses: codecov/codecov-action@e79a6962e0d4c0c17b229090214935d2e33f8354 # v6.0.1
+        with:
+          files: lcov.info
+          fail_ci_if_error: true
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
   docs:
     name: Docs
