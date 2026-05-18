@@ -1440,7 +1440,7 @@ mod tests {
         assert_eq!(row["TradeCount"], 4);
         assert_eq!(row["TradeClusterRank"], 2);
         assert_eq!(row["window"], "16:00:00-16:49:31");
-        assert_eq!(row["events"], json!(["EOM"]));
+        assert_eq!(row["events"], "EOM");
         assert!(!row.contains_key("MinFullDateTime"));
         assert!(!row.contains_key("MaxFullDateTime"));
         assert!(!row.contains_key("MinDateTime"));
@@ -1468,7 +1468,7 @@ mod tests {
 
         assert_eq!(row["SecurityKey"], 123);
         assert_eq!(row["window"], "16:00:00-16:49:31");
-        assert_eq!(row["events"], json!(["EOM"]));
+        assert_eq!(row["events"], "EOM");
         assert!(!row.contains_key("MinFullDateTime"));
         assert!(!row.contains_key("MaxFullDateTime"));
         assert!(!row.contains_key("MinDateTime"));
@@ -1504,7 +1504,7 @@ mod tests {
         );
         assert_eq!(row["Ticker"], "MSFT");
         assert_eq!(row["window"], "15:00:00-15:07:30");
-        assert_eq!(row["events"], json!(["VOLEX"]));
+        assert_eq!(row["events"], "VOLEX");
         assert!(!row.contains_key("MinFullDateTime"));
         assert!(!row.contains_key("MaxFullDateTime"));
         assert!(!row.contains_key("MinDateTime"));

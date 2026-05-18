@@ -220,17 +220,17 @@ fn rename_cluster_time_fields(row: &mut Map<String, Value>) {
     }
 }
 
-/// Collapse calendar-marker booleans into an `"events"` array.
+/// Collapse calendar-marker booleans into a pipe-delimited `"events"` string.
 fn collapse_calendar_events(row: &mut Map<String, Value>) {
     let mut events = Vec::new();
     for &field in CALENDAR_EVENT_FIELDS {
         let is_true = row.remove(field).and_then(|v| v.as_bool()).unwrap_or(false);
         if is_true {
-            events.push(Value::String(field.to_string()));
+            events.push(field);
         }
     }
     if !events.is_empty() {
-        row.insert("events".to_string(), Value::Array(events));
+        row.insert("events".to_string(), Value::String(events.join("|")));
     }
 }
 
@@ -341,7 +341,7 @@ mod tests {
         assert_eq!(row["Dollars"], 10.13);
         assert_eq!(row["type"], "closing");
         assert_eq!(row["venue"], "dark_pool_sweep");
-        assert_eq!(row["events"], json!(["OPEX"]));
+        assert_eq!(row["events"], "OPEX");
         assert_eq!(row["RSI"], 72.46);
         assert!(!row.contains_key("RSIDay"));
         assert!(!row.contains_key("RSIHour"));
@@ -462,6 +462,36 @@ mod tests {
         assert_eq!(row["Ticker"], "AAPL");
         assert_eq!(row["Sector"], "Technology");
         assert_eq!(row["type"], "closing");
+    }
+
+    #[test]
+    fn collapse_events_single_event_is_plain_string() {
+        let mut value =
+            json!({"OPEX": true, "EOM": false, "EOQ": false, "EOY": false, "VOLEX": false});
+        let row = value.as_object_mut().unwrap();
+        collapse_calendar_events(row);
+
+        assert_eq!(row["events"], "OPEX");
+    }
+
+    #[test]
+    fn collapse_events_multiple_events_are_pipe_delimited() {
+        let mut value =
+            json!({"OPEX": true, "EOM": true, "EOQ": false, "EOY": true, "VOLEX": false});
+        let row = value.as_object_mut().unwrap();
+        collapse_calendar_events(row);
+
+        assert_eq!(row["events"], "EOM|EOY|OPEX");
+    }
+
+    #[test]
+    fn collapse_events_no_events_omits_field() {
+        let mut value = json!({"OPEX": false, "EOM": false, "EOQ": false, "EOY": false, "VOLEX": false, "Ticker": "AAPL"});
+        let row = value.as_object_mut().unwrap();
+        collapse_calendar_events(row);
+
+        assert!(!row.contains_key("events"));
+        assert_eq!(row["Ticker"], "AAPL");
     }
 
     #[test]
