@@ -26,8 +26,9 @@ pub fn print_delimited<T: Serialize>(
 
 /// Parses a comma-separated output field list.
 ///
-/// Empty input and `all` both mean no filtering. Field names are case-sensitive
-/// because they map directly to the VolumeLeaders JSON keys.
+/// Empty input and `all` both mean no filtering. Field names are case-sensitive.
+/// Raw record output uses VolumeLeaders JSON keys; transformed output may expose
+/// semantic keys such as `type`, `venue`, `events`, and `window` instead.
 pub fn selected_fields(fields: Option<&str>) -> Option<Vec<String>> {
     let fields = fields?.trim();
     if fields.is_empty() || fields.eq_ignore_ascii_case("all") {
@@ -62,6 +63,61 @@ pub fn records_to_values<T: Serialize>(records: &[T], fields: Option<&[String]>)
             value
         })
         .collect()
+}
+
+/// Outputs pre-serialized record values with compact JSON defaults and optional custom fields.
+pub fn print_record_values(
+    records: &[Value],
+    format: OutputFormat,
+    pretty: bool,
+    compact_headers: &[&str],
+    fields: Option<&str>,
+    all_fields: bool,
+) -> io::Result<()> {
+    let custom_fields = selected_fields(fields);
+    let raw_fields_requested =
+        fields.is_some_and(|fields| fields.trim().eq_ignore_ascii_case("all"));
+
+    if let Some(fields) = custom_fields.as_deref() {
+        validate_value_fields(records, fields)?;
+    }
+
+    match format {
+        OutputFormat::Json if all_fields || raw_fields_requested => print_json(&records, pretty),
+        OutputFormat::Json => {
+            let default_fields: Vec<String> = compact_headers
+                .iter()
+                .map(|field| (*field).to_string())
+                .collect();
+            let selected = custom_fields
+                .as_deref()
+                .unwrap_or(default_fields.as_slice());
+            let values = filter_record_values(records, selected);
+            print_json(&values, pretty)
+        }
+        OutputFormat::Csv | OutputFormat::Tsv => {
+            let headers = if all_fields || raw_fields_requested {
+                let available = available_value_fields(records);
+                if available.is_empty() {
+                    compact_headers
+                        .iter()
+                        .map(|field| (*field).to_string())
+                        .collect()
+                } else {
+                    available
+                }
+            } else {
+                custom_fields.unwrap_or_else(|| {
+                    compact_headers
+                        .iter()
+                        .map(|field| (*field).to_string())
+                        .collect()
+                })
+            };
+            let header_refs: Vec<&str> = headers.iter().map(String::as_str).collect();
+            print_delimited(records, format, &header_refs)
+        }
+    }
 }
 
 /// Checks custom output fields against record keys when records are available.
@@ -165,6 +221,60 @@ fn available_record_fields<T: Serialize>(records: &[T]) -> io::Result<Vec<String
     }
     fields.sort();
     Ok(fields)
+}
+
+fn filter_record_values(records: &[Value], fields: &[String]) -> Vec<Value> {
+    records
+        .iter()
+        .map(|record| {
+            let mut value = record.clone();
+            if let Some(map) = value.as_object_mut() {
+                map.retain(|key, _| fields.iter().any(|field| field == key));
+            }
+            value
+        })
+        .collect()
+}
+
+fn validate_value_fields(records: &[Value], fields: &[String]) -> io::Result<()> {
+    let available = available_value_fields(records);
+    if available.is_empty() {
+        return Ok(());
+    }
+
+    let missing: Vec<&str> = fields
+        .iter()
+        .map(String::as_str)
+        .filter(|field| !available.iter().any(|available| available == field))
+        .collect();
+
+    if missing.is_empty() {
+        return Ok(());
+    }
+
+    Err(io::Error::new(
+        io::ErrorKind::InvalidInput,
+        format!(
+            "unknown output field(s): {}. Available fields: {}",
+            missing.join(", "),
+            available.join(", ")
+        ),
+    ))
+}
+
+fn available_value_fields(records: &[Value]) -> Vec<String> {
+    let mut fields = Vec::new();
+    for record in records {
+        if let Some(map) = record.as_object() {
+            for key in map.keys() {
+                if !fields.iter().any(|field| field == key) {
+                    fields.push(key.clone());
+                }
+            }
+        }
+    }
+    fields.sort();
+    fields
 }
 
 /// Prints `value` in the requested format.

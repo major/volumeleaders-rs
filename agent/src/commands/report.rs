@@ -11,8 +11,9 @@ use crate::cli::ReportArgs;
 use crate::common::auth::{handle_api_error, make_client};
 use crate::common::dates::resolve_date_range;
 use crate::common::tickers::parse_tickers;
+use crate::common::trade_transforms::{TradeRecordKind, transformed_trade_values};
 use crate::common::types::{OutputFormat, SummaryGroup};
-use crate::output::{finish_output, print_delimited, print_json, print_records};
+use crate::output::{finish_output, print_delimited, print_json, print_record_values};
 
 /// Default trade limit when none is specified on the command line.
 const DEFAULT_LIMIT: usize = 500;
@@ -474,7 +475,7 @@ pub struct ReportFlags {
     /// Comma-separated field list for output.
     #[arg(long, conflicts_with = "all_fields")]
     pub fields: Option<String>,
-    /// Return every field from the VolumeLeaders API response.
+    /// Return every field after semantic trade transforms.
     #[arg(long)]
     pub all_fields: bool,
 }
@@ -633,14 +634,18 @@ async fn execute_preset(args: &ReportArgs, pretty: bool) -> i32 {
         let summary = build_summary(&trades, group, &start, &end);
         print_json(&summary, pretty)
     } else {
-        print_records(
-            &trades,
-            flags.format,
-            pretty,
-            &TRADE_HEADERS,
-            flags.fields.as_deref(),
-            flags.all_fields,
-        )
+        transformed_trade_values(&trades, TradeRecordKind::Trade)
+            .map_err(|err| std::io::Error::new(std::io::ErrorKind::InvalidData, err))
+            .and_then(|values| {
+                print_record_values(
+                    &values,
+                    flags.format,
+                    pretty,
+                    &TRADE_HEADERS,
+                    flags.fields.as_deref(),
+                    flags.all_fields,
+                )
+            })
     };
 
     finish_output(result)
@@ -658,11 +663,11 @@ const TRADE_HEADERS: [&str; 15] = [
     "CumulativeDistribution",
     "TradeRank",
     "RelativeSize",
-    "DarkPool",
-    "Sweep",
+    "type",
+    "venue",
     "Sector",
     "Industry",
-    "TradeConditions",
+    "events",
 ];
 
 /// Entry for the preset list output.
