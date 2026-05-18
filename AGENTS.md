@@ -91,3 +91,4 @@ cargo doc --workspace --no-deps
 - After the first manual crates.io publish, configure crates.io Trusted Publishing for repo `major/volumeleaders-rs` and workflow file `cd.yml` so future release-plz publishes use GitHub OIDC.
 - If a code change modifies public CLI behavior, update README examples and the matching `agent/AGENTS.md` note.
 - If a code change modifies request fields, response models, auth, fixtures, or pagination, update README scope notes and `client/AGENTS.md`.
+- Trade-shaped output intentionally omits the upstream `PercentDailyVolume` value because live report payloads return it as `0.0` for current and prior trading days.

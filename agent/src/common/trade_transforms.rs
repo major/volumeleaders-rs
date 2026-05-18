@@ -31,7 +31,6 @@ const CURRENCY_FIELDS: &[&str] = &[
 
 const NON_CURRENCY_FLOAT_FIELDS: &[&str] = &[
     "DollarsMultiplier",
-    "PercentDailyVolume",
     "RelativeSize",
     "CumulativeDistribution",
     "RSIHour",

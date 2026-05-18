@@ -63,6 +63,8 @@ cargo run -p volumeleaders-agent -- completions bash
 
 The CLI reads browser cookies automatically. If auth fails, log in to VolumeLeaders in the browser and retry. Command output goes to stdout as compact JSON by default. Use `--pretty` for indented JSON. Errors and logs go to stderr.
 
+Trade-shaped outputs intentionally omit the upstream `PercentDailyVolume` field. Live report data returns that value as `0.0` for current and prior trading days, so returning it would suggest a meaningful percentage where the source data does not provide one.
+
 ## Client example
 
 ```bash
