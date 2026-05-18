@@ -1684,4 +1684,621 @@ mod tests {
             TriStateFilter::Disabled
         );
     }
+
+    #[test]
+    fn apply_preset_common_base_sets_default_filters() {
+        let preset = find_trade_preset("All Trades").expect("preset found");
+        let mut filters = Vec::new();
+
+        apply_preset_filters(&mut filters, preset);
+
+        assert!(has_filter(
+            &filters,
+            "Conditions",
+            "IgnoreOBD,IgnoreOBH,IgnoreOSD,IgnoreOSH"
+        ));
+        assert!(has_filter(&filters, "IncludeOffsetting", "-1"));
+        assert!(has_filter(&filters, "IncludePhantom", "-1"));
+        assert!(has_filter(&filters, "MaxDollars", "10000000000"));
+        assert!(has_filter(&filters, "MinVolume", "10000"));
+        assert!(has_filter(&filters, "RelativeSize", "0"));
+        assert!(has_filter(&filters, "TradeCount", "3"));
+    }
+
+    #[test]
+    fn apply_preset_large_base_sets_default_filters() {
+        let preset =
+            find_trade_preset("All Disproportionately Large Trades").expect("preset found");
+        let mut filters = Vec::new();
+
+        apply_preset_filters(&mut filters, preset);
+
+        assert!(has_filter(
+            &filters,
+            "Conditions",
+            "IgnoreOBD,IgnoreOBH,IgnoreOSD,IgnoreOSH"
+        ));
+        assert!(has_filter(&filters, "IncludeOffsetting", "-1"));
+        assert!(has_filter(&filters, "IncludePhantom", "-1"));
+        assert!(has_filter(&filters, "MaxDollars", "10000000000"));
+        assert!(has_filter(&filters, "MinVolume", "10000"));
+        assert!(has_filter(&filters, "TradeCount", "3"));
+        assert!(
+            !filters
+                .iter()
+                .any(|(filter_key, _)| filter_key == "RelativeSize")
+        );
+    }
+
+    #[test]
+    fn apply_preset_none_base_only_applies_preset_filters() {
+        let preset = find_trade_preset("Top-100 Rank; Dark Pool Sweeps").expect("preset found");
+        let mut filters = Vec::new();
+
+        apply_preset_filters(&mut filters, preset);
+
+        assert!(has_filter(&filters, "DarkPools", "1"));
+        assert!(has_filter(&filters, "Sweeps", "1"));
+        assert!(has_filter(&filters, "TradeRank", "100"));
+        assert!(has_filter(&filters, "RelativeSize", "0"));
+    }
+
+    #[test]
+    fn apply_preset_with_extra_filters_overrides_base() {
+        let preset = find_trade_preset("Top-10 Rank").expect("preset found");
+        let mut filters = Vec::new();
+
+        apply_preset_filters(&mut filters, preset);
+
+        assert!(has_filter(
+            &filters,
+            "Conditions",
+            "IgnoreOBD,IgnoreOBH,IgnoreOSD,IgnoreOSH"
+        ));
+        assert!(has_filter(&filters, "IncludeOffsetting", "-1"));
+        assert!(has_filter(&filters, "IncludePhantom", "-1"));
+        assert!(has_filter(&filters, "MaxDollars", "10000000000"));
+        assert!(has_filter(&filters, "MinVolume", "10000"));
+        assert!(has_filter(&filters, "RelativeSize", "0"));
+        assert!(has_filter(&filters, "TradeCount", "3"));
+        assert!(has_filter(&filters, "TradeRank", "10"));
+    }
+
+    #[test]
+    fn apply_preset_large_sector_adds_sector_filter() {
+        let preset = find_trade_preset("Bear Leverage").expect("preset found");
+        let mut filters = Vec::new();
+
+        apply_preset_filters(&mut filters, preset);
+
+        assert!(has_filter(
+            &filters,
+            "Conditions",
+            "IgnoreOBD,IgnoreOBH,IgnoreOSD,IgnoreOSH"
+        ));
+        assert!(has_filter(&filters, "IncludeOffsetting", "-1"));
+        assert!(has_filter(&filters, "IncludePhantom", "-1"));
+        assert!(has_filter(&filters, "MaxDollars", "10000000000"));
+        assert!(has_filter(&filters, "MinVolume", "10000"));
+        assert!(has_filter(&filters, "TradeCount", "3"));
+        assert!(has_filter(&filters, "SectorIndustry", "X Bear"));
+        assert!(has_filter(&filters, "VCD", "97.00"));
+    }
+
+    #[test]
+    fn classify_trade_sentiment_side_detects_bear_in_sector() {
+        let trade = trade(json!({
+            "Ticker": "ABC",
+            "Sector": "Bear 3x"
+        }));
+
+        assert!(matches!(
+            classify_trade_sentiment_side(&trade),
+            Some(SentimentSide::Bear)
+        ));
+    }
+
+    #[test]
+    fn classify_trade_sentiment_side_detects_bull_in_name() {
+        let trade = trade(json!({
+            "Ticker": "ABC",
+            "Name": "Bull 2x ETF"
+        }));
+
+        assert!(matches!(
+            classify_trade_sentiment_side(&trade),
+            Some(SentimentSide::Bull)
+        ));
+    }
+
+    #[test]
+    fn classify_trade_sentiment_side_detects_bear_in_industry() {
+        let trade = trade(json!({
+            "Ticker": "ABC",
+            "Industry": "Bear Leveraged"
+        }));
+
+        assert!(matches!(
+            classify_trade_sentiment_side(&trade),
+            Some(SentimentSide::Bear)
+        ));
+    }
+
+    #[test]
+    fn classify_trade_sentiment_side_falls_back_to_etf_ticker_bear() {
+        let trade = trade(json!({
+            "Ticker": "SQQQ",
+            "Sector": "Technology",
+            "Name": "Nasdaq ETF",
+            "Industry": "Exchange Traded Fund"
+        }));
+
+        assert!(matches!(
+            classify_trade_sentiment_side(&trade),
+            Some(SentimentSide::Bear)
+        ));
+    }
+
+    #[test]
+    fn classify_trade_sentiment_side_falls_back_to_etf_ticker_bull() {
+        let trade = trade(json!({
+            "Ticker": "TQQQ",
+            "Sector": "Technology",
+            "Name": "Nasdaq ETF",
+            "Industry": "Exchange Traded Fund"
+        }));
+
+        assert!(matches!(
+            classify_trade_sentiment_side(&trade),
+            Some(SentimentSide::Bull)
+        ));
+    }
+
+    #[test]
+    fn classify_trade_sentiment_side_returns_none_for_unknown() {
+        let trade = trade(json!({
+            "Ticker": "AAPL",
+            "Sector": "Technology"
+        }));
+
+        assert!(classify_trade_sentiment_side(&trade).is_none());
+    }
+
+    #[test]
+    fn sentiment_signal_extreme_bear() {
+        assert_eq!(
+            sentiment_signal(Some(0.1), 100.0, 1_000.0),
+            TradeSentimentSignal::ExtremeBear
+        );
+    }
+
+    #[test]
+    fn sentiment_signal_moderate_bear() {
+        assert_eq!(
+            sentiment_signal(Some(0.3), 300.0, 1_000.0),
+            TradeSentimentSignal::ModerateBear
+        );
+    }
+
+    #[test]
+    fn sentiment_signal_neutral_ratio() {
+        assert_eq!(
+            sentiment_signal(Some(1.0), 500.0, 500.0),
+            TradeSentimentSignal::Neutral
+        );
+    }
+
+    #[test]
+    fn sentiment_signal_moderate_bull() {
+        assert_eq!(
+            sentiment_signal(Some(3.0), 3_000.0, 1_000.0),
+            TradeSentimentSignal::ModerateBull
+        );
+    }
+
+    #[test]
+    fn sentiment_signal_extreme_bull_ratio() {
+        assert_eq!(
+            sentiment_signal(Some(6.0), 6_000.0, 1_000.0),
+            TradeSentimentSignal::ExtremeBull
+        );
+    }
+
+    #[test]
+    fn sentiment_signal_no_ratio_bull_only() {
+        assert_eq!(
+            sentiment_signal(None, 100.0, 0.0),
+            TradeSentimentSignal::ExtremeBull
+        );
+    }
+
+    #[test]
+    fn sentiment_signal_no_ratio_bear_only() {
+        assert_eq!(
+            sentiment_signal(None, 0.0, 100.0),
+            TradeSentimentSignal::ExtremeBear
+        );
+    }
+
+    #[test]
+    fn sentiment_signal_no_ratio_no_dollars() {
+        assert_eq!(
+            sentiment_signal(None, 0.0, 0.0),
+            TradeSentimentSignal::Neutral
+        );
+    }
+
+    #[test]
+    fn summarize_trade_sentiment_groups_by_day() {
+        let trades = vec![
+            trade(json!({
+                "Ticker": "TQQQ",
+                "Date": "/Date(1767312000000)/",
+                "Dollars": 1_000_000
+            })),
+            trade(json!({
+                "Ticker": "SOXL",
+                "Date": "/Date(1767312000000)/",
+                "Dollars": 2_000_000
+            })),
+            trade(json!({
+                "Ticker": "SQQQ",
+                "Date": "/Date(1767398400000)/",
+                "Dollars": 3_000_000
+            })),
+        ];
+
+        let summary = summarize_trade_sentiment(&trades, "2026-01-02", "2026-01-03");
+        let value = serde_json::to_value(summary).expect("sentiment summary serializes");
+
+        assert_eq!(value["daily"].as_array().unwrap().len(), 2);
+        assert_eq!(value["daily"][0]["date"], "2026-01-02");
+        assert_eq!(value["daily"][0]["bull"]["trades"], 2);
+        assert_eq!(
+            value["daily"][0]["bull"]["top_tickers"],
+            json!(["SOXL", "TQQQ"])
+        );
+        assert_eq!(value["daily"][1]["date"], "2026-01-03");
+        assert_eq!(value["daily"][1]["bear"]["trades"], 1);
+        assert_eq!(value["daily"][1]["bear"]["top_tickers"], json!(["SQQQ"]));
+        assert_eq!(value["totals"]["bull"]["trades"], 2);
+        assert_eq!(value["totals"]["bear"]["trades"], 1);
+        assert_eq!(
+            value["totals"]["bull"]["top_tickers"],
+            json!(["SOXL", "TQQQ"])
+        );
+        assert_eq!(value["totals"]["bear"]["top_tickers"], json!(["SQQQ"]));
+    }
+
+    #[test]
+    fn summarize_trade_sentiment_skips_unknown_tickers() {
+        let trades = vec![trade(json!({
+            "Ticker": "AAPL",
+            "Sector": "Technology",
+            "Date": "/Date(1767312000000)/",
+            "Dollars": 1_000_000
+        }))];
+
+        let summary = summarize_trade_sentiment(&trades, "2026-01-02", "2026-01-02");
+        let value = serde_json::to_value(summary).expect("sentiment summary serializes");
+
+        assert_eq!(value["daily"].as_array().unwrap().len(), 0);
+        assert_eq!(value["totals"]["bull"]["trades"], 0);
+        assert_eq!(value["totals"]["bear"]["trades"], 0);
+        assert_eq!(value["totals"]["bull"]["dollars"], 0.0);
+        assert_eq!(value["totals"]["bear"]["dollars"], 0.0);
+        assert_eq!(value["totals"]["bull"]["top_tickers"], json!([]));
+        assert_eq!(value["totals"]["bear"]["top_tickers"], json!([]));
+    }
+
+    fn empty_optional_dates() -> OptionalDateRangeArgs {
+        OptionalDateRangeArgs {
+            start_date: None,
+            end_date: None,
+            days: None,
+        }
+    }
+
+    fn empty_trade_ranges() -> TradeRangeArgs {
+        TradeRangeArgs {
+            min_volume: None,
+            max_volume: None,
+            min_price: None,
+            max_price: None,
+            min_dollars: None,
+            max_dollars: None,
+        }
+    }
+
+    fn empty_volume_dollar_ranges() -> VolumeDollarRangeArgs {
+        VolumeDollarRangeArgs {
+            min_volume: None,
+            max_volume: None,
+            min_dollars: None,
+            max_dollars: None,
+        }
+    }
+
+    fn default_fixed_page() -> FixedPageArgs {
+        FixedPageArgs {
+            start: 0,
+            order_col: 1,
+            order_dir: OrderDirection::Desc,
+        }
+    }
+
+    fn default_page() -> PageArgs {
+        PageArgs {
+            start: 0,
+            length: 100,
+            order_col: 1,
+            order_dir: OrderDirection::Desc,
+        }
+    }
+
+    fn empty_trade_filter_args() -> TradeFilterArgs {
+        TradeFilterArgs {
+            conditions: None,
+            vcd: None,
+            security_type: None,
+            relative_size: None,
+            dark_pools: None,
+            sweeps: None,
+            late_prints: None,
+            sig_prints: None,
+            even_shared: None,
+            trade_rank: None,
+            rank_snapshot: None,
+            market_cap: None,
+            premarket: None,
+            rth: None,
+            ah: None,
+            opening: None,
+            closing: None,
+            phantom: None,
+            offsetting: None,
+            sector: None,
+        }
+    }
+
+    fn default_clusters_args() -> ClustersArgs {
+        ClustersArgs {
+            tickers: vec!["AAPL".to_string()],
+            dates: empty_optional_dates(),
+            ranges: empty_trade_ranges(),
+            vcd: None,
+            security_type: None,
+            relative_size: None,
+            sector: None,
+            trade_cluster_rank: -1,
+            page: default_fixed_page(),
+            fields: None,
+            all_fields: false,
+        }
+    }
+
+    fn default_cluster_bombs_args() -> ClusterBombsArgs {
+        ClusterBombsArgs {
+            tickers: vec!["AAPL".to_string()],
+            dates: empty_optional_dates(),
+            ranges: empty_volume_dollar_ranges(),
+            vcd: None,
+            security_type: None,
+            relative_size: None,
+            sector: None,
+            trade_cluster_bomb_rank: -1,
+            page: default_fixed_page(),
+            fields: None,
+            all_fields: false,
+        }
+    }
+
+    fn default_level_touches_args() -> LevelTouchesArgs {
+        LevelTouchesArgs {
+            ticker: "AAPL".to_string(),
+            dates: empty_optional_dates(),
+            ranges: empty_trade_ranges(),
+            trade_level_rank: 5,
+            trade_level_count: DEFAULT_LEVEL_TOUCH_COUNT,
+            vcd: None,
+            relative_size: None,
+            page: default_page(),
+            fields: None,
+            all_fields: false,
+        }
+    }
+
+    #[test]
+    fn default_trade_filters_contains_expected_keys() {
+        let filters = default_trade_filters(1_000_000.0, 90);
+
+        assert!(has_filter(&filters, "MinVolume", "0"));
+        assert!(has_filter(
+            &filters,
+            "MaxVolume",
+            &DEFAULT_MAX_VOLUME.to_string()
+        ));
+        assert!(has_filter(&filters, "MinDollars", "1000000"));
+        assert!(has_filter(&filters, "VCD", "90"));
+        assert!(has_filter(&filters, "RelativeSize", "5"));
+        assert!(has_filter(&filters, "DarkPools", "-1"));
+        assert!(has_filter(&filters, "Sweeps", "-1"));
+        assert!(has_filter(&filters, "IncludePremarket", "1"));
+    }
+
+    #[test]
+    fn set_filter_replaces_existing() {
+        let mut filters = vec![("VCD".to_string(), "90".to_string())];
+
+        set_filter(&mut filters, "VCD", "95".to_string());
+
+        assert_eq!(filters.iter().filter(|(key, _)| key == "VCD").count(), 1);
+        assert!(has_filter(&filters, "VCD", "95"));
+    }
+
+    #[test]
+    fn set_filter_removes_on_empty_value() {
+        let mut filters = vec![("VCD".to_string(), "90".to_string())];
+
+        set_filter(&mut filters, "VCD", String::new());
+
+        assert!(!filters.iter().any(|(key, _)| key == "VCD"));
+    }
+
+    #[test]
+    fn set_ticker_filters_replaces_existing() {
+        let mut filters = vec![("Tickers".to_string(), "AAPL".to_string())];
+        let tickers = vec!["MSFT".to_string(), "GOOG".to_string()];
+
+        set_ticker_filters(&mut filters, &tickers, "Tickers");
+
+        assert!(!has_filter(&filters, "Tickers", "AAPL"));
+        assert!(has_filter(&filters, "Tickers", "MSFT"));
+        assert!(has_filter(&filters, "Tickers", "GOOG"));
+        assert_eq!(
+            filters.iter().filter(|(key, _)| key == "Tickers").count(),
+            2
+        );
+    }
+
+    #[test]
+    fn apply_trade_ranges_sets_volume_and_price_bounds() {
+        let mut filters = default_trade_filters(1_000_000.0, 90);
+        let ranges = TradeRangeArgs {
+            min_volume: Some(123),
+            max_volume: None,
+            min_price: Some(12.5),
+            max_price: None,
+            min_dollars: Some(2_500_000.0),
+            max_dollars: Some(50_000_000.0),
+        };
+
+        apply_trade_ranges(&mut filters, &ranges, 1_000_000.0);
+
+        assert!(has_filter(&filters, "MinVolume", "123"));
+        assert!(has_filter(
+            &filters,
+            "MaxVolume",
+            &DEFAULT_MAX_VOLUME.to_string()
+        ));
+        assert!(has_filter(&filters, "MinPrice", "12.5"));
+        assert!(has_filter(
+            &filters,
+            "MaxPrice",
+            &DEFAULT_MAX_PRICE.to_string()
+        ));
+        assert!(has_filter(&filters, "MinDollars", "2500000"));
+        assert!(has_filter(&filters, "MaxDollars", "50000000"));
+    }
+
+    #[test]
+    fn apply_trade_filter_args_sets_conditions_and_tri_states() {
+        let mut filters = default_trade_filters(1_000_000.0, 90);
+        let args = TradeFilterArgs {
+            conditions: Some("ISO".to_string()),
+            vcd: Some(95),
+            dark_pools: Some(TriStateFilter::Enabled),
+            sweeps: Some(TriStateFilter::Disabled),
+            ..empty_trade_filter_args()
+        };
+
+        apply_trade_filter_args(&mut filters, &args);
+
+        assert!(has_filter(&filters, "Conditions", "ISO"));
+        assert!(has_filter(&filters, "VCD", "95"));
+        assert!(has_filter(&filters, "DarkPools", "1"));
+        assert!(has_filter(&filters, "Sweeps", "0"));
+    }
+
+    #[test]
+    fn cluster_filters_builds_correct_filter_set() {
+        let args = default_clusters_args();
+
+        let filters = cluster_filters(&args, "2026-01-01", "2026-01-02");
+
+        assert!(has_filter(&filters, "Tickers", "AAPL"));
+        assert!(has_filter(&filters, "StartDate", "2026-01-01"));
+        assert!(has_filter(&filters, "EndDate", "2026-01-02"));
+        assert!(has_filter(&filters, "VCD", "0"));
+        assert!(has_filter(&filters, "SecurityTypeKey", "-1"));
+        assert!(has_filter(&filters, "RelativeSize", "5"));
+        assert!(has_filter(&filters, "TradeClusterRank", "-1"));
+    }
+
+    #[test]
+    fn cluster_bomb_filters_builds_correct_filter_set() {
+        let args = default_cluster_bombs_args();
+
+        let filters = cluster_bomb_filters(&args, "2026-01-01", "2026-01-02");
+
+        assert!(has_filter(&filters, "TradeClusterBombRank", "-1"));
+        assert!(!filters.iter().any(|(key, _)| key == "MinPrice"));
+        assert!(!filters.iter().any(|(key, _)| key == "MaxPrice"));
+    }
+
+    #[test]
+    fn level_touch_filters_includes_level_count() {
+        let args = default_level_touches_args();
+
+        let filters = level_touch_filters(&args, "AAPL", "2026-01-01", "2026-01-02");
+
+        assert!(has_filter(&filters, "TradeLevelRank", "5"));
+        assert!(has_filter(
+            &filters,
+            "Levels",
+            &DEFAULT_LEVEL_TOUCH_COUNT.to_string()
+        ));
+    }
+
+    #[test]
+    fn dashboard_trades_request_removes_security_type_key() {
+        let args = dashboard_args();
+
+        let request = dashboard_trades_request(&args, "AAPL", "2026-01-01", "2026-01-02");
+
+        assert!(has_filter(request.extra_values(), "Tickers", "AAPL"));
+        assert!(
+            !request
+                .extra_values()
+                .iter()
+                .any(|(key, _)| key == "SecurityTypeKey")
+        );
+    }
+
+    #[test]
+    fn dashboard_clusters_request_sets_cluster_filters() {
+        let args = dashboard_args();
+
+        let request = dashboard_clusters_request(&args, "AAPL", "2026-01-01", "2026-01-02");
+
+        assert!(has_filter(request.extra_values(), "Tickers", "AAPL"));
+        assert!(has_filter(request.extra_values(), "TradeClusterRank", "-1"));
+    }
+
+    #[test]
+    fn dashboard_levels_request_uses_negative_one_length() {
+        let request = dashboard_levels_request("AAPL", "2026-01-01", "2026-01-02", 10);
+
+        assert!(request.encode().contains("length=-1"));
+        assert!(has_filter(request.extra_values(), "Levels", "10"));
+    }
+
+    #[test]
+    fn dashboard_bombs_request_adds_bomb_rank_filter() {
+        let args = dashboard_args();
+
+        let request = dashboard_bombs_request(&args, "AAPL", "2026-01-01", "2026-01-02");
+
+        assert!(has_filter(
+            request.extra_values(),
+            "TradeClusterBombRank",
+            "-1"
+        ));
+        assert!(
+            !request
+                .extra_values()
+                .iter()
+                .any(|(key, _)| key == "TradeClusterRank")
+        );
+    }
 }
