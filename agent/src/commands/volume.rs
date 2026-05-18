@@ -7,9 +7,9 @@ use volumeleaders_client::VolumeRequest;
 use crate::cli::VolumeArgs;
 use crate::common::auth::{handle_api_error, make_client};
 use crate::common::tickers::parse_tickers;
-use crate::common::trade_transforms::{TradeRecordKind, transformed_trade_values};
+use crate::common::trade_transforms::TradeRecordKind;
 use crate::common::types::OrderDirection;
-use crate::output::{finish_output, print_record_values};
+use crate::output::{finish_output, print_transformed_record_values};
 
 const VOLUME_HEADERS: [&str; 20] = [
     "Date",
@@ -169,13 +169,14 @@ fn output_records<T: serde::Serialize>(
     fields: Option<&str>,
     all_fields: bool,
 ) -> i32 {
-    finish_output(
-        transformed_trade_values(records, TradeRecordKind::Trade)
-            .map_err(|err| std::io::Error::new(std::io::ErrorKind::InvalidData, err))
-            .and_then(|values| {
-                print_record_values(&values, pretty, &VOLUME_HEADERS, fields, all_fields)
-            }),
-    )
+    finish_output(print_transformed_record_values(
+        records,
+        TradeRecordKind::Trade,
+        pretty,
+        &VOLUME_HEADERS,
+        fields,
+        all_fields,
+    ))
 }
 
 #[cfg(test)]
