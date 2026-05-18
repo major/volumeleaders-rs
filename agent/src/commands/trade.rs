@@ -16,11 +16,9 @@ use crate::cli::TradeArgs;
 use crate::common::auth::{handle_api_error, make_client};
 use crate::common::dates::resolve_date_range;
 use crate::common::tickers::{parse_single_ticker, parse_tickers};
-use crate::common::trade_transforms::{
-    TradeRecordKind, transform_trade_dashboard, transformed_trade_values,
-};
+use crate::common::trade_transforms::{TradeRecordKind, transform_trade_dashboard};
 use crate::common::types::{OrderDirection, SummaryGroup, TriStateFilter};
-use crate::output::{finish_output, print_json, print_record_values};
+use crate::output::{finish_output, print_json, print_transformed_record_values};
 
 const DEFAULT_TRADE_LIMIT: usize = 1_000;
 const TRADE_LIST_TICKER_LOOKBACK_DAYS: u32 = 90;
@@ -912,9 +910,7 @@ fn print_trade_records<T: Serialize>(
     fields: Option<&str>,
     all_fields: bool,
 ) -> std::io::Result<()> {
-    let values = transformed_trade_values(records, kind)
-        .map_err(|err| std::io::Error::new(std::io::ErrorKind::InvalidData, err))?;
-    print_record_values(&values, pretty, headers, fields, all_fields)
+    print_transformed_record_values(records, kind, pretty, headers, fields, all_fields)
 }
 
 fn parse_tri_state_filter(value: &str) -> Result<TriStateFilter, String> {
@@ -2464,8 +2460,11 @@ mod tests {
     }
 
     fn render_cluster_json(fields: Option<&str>, all_fields: bool) -> serde_json::Value {
-        let values = transformed_trade_values(&[cluster_fixture()], TradeRecordKind::Cluster)
-            .expect("cluster serializes");
+        let values = crate::common::trade_transforms::transformed_trade_values(
+            &[cluster_fixture()],
+            TradeRecordKind::Cluster,
+        )
+        .expect("cluster serializes");
         let mut output = Vec::new();
         write_record_values(
             &mut output,
@@ -2813,8 +2812,11 @@ mod tests {
 
     #[test]
     fn cluster_alert_output_uses_cluster_transform_headers() {
-        let values = transformed_trade_values(&[cluster_alert_fixture()], TradeRecordKind::Cluster)
-            .expect("cluster alert serializes");
+        let values = crate::common::trade_transforms::transformed_trade_values(
+            &[cluster_alert_fixture()],
+            TradeRecordKind::Cluster,
+        )
+        .expect("cluster alert serializes");
         let mut output = Vec::new();
         write_record_values(&mut output, &values, false, &CLUSTER_HEADERS, None, false)
             .expect("cluster alert output renders");

@@ -3,6 +3,8 @@ use std::io::{self, Write};
 use serde::Serialize;
 use serde_json::Value;
 
+use crate::common::trade_transforms::{TradeRecordKind, transformed_trade_values};
+
 /// Writes `value` as JSON to stdout, newline-terminated.
 ///
 /// Uses compact format when `pretty` is false, 2-space-indented when true.
@@ -67,6 +69,22 @@ pub fn print_record_values(
         fields,
         all_fields,
     )
+}
+
+/// Transforms trade-shaped records and outputs them with field filtering.
+pub fn print_transformed_record_values<T: Serialize>(
+    records: &[T],
+    kind: TradeRecordKind,
+    pretty: bool,
+    compact_headers: &[&str],
+    fields: Option<&str>,
+    all_fields: bool,
+) -> io::Result<()> {
+    transformed_trade_values(records, kind)
+        .map_err(|err| io::Error::new(io::ErrorKind::InvalidData, err))
+        .and_then(|values| {
+            print_record_values(&values, pretty, compact_headers, fields, all_fields)
+        })
 }
 
 /// Writes pre-serialized record values to `writer`.
