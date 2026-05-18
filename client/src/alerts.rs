@@ -5,8 +5,7 @@ use tracing::instrument;
 
 use crate::client::{Client, multipart_form_from_fields, push_bool_field};
 use crate::datatables::{
-    DataTablesColumn, DataTablesRequest, DataTablesResponse, fetch_limit,
-    impl_datatables_request_methods,
+    DataTablesColumn, DataTablesRequest, DataTablesResponse, impl_datatables_request_methods,
 };
 use crate::error::Result;
 use crate::models::{AlertConfig, TradeAlert, TradeClusterAlert};
@@ -264,8 +263,6 @@ impl SaveAlertConfigRequest {
     }
 }
 
-
-
 /// JSON payload for deleting an alert configuration.
 #[derive(Clone, Debug, Eq, PartialEq, Serialize)]
 #[serde(rename_all = "PascalCase")]
@@ -314,8 +311,7 @@ impl Client {
         request: &AlertConfigsRequest,
         limit: usize,
     ) -> Result<Vec<AlertConfig>> {
-        fetch_limit(
-            self,
+        self.fetch_limit(
             ALERT_CONFIGS_GET_ALERT_CONFIGS_PATH,
             request.0.clone(),
             limit,
@@ -340,13 +336,8 @@ impl Client {
         request: &TradeAlertsRequest,
         limit: usize,
     ) -> Result<Vec<TradeAlert>> {
-        fetch_limit(
-            self,
-            TRADE_ALERTS_GET_TRADE_ALERTS_PATH,
-            request.0.clone(),
-            limit,
-        )
-        .await
+        self.fetch_limit(TRADE_ALERTS_GET_TRADE_ALERTS_PATH, request.0.clone(), limit)
+            .await
     }
 
     /// Post a DataTables request to `/TradeClusterAlerts/GetTradeClusterAlerts`.
@@ -356,10 +347,10 @@ impl Client {
         request: &TradeClusterAlertsRequest,
     ) -> Result<DataTablesResponse<TradeClusterAlert>> {
         self.post_datatables(
-                TRADE_CLUSTER_ALERTS_GET_TRADE_CLUSTER_ALERTS_PATH,
-                request.to_pairs(),
-            )
-            .await
+            TRADE_CLUSTER_ALERTS_GET_TRADE_CLUSTER_ALERTS_PATH,
+            request.to_pairs(),
+        )
+        .await
     }
 
     /// Fetch up to `limit` trade cluster alerts by paginating the endpoint.
@@ -369,8 +360,7 @@ impl Client {
         request: &TradeClusterAlertsRequest,
         limit: usize,
     ) -> Result<Vec<TradeClusterAlert>> {
-        fetch_limit(
-            self,
+        self.fetch_limit(
             TRADE_CLUSTER_ALERTS_GET_TRADE_CLUSTER_ALERTS_PATH,
             request.0.clone(),
             limit,
@@ -397,8 +387,6 @@ impl Client {
             .map(|_| ())
     }
 }
-
-
 
 #[cfg(test)]
 mod tests {

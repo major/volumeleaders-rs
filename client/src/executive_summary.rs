@@ -10,8 +10,7 @@ use tracing::instrument;
 
 use crate::client::Client;
 use crate::datatables::{
-    DataTablesColumn, DataTablesRequest, DataTablesResponse, fetch_limit,
-    impl_datatables_request_methods,
+    DataTablesColumn, DataTablesRequest, DataTablesResponse, impl_datatables_request_methods,
 };
 use crate::error::Result;
 use crate::models::{ExhaustionScore, Trade, TradeCluster};
@@ -195,10 +194,10 @@ impl Client {
         request: &WelcomeTradesRequest,
     ) -> Result<DataTablesResponse<Trade>> {
         self.post_datatables(
-                EXECUTIVE_SUMMARY_GET_WELCOME_TRADES_PATH,
-                request.to_pairs(),
-            )
-            .await
+            EXECUTIVE_SUMMARY_GET_WELCOME_TRADES_PATH,
+            request.to_pairs(),
+        )
+        .await
     }
 
     /// Fetch up to `limit` welcome trades by paginating
@@ -209,8 +208,7 @@ impl Client {
         request: &WelcomeTradesRequest,
         limit: usize,
     ) -> Result<Vec<Trade>> {
-        fetch_limit(
-            self,
+        self.fetch_limit(
             EXECUTIVE_SUMMARY_GET_WELCOME_TRADES_PATH,
             request.0.clone(),
             limit,
@@ -227,10 +225,10 @@ impl Client {
         request: &WelcomeTradeClustersRequest,
     ) -> Result<DataTablesResponse<TradeCluster>> {
         self.post_datatables(
-                EXECUTIVE_SUMMARY_GET_WELCOME_TRADE_CLUSTERS_PATH,
-                request.to_pairs(),
-            )
-            .await
+            EXECUTIVE_SUMMARY_GET_WELCOME_TRADE_CLUSTERS_PATH,
+            request.to_pairs(),
+        )
+        .await
     }
 
     /// Fetch up to `limit` welcome trade clusters by paginating
@@ -241,8 +239,7 @@ impl Client {
         request: &WelcomeTradeClustersRequest,
         limit: usize,
     ) -> Result<Vec<TradeCluster>> {
-        fetch_limit(
-            self,
+        self.fetch_limit(
             EXECUTIVE_SUMMARY_GET_WELCOME_TRADE_CLUSTERS_PATH,
             request.0.clone(),
             limit,

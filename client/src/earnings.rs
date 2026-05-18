@@ -4,8 +4,7 @@ use tracing::instrument;
 
 use crate::client::Client;
 use crate::datatables::{
-    DataTablesColumn, DataTablesRequest, DataTablesResponse, fetch_limit,
-    impl_datatables_request_methods,
+    DataTablesColumn, DataTablesRequest, DataTablesResponse, impl_datatables_request_methods,
 };
 use crate::error::Result;
 use crate::models::Earning;
@@ -93,7 +92,8 @@ impl Client {
         request: &EarningsRequest,
         limit: usize,
     ) -> Result<Vec<Earning>> {
-        fetch_limit(self, EARNINGS_GET_EARNINGS_PATH, request.0.clone(), limit).await
+        self.fetch_limit(EARNINGS_GET_EARNINGS_PATH, request.0.clone(), limit)
+            .await
     }
 }
 

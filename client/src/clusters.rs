@@ -5,8 +5,7 @@ use tracing::instrument;
 
 use crate::client::Client;
 use crate::datatables::{
-    DataTablesColumn, DataTablesRequest, DataTablesResponse, fetch_limit,
-    impl_datatables_request_methods,
+    DataTablesColumn, DataTablesRequest, DataTablesResponse, impl_datatables_request_methods,
 };
 use crate::error::Result;
 use crate::models::{TradeCluster, TradeClusterBomb};
@@ -170,7 +169,8 @@ impl Client {
         request: &TradeClustersRequest,
         limit: usize,
     ) -> Result<Vec<TradeCluster>> {
-        fetch_limit(self, TRADE_CLUSTERS_PATH, request.0.clone(), limit).await
+        self.fetch_limit(TRADE_CLUSTERS_PATH, request.0.clone(), limit)
+            .await
     }
 
     /// Post a DataTables request to
@@ -193,7 +193,8 @@ impl Client {
         request: &TradeClusterBombsRequest,
         limit: usize,
     ) -> Result<Vec<TradeClusterBomb>> {
-        fetch_limit(self, TRADE_CLUSTER_BOMBS_PATH, request.0.clone(), limit).await
+        self.fetch_limit(TRADE_CLUSTER_BOMBS_PATH, request.0.clone(), limit)
+            .await
     }
 }
 

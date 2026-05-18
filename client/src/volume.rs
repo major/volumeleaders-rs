@@ -4,8 +4,7 @@ use tracing::instrument;
 
 use crate::client::Client;
 use crate::datatables::{
-    DataTablesColumn, DataTablesRequest, DataTablesResponse, fetch_limit,
-    impl_datatables_request_methods,
+    DataTablesColumn, DataTablesRequest, DataTablesResponse, impl_datatables_request_methods,
 };
 use crate::error::Result;
 use crate::models::Trade;
@@ -170,7 +169,8 @@ impl Client {
         request: &VolumeRequest,
         limit: usize,
     ) -> Result<Vec<Trade>> {
-        fetch_limit(self, INSTITUTIONAL_VOLUME_PATH, request.0.clone(), limit).await
+        self.fetch_limit(INSTITUTIONAL_VOLUME_PATH, request.0.clone(), limit)
+            .await
     }
 
     /// Post a DataTables request to
@@ -193,7 +193,8 @@ impl Client {
         request: &VolumeRequest,
         limit: usize,
     ) -> Result<Vec<Trade>> {
-        fetch_limit(self, AH_INSTITUTIONAL_VOLUME_PATH, request.0.clone(), limit).await
+        self.fetch_limit(AH_INSTITUTIONAL_VOLUME_PATH, request.0.clone(), limit)
+            .await
     }
 
     /// Post a DataTables request to `/TotalVolume/GetTotalVolume` and return
@@ -214,7 +215,8 @@ impl Client {
         request: &VolumeRequest,
         limit: usize,
     ) -> Result<Vec<Trade>> {
-        fetch_limit(self, TOTAL_VOLUME_PATH, request.0.clone(), limit).await
+        self.fetch_limit(TOTAL_VOLUME_PATH, request.0.clone(), limit)
+            .await
     }
 }
 

@@ -6,8 +6,7 @@ use tracing::instrument;
 
 use crate::client::Client;
 use crate::datatables::{
-    DataTablesColumn, DataTablesRequest, DataTablesResponse, fetch_limit,
-    impl_datatables_request_methods,
+    DataTablesColumn, DataTablesRequest, DataTablesResponse, impl_datatables_request_methods,
 };
 use crate::error::Result;
 use crate::models::TradeLevel;
@@ -174,7 +173,8 @@ impl Client {
         request: &TradeLevelsRequest,
         limit: usize,
     ) -> Result<Vec<TradeLevel>> {
-        fetch_limit(self, CHART_GET_TRADE_LEVELS_PATH, request.0.clone(), limit).await
+        self.fetch_limit(CHART_GET_TRADE_LEVELS_PATH, request.0.clone(), limit)
+            .await
     }
 
     /// Post a DataTables request to `/Chart0/GetTradeLevels` and return the
@@ -196,7 +196,8 @@ impl Client {
         request: &TradeLevelsRequest,
         limit: usize,
     ) -> Result<Vec<TradeLevel>> {
-        fetch_limit(self, CHART0_GET_TRADE_LEVELS_PATH, request.0.clone(), limit).await
+        self.fetch_limit(CHART0_GET_TRADE_LEVELS_PATH, request.0.clone(), limit)
+            .await
     }
 
     /// Post a DataTables request to `/TradeLevels/GetTradeLevels` and return
@@ -218,13 +219,8 @@ impl Client {
         request: &TradeLevelsRequest,
         limit: usize,
     ) -> Result<Vec<TradeLevel>> {
-        fetch_limit(
-            self,
-            TRADE_LEVELS_GET_TRADE_LEVELS_PATH,
-            request.0.clone(),
-            limit,
-        )
-        .await
+        self.fetch_limit(TRADE_LEVELS_GET_TRADE_LEVELS_PATH, request.0.clone(), limit)
+            .await
     }
 
     /// Post a DataTables request to
@@ -247,7 +243,8 @@ impl Client {
         request: &TradeLevelTouchesRequest,
         limit: usize,
     ) -> Result<Vec<TradeLevel>> {
-        fetch_limit(self, TRADE_LEVEL_TOUCHES_PATH, request.0.clone(), limit).await
+        self.fetch_limit(TRADE_LEVEL_TOUCHES_PATH, request.0.clone(), limit)
+            .await
     }
 }
 

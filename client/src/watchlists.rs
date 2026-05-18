@@ -5,8 +5,7 @@ use tracing::instrument;
 
 use crate::client::{Client, multipart_form_from_fields, push_bool_field};
 use crate::datatables::{
-    DataTablesColumn, DataTablesRequest, DataTablesResponse, fetch_limit,
-    impl_datatables_request_methods,
+    DataTablesColumn, DataTablesRequest, DataTablesResponse, impl_datatables_request_methods,
 };
 use crate::error::Result;
 use crate::models::{WatchListConfig, WatchListTicker};
@@ -263,8 +262,6 @@ impl SaveWatchListConfigRequest {
     }
 }
 
-
-
 /// Form payload for adding a ticker to an existing watchlist.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct AddTickerToWatchListRequest {
@@ -339,8 +336,7 @@ impl Client {
         request: &WatchListConfigsRequest,
         limit: usize,
     ) -> Result<Vec<WatchListConfig>> {
-        fetch_limit(
-            self,
+        self.fetch_limit(
             WATCH_LIST_CONFIGS_GET_WATCH_LISTS_PATH,
             request.0.clone(),
             limit,
@@ -365,8 +361,7 @@ impl Client {
         request: &WatchListTickersRequest,
         limit: usize,
     ) -> Result<Vec<WatchListTicker>> {
-        fetch_limit(
-            self,
+        self.fetch_limit(
             WATCH_LISTS_GET_WATCH_LIST_TICKERS_PATH,
             request.0.clone(),
             limit,
@@ -414,8 +409,6 @@ impl Client {
             .map(|_| ())
     }
 }
-
-
 
 #[cfg(test)]
 mod tests {
