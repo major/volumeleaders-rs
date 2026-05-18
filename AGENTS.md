@@ -82,7 +82,7 @@ cargo doc --workspace --no-deps
 ## NOTES
 
 - No dedicated build or benchmark target is codified. Use Cargo defaults only when needed, and document any new command if it becomes canonical.
-- Coverage target requires `cargo llvm-cov` and enforces 90 percent line coverage.
+- Coverage target requires `cargo llvm-cov` and enforces 90 percent line coverage locally (`make coverage`) and in CI (`ci.yml` coverage job).
 - Audit is a separate workflow and also runs on manifest changes plus a daily schedule.
 - `cd.yml` runs release-plz with `RELEASE_PLZ_TOKEN`; the token is needed so release PR branch updates and release tags trigger normal workflows.
 - `release-plz.toml` publishes crates.io packages and creates git tags, but GitHub Releases are disabled because cargo-dist owns artifact releases.
