@@ -74,6 +74,27 @@ pub fn print_record_values(
     fields: Option<&str>,
     all_fields: bool,
 ) -> io::Result<()> {
+    write_record_values(
+        io::stdout().lock(),
+        records,
+        format,
+        pretty,
+        compact_headers,
+        fields,
+        all_fields,
+    )
+}
+
+/// Writes pre-serialized record values to `writer`.
+pub(crate) fn write_record_values<W: Write>(
+    mut writer: W,
+    records: &[Value],
+    format: OutputFormat,
+    pretty: bool,
+    compact_headers: &[&str],
+    fields: Option<&str>,
+    all_fields: bool,
+) -> io::Result<()> {
     let custom_fields = selected_fields(fields);
     let raw_fields_requested =
         fields.is_some_and(|fields| fields.trim().eq_ignore_ascii_case("all"));
@@ -83,7 +104,9 @@ pub fn print_record_values(
     }
 
     match format {
-        OutputFormat::Json if all_fields || raw_fields_requested => print_json(&records, pretty),
+        OutputFormat::Json if all_fields || raw_fields_requested => {
+            write_json(&mut writer, &records, pretty)
+        }
         OutputFormat::Json => {
             let default_fields: Vec<String> = compact_headers
                 .iter()
@@ -93,7 +116,7 @@ pub fn print_record_values(
                 .as_deref()
                 .unwrap_or(default_fields.as_slice());
             let values = filter_record_values(records, selected);
-            print_json(&values, pretty)
+            write_json(&mut writer, &values, pretty)
         }
         OutputFormat::Csv | OutputFormat::Tsv => {
             let headers = if all_fields || raw_fields_requested {
@@ -115,7 +138,7 @@ pub fn print_record_values(
                 })
             };
             let header_refs: Vec<&str> = headers.iter().map(String::as_str).collect();
-            print_delimited(records, format, &header_refs)
+            write_delimited(writer, records, format, &header_refs)
         }
     }
 }
