@@ -324,7 +324,7 @@ async fn read_limited_body(mut response: reqwest::Response, limit: usize) -> Res
     Ok(String::from_utf8_lossy(&body).into_owned())
 }
 
-fn encode_form_pairs(pairs: &[(String, String)]) -> String {
+pub(crate) fn encode_form_pairs(pairs: &[(String, String)]) -> String {
     pairs
         .iter()
         .map(|(key, value)| format!("{key}={}", encode_form_value(value)))
@@ -332,7 +332,7 @@ fn encode_form_pairs(pairs: &[(String, String)]) -> String {
         .join("&")
 }
 
-fn encode_form_value(value: &str) -> String {
+pub(crate) fn encode_form_value(value: &str) -> String {
     let mut encoded = String::new();
     for byte in value.bytes() {
         match byte {
@@ -350,7 +350,7 @@ fn encode_form_value(value: &str) -> String {
     encoded
 }
 
-fn hex_digit(value: u8) -> char {
+pub(crate) fn hex_digit(value: u8) -> char {
     match value {
         0..=9 => char::from(b'0' + value),
         10..=15 => char::from(b'A' + value - 10),

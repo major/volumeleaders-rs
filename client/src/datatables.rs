@@ -8,7 +8,7 @@
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Deserializer, Serialize};
 
-use crate::client::Client;
+use crate::client::{Client, encode_form_value};
 use crate::error::Result;
 
 const DEFAULT_DATATABLES_LENGTH: i32 = 25;
@@ -168,7 +168,7 @@ impl DataTablesRequest {
     pub fn encode(&self) -> String {
         raw_pairs(self)
             .into_iter()
-            .map(|(k, v)| format!("{k}={}", encode_value(&v)))
+            .map(|(k, v)| format!("{k}={}", encode_form_value(&v)))
             .collect::<Vec<_>>()
             .join("&")
     }
@@ -352,31 +352,7 @@ fn bool_value(value: bool) -> &'static str {
     if value { "true" } else { "false" }
 }
 
-fn encode_value(value: &str) -> String {
-    let mut encoded = String::new();
-    for byte in value.bytes() {
-        match byte {
-            b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'-' | b'_' | b'.' | b'~' => {
-                encoded.push(char::from(byte));
-            }
-            b' ' => encoded.push('+'),
-            _ => {
-                encoded.push('%');
-                encoded.push(hex_digit(byte >> 4));
-                encoded.push(hex_digit(byte & 0x0f));
-            }
-        }
-    }
-    encoded
-}
 
-fn hex_digit(value: u8) -> char {
-    match value {
-        0..=9 => char::from(b'0' + value),
-        10..=15 => char::from(b'A' + value - 10),
-        _ => unreachable!("nibble values are always in 0..=15"),
-    }
-}
 
 /// Paginate a DataTables endpoint, collecting up to `limit` records.
 ///
