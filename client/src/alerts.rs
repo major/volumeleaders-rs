@@ -135,6 +135,7 @@ pub struct SaveAlertConfigRequest {
 }
 
 /// Typed values for creating or editing an alert configuration.
+#[allow(missing_docs)]
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct SaveAlertConfigFields {
     pub alert_config_key: i64,
@@ -264,9 +265,11 @@ impl SaveAlertConfigRequest {
 }
 
 /// JSON payload for deleting an alert configuration.
+#[allow(missing_docs)]
 #[derive(Clone, Debug, Eq, PartialEq, Serialize)]
 #[serde(rename_all = "PascalCase")]
 pub struct DeleteAlertConfigRequest {
+    /// Primary key of the alert configuration to delete.
     pub alert_config_key: i64,
 }
 

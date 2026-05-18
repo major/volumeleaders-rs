@@ -3,9 +3,15 @@
 //! This project is unofficial and is not affiliated with, endorsed by, or
 //! sponsored by [volumeleaders.com](https://www.volumeleaders.com).
 
+#![deny(missing_docs)]
+
+/// Clap command tree and top-level argument structs.
 pub mod cli;
+/// Command handlers for each CLI subcommand group.
 pub mod commands;
+/// Shared utilities: auth, dates, formatting, tickers, types.
 pub mod common;
+/// JSON output formatting and field selection.
 pub mod output;
 
 use clap::Parser;
