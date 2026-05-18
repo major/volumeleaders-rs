@@ -1,5 +1,6 @@
 //! VolumeLeaders trade level model.
 
+use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
 
 use super::types::AspNetDate;
@@ -29,8 +30,8 @@ pub struct TradeLevel {
     pub dates: Option<String>,
 
     // -- Price / size --
-    pub price: Option<f64>,
-    pub dollars: Option<f64>,
+    pub price: Option<Decimal>,
+    pub dollars: Option<Decimal>,
     pub volume: Option<i64>,
     pub trades: Option<i64>,
     pub relative_size: Option<f64>,

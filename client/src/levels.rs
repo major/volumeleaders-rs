@@ -426,7 +426,10 @@ mod tests {
         assert_eq!(response.draw, 1);
         assert_eq!(response.data.len(), 2);
         assert_eq!(response.data[0].ticker.as_deref(), Some("AMD"));
-        assert_eq!(response.data[0].price, Some(185.30));
+        assert_eq!(
+            response.data[0].price,
+            Some(rust_decimal::Decimal::try_from(185.30).unwrap())
+        );
         mock.assert_async().await;
     }
 

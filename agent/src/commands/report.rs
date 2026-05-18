@@ -3,6 +3,7 @@
 use std::collections::HashMap;
 
 use clap::{Args, Subcommand};
+use rust_decimal::prelude::ToPrimitive;
 use serde::Serialize;
 use tracing::instrument;
 
@@ -729,13 +730,19 @@ fn build_summary(
         groups.entry(key).or_default().push(trade);
     }
 
-    let total_dollars: f64 = trades.iter().filter_map(|t| t.dollars).sum();
+    let total_dollars: f64 = trades
+        .iter()
+        .filter_map(|t| t.dollars.and_then(|d| d.to_f64()))
+        .sum();
 
     let group_stats: HashMap<String, GroupStats> = groups
         .into_iter()
         .map(|(key, group_trades)| {
             let count = group_trades.len();
-            let dollars: f64 = group_trades.iter().filter_map(|t| t.dollars).sum();
+            let dollars: f64 = group_trades
+                .iter()
+                .filter_map(|t| t.dollars.and_then(|d| d.to_f64()))
+                .sum();
 
             let multipliers: Vec<f64> = group_trades
                 .iter()
@@ -950,7 +957,7 @@ mod tests {
                     .unwrap()
                     .with_timezone(&chrono::Utc),
             ))),
-            dollars: Some(dollars),
+            dollars: rust_decimal::Decimal::try_from(dollars).ok(),
             dollars_multiplier: Some(multiplier),
             dark_pool: Some(FlexBool(Some(dark_pool))),
             sweep: Some(FlexBool(Some(sweep))),
