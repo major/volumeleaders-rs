@@ -28,6 +28,7 @@
 - Default output is compact JSON. `--json-table` emits array-of-arrays with a header row for token-efficient consumption. Pipe through `jq` for pretty-printing.
 - Errors and logs go to stderr. Data goes to stdout.
 - Auth failure text tells users to log in at `https://www.volumeleaders.com` and retry.
+- `trade list` defaults intentionally mirror the browser `/Trades/GetTrades` request captured from `trades.har`: `StartDate=Today`, `EndDate=Today`, `length=1000`, empty DataTables search fields, `FullTimeString24` descending order, `MinVolume=10000`, `MaxVolume=2000000000`, `MinPrice=0`, `MaxPrice=100000`, `MinDollars=500000`, `MaxDollars=100000000000`, `Conditions=0`, `VCD=0`, `SecurityTypeKey=-1`, `RelativeSize=0`, tri-state flags set to `-1`, `TradeRank=100`, `TradeRankSnapshot=-1`, `MarketCap=0`, and all session toggles enabled. Keep tests and README in sync if these browser defaults change.
 - Trade-shaped output intentionally omits the upstream `PercentDailyVolume` value because live report payloads return it as `0.0` for current and prior trading days.
 - Compact defaults also omit `TradeConditions`, `RelativeSize`, `Name`, and `Volume` on trade-shaped rows. Keep `RelativeSize` available via `--fields` or `--all-fields`, and keep level-centric RelativeSize behavior intact.
 

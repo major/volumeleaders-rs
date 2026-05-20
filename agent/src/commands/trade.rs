@@ -28,10 +28,11 @@ use self::dashboard::{
     TradeDashboard, convert_dashboard_sections_to_table, dashboard_output_value,
 };
 use self::filters::{
-    apply_trade_filter_args, apply_trade_ranges, cluster_bomb_filters, cluster_filters,
-    dashboard_bombs_request, dashboard_clusters_request, dashboard_levels_request,
-    dashboard_trades_request, default_trade_filters, level_touch_filters, parse_tri_state_filter,
-    set_filter, set_ticker_filters, validate_trade_level_count,
+    apply_trade_filter_args, apply_trade_list_ranges, apply_trade_ranges, cluster_bomb_filters,
+    cluster_filters, dashboard_bombs_request, dashboard_clusters_request, dashboard_levels_request,
+    dashboard_trades_request, default_trade_filters, default_trade_list_filters,
+    level_touch_filters, parse_tri_state_filter, set_filter, set_ticker_filters,
+    validate_trade_level_count,
 };
 use self::presets::{apply_preset_filters, find_trade_preset};
 use self::sentiment::summarize_trade_sentiment;
@@ -44,7 +45,6 @@ use self::sentiment::{
 };
 
 const DEFAULT_TRADE_LIMIT: usize = 1_000;
-const TRADE_LIST_TICKER_LOOKBACK_DAYS: u32 = 90;
 pub(super) const DEFAULT_DASHBOARD_COUNT: usize = 10;
 const DEFAULT_DASHBOARD_LOOKBACK_DAYS: u32 = 365;
 const DEFAULT_LEVEL_COUNT: usize = 10;
@@ -54,6 +54,8 @@ const DEFAULT_CLUSTER_BOMB_LENGTH: i32 = 100;
 pub(super) const DEFAULT_MAX_VOLUME: i64 = 2_000_000_000;
 pub(super) const DEFAULT_MAX_PRICE: f64 = 100_000.0;
 pub(super) const DEFAULT_MAX_DOLLARS: f64 = 30_000_000_000.0;
+pub(super) const HAR_TRADE_MIN_VOLUME: i64 = 10_000;
+pub(super) const HAR_TRADE_MAX_DOLLARS: f64 = 100_000_000_000.0;
 
 const CLUSTER_HEADERS: [&str; 10] = [
     "Date",
@@ -559,6 +561,17 @@ fn resolve_required_range(args: &OptionalDateRangeArgs) -> Result<(String, Strin
     ))
 }
 
+fn resolve_trade_list_range(args: &OptionalDateRangeArgs) -> (String, String) {
+    if args.start_date.is_none() && args.end_date.is_none() && args.days.is_none() {
+        return ("Today".to_string(), "Today".to_string());
+    }
+    resolve_date_range(
+        args.start_date.as_deref(),
+        args.end_date.as_deref(),
+        args.days,
+    )
+}
+
 #[instrument(skip_all)]
 async fn execute_list(args: &ListArgs, json_table: bool) -> i32 {
     if args.group_by.is_some() && !args.summary {
@@ -571,14 +584,9 @@ async fn execute_list(args: &ListArgs, json_table: bool) -> i32 {
     }
 
     let tickers = parse_ticker_args(&args.tickers);
-    let default_days = if tickers.is_empty() {
-        0
-    } else {
-        TRADE_LIST_TICKER_LOOKBACK_DAYS
-    };
-    let (start, end) = resolve_with_default(&args.dates, default_days);
-    let mut filters = default_trade_filters(args.ranges.min_dollars.unwrap_or(500_000.0), 97);
-    apply_trade_ranges(&mut filters, &args.ranges, 500_000.0);
+    let (start, end) = resolve_trade_list_range(&args.dates);
+    let mut filters = default_trade_list_filters();
+    apply_trade_list_ranges(&mut filters, &args.ranges);
     apply_trade_filter_args(&mut filters, &args.filters);
 
     if let Some(preset_name) = &args.preset {
@@ -589,24 +597,30 @@ async fn execute_list(args: &ListArgs, json_table: bool) -> i32 {
                 return 1;
             }
         };
-        filters = default_trade_filters(args.ranges.min_dollars.unwrap_or(500_000.0), 97);
+        filters = default_trade_list_filters();
         apply_preset_filters(&mut filters, preset);
-        apply_trade_ranges(&mut filters, &args.ranges, 500_000.0);
+        apply_trade_list_ranges(&mut filters, &args.ranges);
         apply_trade_filter_args(&mut filters, &args.filters);
     }
     set_filter(&mut filters, "StartDate", start.clone());
     set_filter(&mut filters, "EndDate", end.clone());
     set_ticker_filters(&mut filters, &tickers, "Tickers");
 
-    let request = TradesRequest::new().with_trade_filters(filters);
+    let length = i32::try_from(args.limit).unwrap_or(i32::MAX);
+    let request = TradesRequest::new()
+        .with_length(length)
+        .with_search("", false)
+        .with_order(1, "DESC", "FullTimeString24")
+        .with_trade_filters(filters);
     let client = match make_client().await {
         Ok(client) => client,
         Err(code) => return code,
     };
-    let trades = match client.get_trades_limit(&request, args.limit).await {
-        Ok(trades) => trades,
+    let mut trades = match client.get_trades(&request).await {
+        Ok(response) => response.data,
         Err(err) => return handle_api_error(err),
     };
+    trades.truncate(args.limit);
 
     let output = if args.summary {
         let group = args.group_by.unwrap_or(SummaryGroup::Ticker);
@@ -2152,6 +2166,63 @@ mod tests {
         assert!(has_filter(&filters, "DarkPools", "-1"));
         assert!(has_filter(&filters, "Sweeps", "-1"));
         assert!(has_filter(&filters, "IncludePremarket", "1"));
+    }
+
+    #[test]
+    fn default_trade_list_filters_match_har_criteria() {
+        let filters = default_trade_list_filters();
+
+        assert!(has_filter(&filters, "MinVolume", "10000"));
+        assert!(has_filter(&filters, "MaxVolume", "2000000000"));
+        assert!(has_filter(&filters, "MinPrice", "0"));
+        assert!(has_filter(&filters, "MaxPrice", "100000"));
+        assert!(has_filter(&filters, "MinDollars", "500000"));
+        assert!(has_filter(&filters, "MaxDollars", "100000000000"));
+        assert!(has_filter(&filters, "Conditions", "0"));
+        assert!(has_filter(&filters, "VCD", "0"));
+        assert!(has_filter(&filters, "SecurityTypeKey", "-1"));
+        assert!(has_filter(&filters, "RelativeSize", "0"));
+        assert!(has_filter(&filters, "DarkPools", "-1"));
+        assert!(has_filter(&filters, "Sweeps", "-1"));
+        assert!(has_filter(&filters, "LatePrints", "-1"));
+        assert!(has_filter(&filters, "SignaturePrints", "-1"));
+        assert!(has_filter(&filters, "EvenShared", "-1"));
+        assert!(has_filter(&filters, "TradeRank", "100"));
+        assert!(has_filter(&filters, "TradeRankSnapshot", "-1"));
+        assert!(has_filter(&filters, "MarketCap", "0"));
+        assert!(has_filter(&filters, "IncludePremarket", "1"));
+        assert!(has_filter(&filters, "IncludeRTH", "1"));
+        assert!(has_filter(&filters, "IncludeAH", "1"));
+        assert!(has_filter(&filters, "IncludeOpening", "1"));
+        assert!(has_filter(&filters, "IncludeClosing", "1"));
+        assert!(has_filter(&filters, "IncludePhantom", "1"));
+        assert!(has_filter(&filters, "IncludeOffsetting", "1"));
+    }
+
+    #[test]
+    fn trade_list_default_request_matches_har_shape() {
+        let (start, end) = resolve_trade_list_range(&empty_optional_dates());
+        let mut filters = default_trade_list_filters();
+        set_filter(&mut filters, "StartDate", start);
+        set_filter(&mut filters, "EndDate", end);
+
+        let request = TradesRequest::new()
+            .with_length(DEFAULT_TRADE_LIMIT as i32)
+            .with_search("", false)
+            .with_order(1, "DESC", "FullTimeString24")
+            .with_trade_filters(filters);
+        let encoded = request.encode();
+
+        assert!(encoded.contains("length=1000"));
+        assert!(encoded.contains("order[0][dir]=DESC"));
+        assert!(encoded.contains("order[0][name]=FullTimeString24"));
+        assert!(encoded.contains("search[value]="));
+        assert!(encoded.contains("search[regex]=false"));
+        assert!(encoded.contains("StartDate=Today"));
+        assert!(encoded.contains("EndDate=Today"));
+        assert!(encoded.contains("MinVolume=10000"));
+        assert!(encoded.contains("MaxDollars=100000000000"));
+        assert!(encoded.contains("TradeRank=100"));
     }
 
     #[test]
