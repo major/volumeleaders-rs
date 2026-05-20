@@ -394,7 +394,12 @@ pub(super) fn cluster_filters(
         start,
         end,
         &args.ranges,
-        args.ranges.min_dollars.unwrap_or(10_000_000.0),
+        args.ranges.min_dollars.unwrap_or(500_000.0),
+    );
+    set_filter(
+        &mut filters,
+        "MinVolume",
+        args.ranges.min_volume.unwrap_or(10_000).to_string(),
     );
     filters.push(pair("VCD", args.vcd.unwrap_or(0).to_string()));
     filters.push(pair(

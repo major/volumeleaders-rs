@@ -95,7 +95,7 @@ impl Default for TradeClusterBombsRequest {
 /// Return the DataTables column definitions for the trade clusters table.
 ///
 /// Column order, `Data`/`Name` field values, and `Searchable`/`Orderable`
-/// flags match the Go source (`TradeClustersColumns`) exactly.
+/// flags match the browser request payload.
 #[must_use]
 pub fn trade_clusters_columns() -> Vec<DataTablesColumn> {
     vec![
@@ -208,7 +208,7 @@ mod tests {
     }
 
     #[test]
-    fn trade_clusters_columns_first_and_last_match_go_source() {
+    fn trade_clusters_columns_first_and_last_match_browser() {
         let columns = trade_clusters_columns();
 
         // First column: time display (not orderable).
