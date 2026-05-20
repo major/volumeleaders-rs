@@ -58,10 +58,13 @@ cargo doc --workspace --no-deps
 ```bash
 cargo run -p volumeleaders-agent -- --help
 cargo run -p volumeleaders-agent -- report list
+cargo run -p volumeleaders-agent -- trade list
 cargo run -p volumeleaders-agent -- completions bash
 ```
 
 The CLI reads browser cookies automatically. If auth fails, log in to VolumeLeaders in the browser and retry. Command output goes to stdout as compact JSON by default. Use `--json-table` for a token-efficient array-of-arrays format where keys appear once as a header row. Pipe through `jq` for pretty-printed output. Errors and logs go to stderr.
+
+`trade list` defaults mirror the browser `/Trades/GetTrades` request captured from the VolumeLeaders trades page: today's trades, 1000 requested rows, empty table search, `FullTimeString24` descending order, `MinVolume=10000`, `MaxVolume=2000000000`, `MinPrice=0`, `MaxPrice=100000`, `MinDollars=500000`, `MaxDollars=100000000000`, `Conditions=0`, `VCD=0`, `SecurityTypeKey=-1`, `RelativeSize=0`, `DarkPools=-1`, `Sweeps=-1`, `LatePrints=-1`, `SignaturePrints=-1`, `EvenShared=-1`, `TradeRank=100`, `TradeRankSnapshot=-1`, `MarketCap=0`, and all session toggles enabled. Pass date, range, or filter flags to override those browser defaults.
 
 Trade-shaped outputs intentionally omit the upstream `PercentDailyVolume` field. Live report data returns that value as `0.0` for current and prior trading days, so returning it would suggest a meaningful percentage where the source data does not provide one. Compact defaults also omit `TradeConditions`, `RelativeSize`, `Name`, and `Volume` on trade-shaped rows to avoid surfacing fields that are consistently null or misleadingly sparse in those surfaces. `RelativeSize` remains in full output and is still surfaced in level-centric data when requested.
 

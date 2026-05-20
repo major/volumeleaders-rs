@@ -7,8 +7,8 @@ use crate::common::types::TriStateFilter;
 
 use super::{
     ClusterBombsArgs, ClustersArgs, DEFAULT_MAX_DOLLARS, DEFAULT_MAX_PRICE, DEFAULT_MAX_VOLUME,
-    DashboardArgs, DashboardFilterArgs, LevelTouchesArgs, TradeFilterArgs, TradeRangeArgs,
-    parse_ticker_args,
+    DashboardArgs, DashboardFilterArgs, HAR_TRADE_MAX_DOLLARS, HAR_TRADE_MIN_VOLUME,
+    LevelTouchesArgs, TradeFilterArgs, TradeRangeArgs, parse_ticker_args,
 };
 
 pub(super) fn parse_tri_state_filter(value: &str) -> Result<TriStateFilter, String> {
@@ -48,6 +48,69 @@ pub(super) fn default_trade_filters(min_dollars: f64, vcd: i32) -> Vec<(String, 
         pair("IncludePhantom", "1"),
         pair("IncludeOffsetting", "1"),
     ]
+}
+
+pub(super) fn default_trade_list_filters() -> Vec<(String, String)> {
+    vec![
+        pair("MinVolume", HAR_TRADE_MIN_VOLUME.to_string()),
+        pair("MaxVolume", DEFAULT_MAX_VOLUME.to_string()),
+        pair("MinPrice", "0"),
+        pair("MaxPrice", format_float(DEFAULT_MAX_PRICE)),
+        pair("MinDollars", "500000"),
+        pair("MaxDollars", format_float(HAR_TRADE_MAX_DOLLARS)),
+        pair("Conditions", "0"),
+        pair("VCD", "0"),
+        pair("SecurityTypeKey", "-1"),
+        pair("RelativeSize", "0"),
+        pair("DarkPools", "-1"),
+        pair("Sweeps", "-1"),
+        pair("LatePrints", "-1"),
+        pair("SignaturePrints", "-1"),
+        pair("EvenShared", "-1"),
+        pair("TradeRank", "100"),
+        pair("TradeRankSnapshot", "-1"),
+        pair("MarketCap", "0"),
+        pair("IncludePremarket", "1"),
+        pair("IncludeRTH", "1"),
+        pair("IncludeAH", "1"),
+        pair("IncludeOpening", "1"),
+        pair("IncludeClosing", "1"),
+        pair("IncludePhantom", "1"),
+        pair("IncludeOffsetting", "1"),
+    ]
+}
+
+pub(super) fn apply_trade_list_ranges(filters: &mut Vec<(String, String)>, args: &TradeRangeArgs) {
+    set_filter(
+        filters,
+        "MinVolume",
+        args.min_volume.unwrap_or(HAR_TRADE_MIN_VOLUME).to_string(),
+    );
+    set_filter(
+        filters,
+        "MaxVolume",
+        args.max_volume.unwrap_or(DEFAULT_MAX_VOLUME).to_string(),
+    );
+    set_filter(
+        filters,
+        "MinPrice",
+        format_float(args.min_price.unwrap_or(0.0)),
+    );
+    set_filter(
+        filters,
+        "MaxPrice",
+        format_float(args.max_price.unwrap_or(DEFAULT_MAX_PRICE)),
+    );
+    set_filter(
+        filters,
+        "MinDollars",
+        format_float(args.min_dollars.unwrap_or(500_000.0)),
+    );
+    set_filter(
+        filters,
+        "MaxDollars",
+        format_float(args.max_dollars.unwrap_or(HAR_TRADE_MAX_DOLLARS)),
+    );
 }
 
 pub(super) fn apply_trade_ranges(
