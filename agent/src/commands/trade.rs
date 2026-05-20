@@ -49,6 +49,7 @@ pub(super) const DEFAULT_DASHBOARD_COUNT: usize = 10;
 const DEFAULT_DASHBOARD_LOOKBACK_DAYS: u32 = 365;
 const DEFAULT_LEVEL_COUNT: usize = 10;
 const DEFAULT_LEVEL_TOUCH_COUNT: usize = 50;
+const DEFAULT_CLUSTER_LENGTH: i32 = 1_000;
 const DEFAULT_CLUSTER_BOMB_LENGTH: i32 = 100;
 pub(super) const DEFAULT_MAX_VOLUME: i64 = 2_000_000_000;
 pub(super) const DEFAULT_MAX_PRICE: f64 = 100_000.0;
@@ -228,7 +229,7 @@ pub struct ClustersArgs {
     #[arg(long)]
     pub sector: Option<String>,
     /// Trade cluster rank filter.
-    #[arg(long = "trade-cluster-rank", default_value_t = -1)]
+    #[arg(long = "trade-cluster-rank", default_value_t = 100)]
     pub trade_cluster_rank: i32,
     #[command(flatten)]
     pub page: FixedPageArgs,
@@ -729,8 +730,13 @@ async fn execute_clusters(args: &ClustersArgs, json_table: bool) -> i32 {
     };
     let request = TradeClustersRequest::new()
         .with_start(args.page.start)
-        .with_length(-1)
-        .with_order(args.page.order_col, args.page.order_dir.as_str(), "")
+        .with_length(DEFAULT_CLUSTER_LENGTH)
+        .with_search("", false)
+        .with_order(
+            args.page.order_col,
+            args.page.order_dir.as_str().to_ascii_uppercase(),
+            cluster_order_name(args.page.order_col),
+        )
         .with_cluster_filters(cluster_filters(args, &start, &end));
     let client = match make_client().await {
         Ok(client) => client,
@@ -762,6 +768,7 @@ async fn execute_cluster_bombs(args: &ClusterBombsArgs, json_table: bool) -> i32
     let request = TradeClusterBombsRequest::new()
         .with_start(args.page.start)
         .with_length(DEFAULT_CLUSTER_BOMB_LENGTH)
+        .with_search("", false)
         .with_order(
             args.page.order_col,
             args.page.order_dir.as_str().to_ascii_uppercase(),
@@ -917,6 +924,14 @@ fn output_trade_records<T: Serialize>(
 ) -> i32 {
     let result = print_trade_records(records, kind, headers, fields, all_fields, json_table);
     finish_output(result)
+}
+
+fn cluster_order_name(order_col: i32) -> &'static str {
+    if order_col == 1 {
+        "MinFullTimeString24"
+    } else {
+        ""
+    }
 }
 
 fn cluster_bomb_order_name(order_col: i32) -> &'static str {
@@ -2083,7 +2098,7 @@ mod tests {
             security_type: None,
             relative_size: None,
             sector: None,
-            trade_cluster_rank: -1,
+            trade_cluster_rank: 100,
             page: default_fixed_page(),
             fields: None,
             all_fields: false,
@@ -2235,25 +2250,40 @@ mod tests {
         assert!(has_filter(&filters, "VCD", "0"));
         assert!(has_filter(&filters, "SecurityTypeKey", "-1"));
         assert!(has_filter(&filters, "RelativeSize", "0"));
-        assert!(has_filter(&filters, "TradeClusterRank", "-1"));
+        assert!(has_filter(&filters, "TradeClusterRank", "100"));
     }
 
     #[test]
-    fn cluster_request_matches_dashboard_same_day_scan_defaults() {
+    fn cluster_request_matches_browser_defaults() {
         let args = default_clusters_args();
         let request = TradeClustersRequest::new()
             .with_start(args.page.start)
-            .with_length(-1)
-            .with_order(args.page.order_col, args.page.order_dir.as_str(), "")
+            .with_length(DEFAULT_CLUSTER_LENGTH)
+            .with_search("", false)
+            .with_order(
+                args.page.order_col,
+                args.page.order_dir.as_str().to_ascii_uppercase(),
+                cluster_order_name(args.page.order_col),
+            )
             .with_cluster_filters(cluster_filters(&args, "2026-05-20", "2026-05-20"));
         let encoded = request.encode();
 
-        assert!(encoded.contains("length=-1"));
-        assert!(encoded.contains("StartDate=2026-05-20"));
-        assert!(encoded.contains("EndDate=2026-05-20"));
-        assert!(encoded.contains("MinDollars=10000000"));
+        assert!(encoded.contains("length=1000"));
+        assert!(encoded.contains("search[value]="));
+        assert!(encoded.contains("search[regex]=false"));
+        assert!(encoded.contains("order[0][column]=1"));
+        assert!(encoded.contains("order[0][dir]=DESC"));
+        assert!(encoded.contains("order[0][name]=MinFullTimeString24"));
+        assert!(encoded.contains("MinVolume=10000"));
+        assert!(encoded.contains("MinDollars=500000"));
         assert!(encoded.contains("RelativeSize=0"));
-        assert!(encoded.contains("TradeClusterRank=-1"));
+        assert!(encoded.contains("TradeClusterRank=100"));
+    }
+
+    #[test]
+    fn cluster_custom_order_omits_default_order_name() {
+        assert_eq!(cluster_order_name(1), "MinFullTimeString24");
+        assert_eq!(cluster_order_name(3), "");
     }
 
     #[test]
@@ -2275,6 +2305,7 @@ mod tests {
         let request = TradeClusterBombsRequest::new()
             .with_start(args.page.start)
             .with_length(DEFAULT_CLUSTER_BOMB_LENGTH)
+            .with_search("", false)
             .with_order(
                 args.page.order_col,
                 args.page.order_dir.as_str().to_ascii_uppercase(),
@@ -2284,6 +2315,8 @@ mod tests {
         let encoded = request.encode();
 
         assert!(encoded.contains("length=100"));
+        assert!(encoded.contains("search[value]="));
+        assert!(encoded.contains("search[regex]=false"));
         assert!(encoded.contains("columns[12][name]=Charts"));
         assert!(encoded.contains("order[0][column]=1"));
         assert!(encoded.contains("order[0][dir]=DESC"));
