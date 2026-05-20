@@ -49,6 +49,7 @@ pub(super) const DEFAULT_DASHBOARD_COUNT: usize = 10;
 const DEFAULT_DASHBOARD_LOOKBACK_DAYS: u32 = 365;
 const DEFAULT_LEVEL_COUNT: usize = 10;
 const DEFAULT_LEVEL_TOUCH_COUNT: usize = 50;
+const DEFAULT_CLUSTER_BOMB_LENGTH: i32 = 100;
 pub(super) const DEFAULT_MAX_VOLUME: i64 = 2_000_000_000;
 pub(super) const DEFAULT_MAX_PRICE: f64 = 100_000.0;
 pub(super) const DEFAULT_MAX_DOLLARS: f64 = 30_000_000_000.0;
@@ -760,8 +761,12 @@ async fn execute_cluster_bombs(args: &ClusterBombsArgs, json_table: bool) -> i32
     };
     let request = TradeClusterBombsRequest::new()
         .with_start(args.page.start)
-        .with_length(-1)
-        .with_order(args.page.order_col, args.page.order_dir.as_str(), "")
+        .with_length(DEFAULT_CLUSTER_BOMB_LENGTH)
+        .with_order(
+            args.page.order_col,
+            args.page.order_dir.as_str().to_ascii_uppercase(),
+            cluster_bomb_order_name(args.page.order_col),
+        )
         .with_cluster_bomb_filters(cluster_bomb_filters(args, &start, &end));
     let client = match make_client().await {
         Ok(client) => client,
@@ -912,6 +917,14 @@ fn output_trade_records<T: Serialize>(
 ) -> i32 {
     let result = print_trade_records(records, kind, headers, fields, all_fields, json_table);
     finish_output(result)
+}
+
+fn cluster_bomb_order_name(order_col: i32) -> &'static str {
+    if order_col == 1 {
+        "MinFullTimeString24"
+    } else {
+        ""
+    }
 }
 
 fn print_trade_records<T: Serialize>(
@@ -2221,8 +2234,26 @@ mod tests {
         assert!(has_filter(&filters, "EndDate", "2026-01-02"));
         assert!(has_filter(&filters, "VCD", "0"));
         assert!(has_filter(&filters, "SecurityTypeKey", "-1"));
-        assert!(has_filter(&filters, "RelativeSize", "5"));
+        assert!(has_filter(&filters, "RelativeSize", "0"));
         assert!(has_filter(&filters, "TradeClusterRank", "-1"));
+    }
+
+    #[test]
+    fn cluster_request_matches_dashboard_same_day_scan_defaults() {
+        let args = default_clusters_args();
+        let request = TradeClustersRequest::new()
+            .with_start(args.page.start)
+            .with_length(-1)
+            .with_order(args.page.order_col, args.page.order_dir.as_str(), "")
+            .with_cluster_filters(cluster_filters(&args, "2026-05-20", "2026-05-20"));
+        let encoded = request.encode();
+
+        assert!(encoded.contains("length=-1"));
+        assert!(encoded.contains("StartDate=2026-05-20"));
+        assert!(encoded.contains("EndDate=2026-05-20"));
+        assert!(encoded.contains("MinDollars=10000000"));
+        assert!(encoded.contains("RelativeSize=0"));
+        assert!(encoded.contains("TradeClusterRank=-1"));
     }
 
     #[test]
@@ -2231,9 +2262,40 @@ mod tests {
 
         let filters = cluster_bomb_filters(&args, "2026-01-01", "2026-01-02");
 
+        assert!(has_filter(&filters, "SecurityTypeKey", "0"));
+        assert!(has_filter(&filters, "RelativeSize", "0"));
         assert!(has_filter(&filters, "TradeClusterBombRank", "-1"));
         assert!(!filters.iter().any(|(key, _)| key == "MinPrice"));
         assert!(!filters.iter().any(|(key, _)| key == "MaxPrice"));
+    }
+
+    #[test]
+    fn cluster_bomb_request_matches_browser_defaults() {
+        let args = default_cluster_bombs_args();
+        let request = TradeClusterBombsRequest::new()
+            .with_start(args.page.start)
+            .with_length(DEFAULT_CLUSTER_BOMB_LENGTH)
+            .with_order(
+                args.page.order_col,
+                args.page.order_dir.as_str().to_ascii_uppercase(),
+                cluster_bomb_order_name(args.page.order_col),
+            )
+            .with_cluster_bomb_filters(cluster_bomb_filters(&args, "2026-05-20", "2026-05-20"));
+        let encoded = request.encode();
+
+        assert!(encoded.contains("length=100"));
+        assert!(encoded.contains("columns[12][name]=Charts"));
+        assert!(encoded.contains("order[0][column]=1"));
+        assert!(encoded.contains("order[0][dir]=DESC"));
+        assert!(encoded.contains("order[0][name]=MinFullTimeString24"));
+        assert!(encoded.contains("SecurityTypeKey=0"));
+        assert!(encoded.contains("RelativeSize=0"));
+    }
+
+    #[test]
+    fn cluster_bomb_custom_order_omits_default_order_name() {
+        assert_eq!(cluster_bomb_order_name(1), "MinFullTimeString24");
+        assert_eq!(cluster_bomb_order_name(10), "");
     }
 
     #[test]

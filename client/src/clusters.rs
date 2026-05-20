@@ -120,11 +120,12 @@ pub fn trade_clusters_columns() -> Vec<DataTablesColumn> {
 /// Return the DataTables column definitions for the trade cluster bombs table.
 ///
 /// Column order, `Data`/`Name` field values, and `Searchable`/`Orderable`
-/// flags match the Go source (`TradeClusterBombsColumns`) exactly.
+/// flags match the browser request payload.
 #[must_use]
 pub fn trade_cluster_bombs_columns() -> Vec<DataTablesColumn> {
     vec![
-        DataTablesColumn::new("MinFullTimeString24", "MinFullTimeString24", true, true),
+        DataTablesColumn::new("MinFullTimeString24", "", true, false),
+        DataTablesColumn::new("MinFullTimeString24", "MinFullTimeString24", true, false),
         DataTablesColumn::new("Ticker", "Ticker", true, true),
         DataTablesColumn::new("TradeCount", "Trades", true, true),
         DataTablesColumn::new("Sector", "Sector", true, true),
@@ -140,12 +141,7 @@ pub fn trade_cluster_bombs_columns() -> Vec<DataTablesColumn> {
             true,
             true,
         ),
-        DataTablesColumn::new(
-            "LastComparableTradeClusterBombDate",
-            "Last Date",
-            true,
-            false,
-        ),
+        DataTablesColumn::new("LastComparableTradeClusterBombDate", "Charts", true, false),
     ]
 }
 
@@ -237,34 +233,34 @@ mod tests {
     }
 
     #[test]
-    fn trade_cluster_bombs_columns_returns_12_columns() {
+    fn trade_cluster_bombs_columns_returns_13_columns() {
         let columns = trade_cluster_bombs_columns();
-        assert_eq!(columns.len(), 12);
+        assert_eq!(columns.len(), 13);
     }
 
     #[test]
-    fn trade_cluster_bombs_columns_first_and_last_match_go_source() {
+    fn trade_cluster_bombs_columns_first_and_last_match_browser() {
         let columns = trade_cluster_bombs_columns();
 
-        // First column: time (orderable).
+        // First column: time display (not orderable).
         assert_eq!(columns[0].data, "MinFullTimeString24");
-        assert_eq!(columns[0].name, "MinFullTimeString24");
+        assert_eq!(columns[0].name, "");
         assert!(columns[0].searchable);
-        assert!(columns[0].orderable);
+        assert!(!columns[0].orderable);
 
-        // Last column: last bomb date (not orderable duplicate).
-        assert_eq!(columns[11].data, "LastComparableTradeClusterBombDate");
-        assert_eq!(columns[11].name, "Last Date");
-        assert!(columns[11].searchable);
-        assert!(!columns[11].orderable);
+        // Last column: chart links (not orderable duplicate).
+        assert_eq!(columns[12].data, "LastComparableTradeClusterBombDate");
+        assert_eq!(columns[12].name, "Charts");
+        assert!(columns[12].searchable);
+        assert!(!columns[12].orderable);
     }
 
     #[test]
     fn trade_cluster_bombs_columns_rank_at_index_9() {
         let columns = trade_cluster_bombs_columns();
-        assert_eq!(columns[9].data, "TradeClusterBombRank");
-        assert_eq!(columns[9].name, "Rank");
-        assert!(columns[9].orderable);
+        assert_eq!(columns[10].data, "TradeClusterBombRank");
+        assert_eq!(columns[10].name, "Rank");
+        assert!(columns[10].orderable);
     }
 
     // -- endpoint tests --

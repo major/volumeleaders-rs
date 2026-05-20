@@ -403,7 +403,7 @@ pub(super) fn cluster_filters(
     ));
     filters.push(pair(
         "RelativeSize",
-        args.relative_size.unwrap_or(5).to_string(),
+        args.relative_size.unwrap_or(0).to_string(),
     ));
     filters.push(pair(
         "TradeClusterRank",
@@ -444,9 +444,9 @@ pub(super) fn cluster_bomb_filters(
         pair("VCD", args.vcd.unwrap_or(0).to_string()),
         pair(
             "SecurityTypeKey",
-            args.security_type.unwrap_or(-1).to_string(),
+            args.security_type.unwrap_or(0).to_string(),
         ),
-        pair("RelativeSize", args.relative_size.unwrap_or(5).to_string()),
+        pair("RelativeSize", args.relative_size.unwrap_or(0).to_string()),
         pair(
             "TradeClusterBombRank",
             args.trade_cluster_bomb_rank.to_string(),
