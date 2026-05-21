@@ -16,6 +16,7 @@ Rust 2024 workspace for VolumeLeaders access. `client` owns the browser-session 
 volumeleaders-rs/
 ├── Cargo.toml                 # Workspace: client, agent
 ├── Makefile                   # Local fmt, clippy, test, doc, coverage, audit
+├── codecov.yml                # Codecov project and patch coverage gates
 ├── README.md                  # Human project overview and commands
 ├── AGENTS.md                  # Workspace rules for agents
 ├── client/                    # API client library, browser-session auth, fixtures
@@ -32,8 +33,9 @@ volumeleaders-rs/
 | Task | Location | Notes |
 |------|----------|-------|
 | Workspace membership | `Cargo.toml` | Manifest-only root with resolver `2` |
-| Local commands | `Makefile` | `make check` runs fmt, clippy, test, doc |
+| Local commands | `Makefile` | `make check` runs fmt, clippy, test, doc; `make patch-coverage` checks changed-line coverage |
 | CI behavior | `.github/workflows/ci.yml` | Linux, macOS, Windows test and clippy matrix |
+| Codecov policy | `codecov.yml` | Project coverage floor is 90 percent; patch coverage floor is 100 percent |
 | Release behavior | `.github/workflows/cd.yml`, `release-plz.toml`, `cliff.toml` | Release PRs, crates.io publish, and tags |
 | Release artifacts | `dist-workspace.toml`, `.github/workflows/release.yml` | cargo-dist installers and GitHub Releases |
 | API client work | `client/` | Read `client/AGENTS.md` first |
@@ -74,6 +76,7 @@ make test
 make doc
 make check
 make coverage
+make patch-coverage
 make audit
 cargo test --workspace
 cargo doc --workspace --no-deps
@@ -82,7 +85,7 @@ cargo doc --workspace --no-deps
 ## NOTES
 
 - No dedicated build or benchmark target is codified. Use Cargo defaults only when needed, and document any new command if it becomes canonical.
-- Coverage target requires `cargo llvm-cov` and enforces 90 percent line coverage locally (`make coverage`) and in CI (`ci.yml` coverage job).
+- Coverage target requires `cargo llvm-cov` and enforces 90 percent line coverage locally (`make coverage`) and in CI (`ci.yml` coverage job). Codecov status checks use `codecov.yml` for a 90 percent project floor and 100 percent patch floor. Run `make patch-coverage` before opening a PR to approximate the Codecov patch gate locally with `diff-cover` against `main`; override with `PATCH_COVERAGE_BASE=<branch>` or `DIFF_COVER='uvx diff-cover'` when needed.
 - Both crate roots set `#![deny(missing_docs)]`. Wire-type models use a module-level allow; clap arg structs and request builders use item-level `#[allow(missing_docs)]`. New public items need doc comments or an explicit allow with rationale.
 - Audit is a separate workflow and also runs on manifest changes plus a daily schedule.
 - `cd.yml` runs release-plz with `RELEASE_PLZ_TOKEN`; the token is needed so release PR branch updates and release tags trigger normal workflows.
