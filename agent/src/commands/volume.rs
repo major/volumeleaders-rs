@@ -81,16 +81,16 @@ pub enum VolumeCommand {
 
 /// Handles the volume command group.
 #[instrument(skip_all)]
-pub async fn handle(args: &VolumeArgs, json_table: bool) -> i32 {
+pub async fn handle(args: &VolumeArgs) -> i32 {
     match &args.command {
-        VolumeCommand::Institutional { args } => execute_institutional(args, json_table).await,
-        VolumeCommand::AhInstitutional { args } => execute_ah_institutional(args, json_table).await,
-        VolumeCommand::Total { args } => execute_total(args, json_table).await,
+        VolumeCommand::Institutional { args } => execute_institutional(args).await,
+        VolumeCommand::AhInstitutional { args } => execute_ah_institutional(args).await,
+        VolumeCommand::Total { args } => execute_total(args).await,
     }
 }
 
 #[instrument(skip_all)]
-async fn execute_institutional(args: &VolumeOptions, json_table: bool) -> i32 {
+async fn execute_institutional(args: &VolumeOptions) -> i32 {
     let request = build_request(VolumeRequest::institutional(), args);
     let client = match make_client().await {
         Ok(client) => client,
@@ -104,11 +104,11 @@ async fn execute_institutional(args: &VolumeOptions, json_table: bool) -> i32 {
         Err(err) => return handle_api_error(err),
     };
 
-    output_records(&trades, args.fields.as_deref(), args.all_fields, json_table)
+    output_records(&trades, args.fields.as_deref(), args.all_fields)
 }
 
 #[instrument(skip_all)]
-async fn execute_ah_institutional(args: &VolumeOptions, json_table: bool) -> i32 {
+async fn execute_ah_institutional(args: &VolumeOptions) -> i32 {
     let request = build_request(VolumeRequest::ah_institutional(), args);
     let client = match make_client().await {
         Ok(client) => client,
@@ -122,11 +122,11 @@ async fn execute_ah_institutional(args: &VolumeOptions, json_table: bool) -> i32
         Err(err) => return handle_api_error(err),
     };
 
-    output_records(&trades, args.fields.as_deref(), args.all_fields, json_table)
+    output_records(&trades, args.fields.as_deref(), args.all_fields)
 }
 
 #[instrument(skip_all)]
-async fn execute_total(args: &VolumeOptions, json_table: bool) -> i32 {
+async fn execute_total(args: &VolumeOptions) -> i32 {
     let request = build_request(VolumeRequest::total(), args);
     let client = match make_client().await {
         Ok(client) => client,
@@ -137,7 +137,7 @@ async fn execute_total(args: &VolumeOptions, json_table: bool) -> i32 {
         Err(err) => return handle_api_error(err),
     };
 
-    output_records(&trades, args.fields.as_deref(), args.all_fields, json_table)
+    output_records(&trades, args.fields.as_deref(), args.all_fields)
 }
 
 fn build_request(mut request: VolumeRequest, args: &VolumeOptions) -> VolumeRequest {
@@ -157,7 +157,6 @@ fn output_records<T: serde::Serialize>(
     records: &[T],
     fields: Option<&str>,
     all_fields: bool,
-    json_table: bool,
 ) -> i32 {
     finish_output(print_transformed_record_values(
         records,
@@ -165,7 +164,6 @@ fn output_records<T: serde::Serialize>(
         &VOLUME_HEADERS,
         fields,
         all_fields,
-        json_table,
     ))
 }
 

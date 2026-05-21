@@ -15,8 +15,8 @@
 |------|----------|-------|
 | Binary entry | `src/main.rs` | Thin wrapper around `volumeleaders_agent::run()` |
 | Dispatch | `src/lib.rs` | Parses CLI and routes to command handlers |
-| Command tree | `src/cli.rs` | Top-level clap groups and global `--json-table` |
-| Command handlers | `src/commands/*.rs` | `handle(args, json_table) -> i32` per group |
+| Command tree | `src/cli.rs` | Top-level clap groups |
+| Command handlers | `src/commands/*.rs` | `handle(args) -> i32` per group |
 | Shared CLI args/types | `src/common/` | Dates, tickers, order direction, summary groups, tri-state filters |
 | Browser auth bridge | `src/common/auth.rs` | Builds client sessions from browser cookies |
 | Output formatting | `src/output.rs` | JSON, field selection, validation |
@@ -25,7 +25,7 @@
 ## COMMAND SURFACE
 
 - Top-level groups: `report`, `trade`, `volume`, `market`, `alert`, `watchlist`, `completions`.
-- Default output is compact JSON. `--json-table` emits array-of-arrays with a header row for token-efficient consumption. Pipe through `jq` for pretty-printing.
+- Default output is compact JSON. Pipe through `jq` for pretty-printing.
 - Errors and logs go to stderr. Data goes to stdout.
 - Auth failure text tells users to log in at `https://www.volumeleaders.com` and retry.
 - `trade list` defaults intentionally mirror the browser `/Trades/GetTrades` request captured from `trades.har`: `StartDate=Today`, `EndDate=Today`, `length=1000`, empty DataTables search fields, `FullTimeString24` descending order, `MinVolume=10000`, `MaxVolume=2000000000`, `MinPrice=0`, `MaxPrice=100000`, `MinDollars=500000`, `MaxDollars=100000000000`, `Conditions=0`, `VCD=0`, `SecurityTypeKey=-1`, `RelativeSize=0`, tri-state flags set to `-1`, `TradeRank=100`, `TradeRankSnapshot=-1`, `MarketCap=0`, and all session toggles enabled. Keep tests and README in sync if these browser defaults change.

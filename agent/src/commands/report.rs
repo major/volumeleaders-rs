@@ -514,16 +514,16 @@ impl ReportCommand {
 
 /// Handles the report command group.
 #[instrument(skip_all)]
-pub async fn handle(args: &ReportArgs, json_table: bool) -> i32 {
+pub async fn handle(args: &ReportArgs) -> i32 {
     match &args.command {
-        ReportCommand::List => execute_list(json_table),
-        _ => execute_preset(args, json_table).await,
+        ReportCommand::List => execute_list(),
+        _ => execute_preset(args).await,
     }
 }
 
 /// Lists all available report presets.
 #[instrument(skip_all)]
-fn execute_list(json_table: bool) -> i32 {
+fn execute_list() -> i32 {
     let entries: Vec<PresetListEntry> = REPORT_PRESETS
         .iter()
         .map(|p| PresetListEntry {
@@ -533,13 +533,13 @@ fn execute_list(json_table: bool) -> i32 {
         })
         .collect();
 
-    finish_output(print_json(&entries, json_table))
+    finish_output(print_json(&entries))
 }
 
 /// Runs a preset report: builds request from preset filters + CLI overrides,
 /// fetches trades, and outputs results.
 #[instrument(skip_all)]
-async fn execute_preset(args: &ReportArgs, json_table: bool) -> i32 {
+async fn execute_preset(args: &ReportArgs) -> i32 {
     let preset_name = match args.command.preset_name() {
         Some(name) => name,
         None => {
@@ -612,7 +612,7 @@ async fn execute_preset(args: &ReportArgs, json_table: bool) -> i32 {
     // Output results.
     let result = if let Some(group) = flags.summary_group {
         let summary = build_summary(&trades, group, &start, &end);
-        print_json(&summary, json_table)
+        print_json(&summary)
     } else {
         print_transformed_record_values(
             &trades,
@@ -620,7 +620,6 @@ async fn execute_preset(args: &ReportArgs, json_table: bool) -> i32 {
             &TRADE_HEADERS,
             flags.fields.as_deref(),
             flags.all_fields,
-            json_table,
         )
     };
 
