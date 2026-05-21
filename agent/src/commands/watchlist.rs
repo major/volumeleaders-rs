@@ -243,19 +243,19 @@ pub struct WatchlistConfigFlags {
 
 /// Handles the watchlist command group.
 #[instrument(skip_all)]
-pub async fn handle(args: &WatchlistArgs, json_table: bool) -> i32 {
+pub async fn handle(args: &WatchlistArgs) -> i32 {
     match &args.command {
-        WatchlistCommand::Configs(a) => execute_configs(a, json_table).await,
-        WatchlistCommand::Tickers(a) => execute_tickers(a, json_table).await,
-        WatchlistCommand::Create(a) => execute_create(a, json_table).await,
-        WatchlistCommand::Edit(a) => execute_edit(a, json_table).await,
-        WatchlistCommand::Delete(a) => execute_delete(a, json_table).await,
-        WatchlistCommand::AddTicker(a) => execute_add_ticker(a, json_table).await,
+        WatchlistCommand::Configs(a) => execute_configs(a).await,
+        WatchlistCommand::Tickers(a) => execute_tickers(a).await,
+        WatchlistCommand::Create(a) => execute_create(a).await,
+        WatchlistCommand::Edit(a) => execute_edit(a).await,
+        WatchlistCommand::Delete(a) => execute_delete(a).await,
+        WatchlistCommand::AddTicker(a) => execute_add_ticker(a).await,
     }
 }
 
 #[instrument(skip_all)]
-async fn execute_configs(args: &ConfigsArgs, json_table: bool) -> i32 {
+async fn execute_configs(args: &ConfigsArgs) -> i32 {
     let client = match make_client().await {
         Ok(c) => c,
         Err(code) => return code,
@@ -274,12 +274,11 @@ async fn execute_configs(args: &ConfigsArgs, json_table: bool) -> i32 {
         &DEFAULT_CONFIGS_FIELDS,
         args.fields.as_deref(),
         args.all_fields,
-        json_table,
     ))
 }
 
 #[instrument(skip_all)]
-async fn execute_tickers(args: &TickersArgs, json_table: bool) -> i32 {
+async fn execute_tickers(args: &TickersArgs) -> i32 {
     let client = match make_client().await {
         Ok(c) => c,
         Err(code) => return code,
@@ -299,12 +298,11 @@ async fn execute_tickers(args: &TickersArgs, json_table: bool) -> i32 {
         &DEFAULT_TICKERS_FIELDS,
         args.fields.as_deref(),
         args.all_fields,
-        json_table,
     ))
 }
 
 #[instrument(skip_all)]
-async fn execute_create(args: &CreateArgs, json_table: bool) -> i32 {
+async fn execute_create(args: &CreateArgs) -> i32 {
     let request = build_config_request(0, &args.name, &args.config);
     run_client_command(
         move |client| {
@@ -313,13 +311,13 @@ async fn execute_create(args: &CreateArgs, json_table: bool) -> i32 {
                 Ok(serde_json::json!({"success": true, "action": "created"}))
             })
         },
-        move |result| print_json(&result, json_table),
+        move |result| print_json(&result),
     )
     .await
 }
 
 #[instrument(skip_all)]
-async fn execute_edit(args: &EditArgs, json_table: bool) -> i32 {
+async fn execute_edit(args: &EditArgs) -> i32 {
     let key = args.key;
     let name = args.name.as_deref().unwrap_or("");
     let request = build_config_request(key, name, &args.config);
@@ -330,13 +328,13 @@ async fn execute_edit(args: &EditArgs, json_table: bool) -> i32 {
                 Ok(serde_json::json!({"success": true, "action": "updated", "key": key}))
             })
         },
-        move |result| print_json(&result, json_table),
+        move |result| print_json(&result),
     )
     .await
 }
 
 #[instrument(skip_all)]
-async fn execute_delete(args: &DeleteArgs, json_table: bool) -> i32 {
+async fn execute_delete(args: &DeleteArgs) -> i32 {
     let key = args.key;
     let request = DeleteWatchListRequest {
         watch_list_key: key,
@@ -348,13 +346,13 @@ async fn execute_delete(args: &DeleteArgs, json_table: bool) -> i32 {
                 Ok(serde_json::json!({"success": true, "action": "deleted", "key": key}))
             })
         },
-        move |result| print_json(&result, json_table),
+        move |result| print_json(&result),
     )
     .await
 }
 
 #[instrument(skip_all)]
-async fn execute_add_ticker(args: &AddTickerArgs, json_table: bool) -> i32 {
+async fn execute_add_ticker(args: &AddTickerArgs) -> i32 {
     let request = AddTickerToWatchListRequest {
         watch_list_key: args.watchlist_key,
         ticker: args.ticker.clone(),
@@ -363,7 +361,7 @@ async fn execute_add_ticker(args: &AddTickerArgs, json_table: bool) -> i32 {
         move |client| Box::pin(async move { client.add_ticker_to_watchlist(&request).await }),
         move |response| {
             let json = serde_json::to_value(&response).unwrap_or(Value::Null);
-            print_json(&json, json_table)
+            print_json(&json)
         },
     )
     .await

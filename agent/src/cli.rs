@@ -24,10 +24,6 @@ use crate::commands::watchlist::WatchlistCommand;
     propagate_version = true
 )]
 pub struct Cli {
-    /// Emit array-of-arrays with a header row instead of array-of-objects.
-    #[arg(long, global = true)]
-    pub json_table: bool,
-
     /// Accepted for backward compatibility (output is always JSON now).
     #[arg(short, long, global = true, hide = true)]
     pub json: bool,
