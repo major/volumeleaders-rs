@@ -19,6 +19,7 @@ Rust workspace for working with VolumeLeaders data from an authenticated browser
 ├── agent/                   # CLI crate
 ├── .github/workflows/       # CI, audit, release-plz, cargo-dist releases
 ├── AGENTS.md                # Workspace knowledge base for coding agents
+├── codecov.yml              # Codecov project and patch coverage gates
 ├── dist-workspace.toml      # cargo-dist release artifact configuration
 ├── Makefile                 # Local development commands
 ├── cliff.toml               # Changelog grouping
@@ -31,6 +32,7 @@ Rust workspace for working with VolumeLeaders data from an authenticated browser
 - Rust 1.95.0 or newer
 - Browser login at `https://www.volumeleaders.com` for commands that need live authenticated data
 - Optional tools for local maintenance: `cargo llvm-cov`, `cargo audit`
+- Optional tool for local patch coverage checks: `diff-cover` or `uvx diff-cover`
 
 ## Development commands
 
@@ -41,6 +43,7 @@ make test
 make doc
 make check
 make coverage
+make patch-coverage
 make audit
 ```
 
@@ -81,6 +84,8 @@ The `rookie_spike` example checks whether required VolumeLeaders cookies can be 
 - Most tests are inline `#[cfg(test)]` modules in `client/src/**` and `agent/src/**`.
 - Client fixtures live in `client/tests/fixtures/*.json` and represent server payload contracts.
 - Client HTTP tests use `mockito`.
+- `make coverage` and CI enforce 90 percent workspace line coverage with `cargo llvm-cov`; Codecov also requires 90 percent project coverage and 100 percent patch coverage for changed lines.
+- Run `make patch-coverage` before opening a PR to generate `lcov.info` and check changed-line coverage against `main`. Override the base branch with `PATCH_COVERAGE_BASE=<branch>` or use `DIFF_COVER='uvx diff-cover'` if `diff-cover` is not installed as a standalone command.
 - There are no standalone Rust integration test files or benchmarks today.
 
 ## Release automation
