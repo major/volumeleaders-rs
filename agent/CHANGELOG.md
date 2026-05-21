@@ -2,6 +2,23 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.4.0] - 2026-05-21
+
+### <!-- 1 -->🐛 Bug Fixes
+
+- *(trade)* Align daily cluster requests
+- *(trade)* Match browser cluster defaults
+- *(agent)* Match browser trade request defaults
+
+### <!-- 4 -->🔧 Refactor
+
+- [**breaking**] *(agent)* Remove json-table output
+
+### <!-- 7 -->⚙️ Miscellaneous
+
+- *(ci)* Add Codecov config and local patch coverage target
+
+
 ## [0.3.0] - 2026-05-18
 
 ### <!-- 0 -->🚀 Features
