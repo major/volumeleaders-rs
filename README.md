@@ -166,9 +166,9 @@ cargo doc --all-features --no-deps
 cargo doc --no-default-features --no-deps
 ```
 
-`make check` runs formatting, clippy, tests, and docs for both supported feature shapes: the default CLI build and the library-only `--no-default-features` build. The GitHub CI workflow mirrors those checks across Linux, macOS, and Windows, with an MSRV job pinned to Rust 1.95.
+`make check` runs formatting, clippy, tests, and docs for both supported feature shapes: the default CLI build and the library-only `--no-default-features` build. The GitHub CI workflow mirrors those checks across Linux, macOS, and Windows, with an MSRV job pinned to Rust 1.95. The separate audit workflow runs `actions-rust-lang/audit` on manifest changes and a daily schedule.
 
-Most tests are inline `#[cfg(test)]` modules in `src/**`. Fixtures live in `tests/fixtures/*.json` and represent server payload contracts. HTTP tests use `mockito`.
+Most tests are inline `#[cfg(test)]` modules in `src/**`. Fixtures live in `tests/fixtures/*.json` and represent server payload contracts. HTTP tests use `mockito`. Renovate configuration keeps `rookie` on a longer abandonment threshold because the crate is required for browser-cookie auth and still receives maintenance despite infrequent releases.
 
 CLI drift tests assert that every visible clap leaf appears in `commands` and `schema`, every public option has help text, every leaf has command-specific examples, structured schema examples stay valid, aliases keep canonical preferred paths, and global flags plus semantic argument metadata stay present in schema metadata.
 
@@ -179,7 +179,7 @@ CLI drift tests assert that every visible clap leaf appears in `commands` and `s
 - `release-plz.yml` runs on pushes to `main` and on manual dispatch. It keeps a release PR open with the `Cargo.toml` version bump and `CHANGELOG.md` updates from conventional commits via `cliff.toml`.
 - Merging the release PR runs release-plz in release mode. It pushes a `v<version>` tag using `RELEASE_PLZ_TOKEN` so the downstream cargo-dist workflow can run.
 - `release-plz.toml` sets `publish = false` and `git_release_enable = false`. release-plz opens release PRs and pushes tags only.
-- `release.yml` is the cargo-dist release workflow. It builds multi-platform artifacts, creates the GitHub Release, and publishes `rusty-volumeleaders` to crates.io through OIDC trusted publishing with `rust-lang/crates-io-auth-action`.
+- `release.yml` is the cargo-dist release workflow. It builds multi-platform artifacts, creates the GitHub Release, and publishes `rusty-volumeleaders` to crates.io through OIDC trusted publishing with a release-tagged `rust-lang/crates-io-auth-action` pin.
 - The first crates.io release of `rusty-volumeleaders` must be published manually with a crates.io API token. After that, configure crates.io Trusted Publishing for owner `major`, repo `volumeleaders-rs`, workflow file `release.yml`, and package `rusty-volumeleaders`. No stored `CARGO_REGISTRY_TOKEN` secret is used after the one-time setup.
 
 ## Documentation freshness

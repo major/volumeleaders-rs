@@ -190,3 +190,9 @@ DIFF_COVER='uvx diff-cover' make patch-coverage
 ```
 
 When changing public CLI behavior, update `README.md`, `AGENTS.md`, this `SKILL.md`, schema or command-list tests, and any relevant integration tests in `tests/cli_*.rs`.
+
+Dependency and workflow maintenance notes:
+
+- Security audit CI uses `actions-rust-lang/audit`; keep `make audit` for local checks.
+- Renovate configuration keeps `rookie` on a longer abandonment threshold because browser-cookie extraction is core auth behavior and upstream maintenance continues even with infrequent releases.
+- The cargo-dist release workflow uses OIDC trusted publishing through a release-tagged `rust-lang/crates-io-auth-action` pin.

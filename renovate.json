@@ -39,6 +39,13 @@
         "digest"
       ],
       "enabled": false
+    },
+    {
+      "description": "rookie is required for browser-cookie auth and remains maintained despite infrequent releases",
+      "matchPackageNames": [
+        "rookie"
+      ],
+      "abandonmentThreshold": "5 years"
     }
   ],
   "schedule": [
