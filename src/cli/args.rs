@@ -84,11 +84,11 @@ pub enum Commands {
     Alert(AlertArgs),
     /// Watchlist management and inspection.
     Watchlist(WatchlistArgs),
-    /// Check local auth and environment readiness as JSON.
+    /// Check auth and environment readiness as JSON.
     #[command(
-        long_about = "Check local auth and environment readiness as compact JSON without using the network.\n\nExamples:\n  volumeleaders-agent doctor\n  volumeleaders-agent doctor | jq '.auth.status'"
+        long_about = "Check auth and environment readiness as compact JSON. By default this is local-only and does not use the network. Pass --live to perform a low-cost authenticated connectivity check.\n\nExamples:\n  volumeleaders-agent doctor\n  volumeleaders-agent doctor --live"
     )]
-    Doctor,
+    Doctor(DoctorArgs),
     /// List available leaf command paths.
     #[command(
         long_about = "List available leaf command paths from the live clap command tree.\n\nExamples:\n  volumeleaders-agent commands\n  volumeleaders-agent commands --grouped"
@@ -162,6 +162,14 @@ pub struct WatchlistArgs {
     /// Watchlist subcommand to run.
     #[command(subcommand)]
     pub command: WatchlistCommand,
+}
+
+/// Arguments for local and live readiness diagnostics.
+#[derive(Debug, Args)]
+pub struct DoctorArgs {
+    /// Perform a low-cost authenticated live connectivity check.
+    #[arg(long)]
+    pub live: bool,
 }
 
 /// Arguments for command discovery output.

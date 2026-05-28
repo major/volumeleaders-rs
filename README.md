@@ -62,7 +62,7 @@ Top-level aliases are available for the highest-frequency trade commands: `trade
 
 Use `commands` for lightweight CLI discovery. It emits a sorted plain-text list of leaf command paths, or grouped command names with short descriptions when run with `--grouped`.
 
-Use `doctor` for a safe local readiness check before running live data commands. It emits compact JSON with the CLI version, browser-cookie auth status, and live-connectivity status without making a network request by default.
+Use `doctor` for a safe local readiness check before running live data commands. It emits compact JSON with the CLI version, browser-cookie auth status, and live-connectivity status without making a network request by default. Add `--live` to perform a low-cost authenticated connectivity check; live auth, HTTP transport, and API failures use exit codes `3`, `4`, and `5`.
 
 Use `help <topic>` for built-in operational guidance when README access is unavailable. Topics are `agent`, `auth`, `environment`, `exit-codes`, `schema`, and `examples`; regular clap help remains available with `--help` on the root or any subcommand. The `agent` topic summarizes the recommended non-interactive automation flow.
 
@@ -75,6 +75,7 @@ cargo run -- --help
 cargo run -- commands
 cargo run -- commands --grouped
 cargo run -- doctor
+cargo run -- doctor --live
 cargo run -- fields trade list
 cargo run -- help agent
 cargo run -- help auth
@@ -95,6 +96,7 @@ After building or installing, run the binary as `volumeleaders-agent`:
 
 ```bash
 volumeleaders-agent doctor
+volumeleaders-agent doctor --live
 volumeleaders-agent commands
 volumeleaders-agent fields trade list
 volumeleaders-agent fields volume institutional | jq '.fields[].name'

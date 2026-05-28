@@ -31,7 +31,7 @@ const AGENT_HELP: &str = r#"agent
 Guidance for non-interactive automation and coding agents:
 
 1. Check local readiness first.
-   Run `volumeleaders-agent doctor` before authenticated data commands when automation needs to confirm browser-cookie readiness. `doctor` is local-only by default and does not make a network request.
+   Run `volumeleaders-agent doctor` before authenticated data commands when automation needs to confirm browser-cookie readiness. `doctor` is local-only by default and does not make a network request. Use `volumeleaders-agent doctor --live` when you also need a low-cost authenticated connectivity check.
 
 2. Discover commands before guessing.
 Use `volumeleaders-agent commands` for a quick leaf-command list, `volumeleaders-agent commands --grouped` for grouped descriptions, `volumeleaders-agent schema` for machine-readable command, alias, auth, mutation safety, help, stable argument, semantic argument, and boolean option metadata, and `volumeleaders-agent fields <command path>` for field projection metadata.
@@ -51,6 +51,7 @@ Use global `--strict-empty` when an empty record array should fail automation wi
 Copy-paste examples:
 
 volumeleaders-agent doctor
+volumeleaders-agent doctor --live
 volumeleaders-agent commands --grouped
 volumeleaders-agent fields trade list
 volumeleaders-agent schema | jq '.commands[] | select(.preferred_path == "trade list")'
@@ -68,7 +69,7 @@ VolumeLeaders live-data commands authenticate with browser cookies from a local 
 
 The CLI needs the ASP.NET session cookie, forms auth cookie, and request verification cookie. Cookie values and XSRF tokens are never printed.
 
-Run `volumeleaders-agent doctor` for a safe local readiness check. It does not make a network request by default and exits 0 when the local browser-cookie session looks usable, or 3 when auth is missing or invalid.
+Run `volumeleaders-agent doctor` for a safe local readiness check. It does not make a network request by default and exits 0 when the local browser-cookie session looks usable, or 3 when auth is missing or invalid. Run `volumeleaders-agent doctor --live` to add a low-cost authenticated connectivity check; live auth, HTTP transport, and API failures use exit codes 3, 4, and 5.
 
 Common fixes:
 - Log in to VolumeLeaders again and retry.
@@ -87,7 +88,7 @@ Expected setup:
 - stdout is reserved for command data, either compact JSON for data commands or plain text for discovery/help commands.
 - stderr is reserved for diagnostics and structured runtime errors. Use `-v`, `-vv`, or `-vvv` to enable info, debug, or trace diagnostics without changing stdout.
 
-Use `volumeleaders-agent doctor` before live data commands when automation needs to confirm local auth readiness without spending API quota.
+Use `volumeleaders-agent doctor` before live data commands when automation needs to confirm local auth readiness without spending API quota. Use `volumeleaders-agent doctor --live` only when automation needs to verify authenticated connectivity too.
 "#;
 
 const EXIT_CODES_HELP: &str = r#"exit-codes
@@ -144,6 +145,7 @@ const EXAMPLES_HELP: &str = r#"examples
 High-value command examples:
 
 volumeleaders-agent doctor
+volumeleaders-agent doctor --live
 volumeleaders-agent commands
 volumeleaders-agent commands --grouped
 volumeleaders-agent fields trade list
