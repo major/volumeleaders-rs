@@ -22,7 +22,7 @@ volumeleaders-agent trade list --help
 ```
 
 - `doctor` is local-only by default and reports browser-cookie readiness as compact JSON.
-- `schema` is the authoritative machine-readable command contract generated from the live clap tree. Command entries include `path`, `preferred_path`, `is_alias`, optional `alias_for`, `aliases`, auth requirements, help text, and argument metadata.
+- `schema` is the authoritative machine-readable command contract generated from the live clap tree. Command entries include `path`, `preferred_path`, `is_alias`, optional `alias_for`, `aliases`, auth requirements, help text, and argument metadata with stable `name` identifiers.
 - `commands` is the lightweight plain-text leaf command list. Use `--grouped` for descriptions.
 - `fields <command path>` emits exact case-sensitive output field names, descriptions, and type hints for commands that support `--fields` without requiring live rows.
 - `help <topic>` gives operational guidance when README access is unavailable.
