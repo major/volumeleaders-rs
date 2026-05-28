@@ -1,4 +1,4 @@
-use clap::{Args, Parser, Subcommand};
+use clap::{Args, Parser, Subcommand, ValueEnum};
 use clap_complete::Shell;
 
 use crate::cli::commands::alert::AlertCommand;
@@ -20,6 +20,7 @@ use crate::cli::commands::watchlist::WatchlistCommand;
         log in at https://www.volumeleaders.com in your browser, then retry.\n\n\
         Output: compact JSON to stdout. Pipe through jq for pretty-printing.\n\
         Runtime errors use one structured JSON line on stderr.",
+    disable_help_subcommand = true,
     arg_required_else_help = true,
     propagate_version = true
 )]
@@ -53,6 +54,8 @@ pub enum Commands {
     Doctor,
     /// List available leaf command paths.
     Commands(CommandsArgs),
+    /// Show built-in operational help topics.
+    Help(HelpArgs),
     /// Emit machine-readable command metadata as JSON.
     Schema,
     /// Generate shell completions.
@@ -113,6 +116,28 @@ pub struct CommandsArgs {
     /// Group commands by their top-level command with short descriptions.
     #[arg(long)]
     pub grouped: bool,
+}
+
+/// Arguments for built-in operational help topics.
+#[derive(Debug, Args)]
+pub struct HelpArgs {
+    /// Help topic to show.
+    pub topic: HelpTopic,
+}
+
+/// Built-in operational help topics.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
+pub enum HelpTopic {
+    /// Browser-cookie authentication and local diagnostics.
+    Auth,
+    /// Local environment expectations.
+    Environment,
+    /// Semantic exit codes and recovery guidance.
+    ExitCodes,
+    /// CLI discovery through schema and commands output.
+    Schema,
+    /// Copy-paste command examples.
+    Examples,
 }
 
 /// Arguments for shell completion generation (populated in a later wave).

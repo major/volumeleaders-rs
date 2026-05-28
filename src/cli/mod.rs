@@ -12,6 +12,8 @@ pub mod common;
 pub mod doctor;
 /// Structured runtime error rendering and semantic exit-code mapping.
 pub mod error;
+/// Built-in operational help topics.
+pub mod help;
 /// JSON output formatting and field selection.
 pub mod output;
 /// Machine-readable CLI schema generation.
@@ -20,8 +22,8 @@ pub mod schema;
 use clap::Parser;
 
 pub use args::{
-    AlertArgs, Cli, Commands, CommandsArgs, CompletionsArgs, MarketArgs, ReportArgs, TradeArgs,
-    VolumeArgs, WatchlistArgs,
+    AlertArgs, Cli, Commands, CommandsArgs, CompletionsArgs, HelpArgs, HelpTopic, MarketArgs,
+    ReportArgs, TradeArgs, VolumeArgs, WatchlistArgs,
 };
 
 /// Parses CLI arguments, routes to the appropriate command handler, and returns
@@ -38,6 +40,7 @@ pub async fn run() -> i32 {
         Commands::Watchlist(args) => commands::watchlist::handle(args).await,
         Commands::Doctor => doctor::handle(),
         Commands::Commands(args) => command_list::handle(args),
+        Commands::Help(args) => help::handle(args),
         Commands::Schema => schema::handle(),
         Commands::Completions(args) => {
             commands::completions::handle(args);

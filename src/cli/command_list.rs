@@ -135,6 +135,7 @@ mod tests {
         assert_eq!(lines, sorted);
         assert!(lines.contains(&"commands"));
         assert!(lines.contains(&"doctor"));
+        assert!(lines.contains(&"help"));
         assert!(lines.contains(&"schema"));
         assert!(lines.contains(&"trade list"));
         assert!(lines.contains(&"volume institutional"));
@@ -162,6 +163,12 @@ mod tests {
             output
                 .lines()
                 .any(|line| line.starts_with("  commands  ") && line.contains("leaf command paths"))
+        );
+        assert!(output.contains("help\n"));
+        assert!(
+            output.lines().any(
+                |line| line.starts_with("  help  ") && line.contains("operational help topics")
+            )
         );
     }
 

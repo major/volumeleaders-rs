@@ -1,0 +1,79 @@
+use std::process::Command;
+
+#[test]
+fn help_with_valid_topic_succeeds() {
+    let output = Command::new(env!("CARGO_BIN_EXE_volumeleaders-agent"))
+        .args(["help", "auth"])
+        .output()
+        .unwrap();
+
+    assert!(output.status.success());
+    assert!(output.stderr.is_empty());
+
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    assert!(stdout.contains("browser cookies"));
+    assert!(stdout.contains("doctor"));
+}
+
+#[test]
+fn help_exit_codes_topic_lists_semantic_codes() {
+    let output = Command::new(env!("CARGO_BIN_EXE_volumeleaders-agent"))
+        .args(["help", "exit-codes"])
+        .output()
+        .unwrap();
+
+    assert!(output.status.success());
+    assert!(output.stderr.is_empty());
+
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    for code in ["0", "2", "3", "4", "5", "6", "7"] {
+        assert!(
+            stdout.contains(code),
+            "exit-codes topic must mention {code}"
+        );
+    }
+}
+
+#[test]
+fn all_help_topics_succeed() {
+    for topic in ["auth", "environment", "exit-codes", "schema", "examples"] {
+        let output = Command::new(env!("CARGO_BIN_EXE_volumeleaders-agent"))
+            .args(["help", topic])
+            .output()
+            .unwrap();
+
+        assert!(output.status.success(), "help {topic} should succeed");
+        assert!(
+            output.stderr.is_empty(),
+            "help {topic} should not use stderr"
+        );
+        assert!(
+            !output.stdout.is_empty(),
+            "help {topic} should write stdout"
+        );
+    }
+}
+
+#[test]
+fn help_with_invalid_topic_fails_with_usage_error() {
+    let output = Command::new(env!("CARGO_BIN_EXE_volumeleaders-agent"))
+        .args(["help", "missing-topic"])
+        .output()
+        .unwrap();
+
+    assert_eq!(output.status.code(), Some(2));
+    assert!(output.stdout.is_empty());
+    assert!(!output.stderr.is_empty());
+}
+
+#[test]
+fn help_without_topic_shows_usage_error() {
+    let output = Command::new(env!("CARGO_BIN_EXE_volumeleaders-agent"))
+        .arg("help")
+        .output()
+        .unwrap();
+
+    assert_eq!(output.status.code(), Some(2));
+    assert!(output.stdout.is_empty());
+    assert!(!output.stderr.is_empty());
+}
