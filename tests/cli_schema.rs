@@ -200,7 +200,7 @@ fn schema_emits_semantic_argument_metadata() {
         commands,
         &["alert", "create"],
         "sweep",
-        "flag",
+        "option",
         Some(serde_json::json!(["false"])),
     );
     assert_bool_arg(

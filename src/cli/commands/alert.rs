@@ -99,11 +99,25 @@ pub struct CreateArgs {
     pub trade_conditions: String,
 
     /// Require dark-pool trades when true; false leaves the alert unrestricted by dark-pool status.
-    #[arg(long, default_value = "false")]
+    #[arg(
+        long,
+        action = clap::ArgAction::Set,
+        value_parser = clap::value_parser!(bool),
+        default_value = "false",
+        default_missing_value = "true",
+        num_args = 0..=1
+    )]
     pub dark_pool: bool,
 
     /// Require sweep trades when true; false leaves the alert unrestricted by sweep status.
-    #[arg(long, default_value = "false")]
+    #[arg(
+        long,
+        action = clap::ArgAction::Set,
+        value_parser = clap::value_parser!(bool),
+        default_value = "false",
+        default_missing_value = "true",
+        num_args = 0..=1
+    )]
     pub sweep: bool,
 
     /// Maximum closing trade rank to alert on; lower ranks are more significant, and 0 disables this threshold.
@@ -175,11 +189,25 @@ pub struct CreateArgs {
     pub ah_dollars_gte: i64,
 
     /// Require offsetting prints when true; false leaves the alert unrestricted by offsetting status.
-    #[arg(long, default_value = "false")]
+    #[arg(
+        long,
+        action = clap::ArgAction::Set,
+        value_parser = clap::value_parser!(bool),
+        default_value = "false",
+        default_missing_value = "true",
+        num_args = 0..=1
+    )]
     pub offsetting_print: bool,
 
     /// Require phantom prints when true; false leaves the alert unrestricted by phantom status.
-    #[arg(long, default_value = "false")]
+    #[arg(
+        long,
+        action = clap::ArgAction::Set,
+        value_parser = clap::value_parser!(bool),
+        default_value = "false",
+        default_missing_value = "true",
+        num_args = 0..=1
+    )]
     pub phantom_print: bool,
 }
 
@@ -227,11 +255,25 @@ pub struct EditArgs {
     pub trade_conditions: String,
 
     /// Require dark-pool trades when true; false leaves the alert unrestricted by dark-pool status.
-    #[arg(long, default_value = "false")]
+    #[arg(
+        long,
+        action = clap::ArgAction::Set,
+        value_parser = clap::value_parser!(bool),
+        default_value = "false",
+        default_missing_value = "true",
+        num_args = 0..=1
+    )]
     pub dark_pool: bool,
 
     /// Require sweep trades when true; false leaves the alert unrestricted by sweep status.
-    #[arg(long, default_value = "false")]
+    #[arg(
+        long,
+        action = clap::ArgAction::Set,
+        value_parser = clap::value_parser!(bool),
+        default_value = "false",
+        default_missing_value = "true",
+        num_args = 0..=1
+    )]
     pub sweep: bool,
 
     /// Maximum closing trade rank to alert on; lower ranks are more significant, and 0 disables this threshold.
@@ -303,11 +345,25 @@ pub struct EditArgs {
     pub ah_dollars_gte: i64,
 
     /// Require offsetting prints when true; false leaves the alert unrestricted by offsetting status.
-    #[arg(long, default_value = "false")]
+    #[arg(
+        long,
+        action = clap::ArgAction::Set,
+        value_parser = clap::value_parser!(bool),
+        default_value = "false",
+        default_missing_value = "true",
+        num_args = 0..=1
+    )]
     pub offsetting_print: bool,
 
     /// Require phantom prints when true; false leaves the alert unrestricted by phantom status.
-    #[arg(long, default_value = "false")]
+    #[arg(
+        long,
+        action = clap::ArgAction::Set,
+        value_parser = clap::value_parser!(bool),
+        default_value = "false",
+        default_missing_value = "true",
+        num_args = 0..=1
+    )]
     pub phantom_print: bool,
 }
 
@@ -595,6 +651,27 @@ mod tests {
             cli.command,
             crate::cli::Commands::Alert(AlertArgs {
                 command: AlertCommand::Create(CreateArgs { sweep: true, .. }),
+            })
+        ));
+    }
+
+    #[test]
+    fn create_accepts_explicit_false_sweep_value() {
+        let cli = Cli::try_parse_from([
+            "volumeleaders-agent",
+            "alert",
+            "create",
+            "--name",
+            "SweepAlert",
+            "--sweep",
+            "false",
+        ])
+        .expect("explicit --sweep false value should parse");
+
+        assert!(matches!(
+            cli.command,
+            crate::cli::Commands::Alert(AlertArgs {
+                command: AlertCommand::Create(CreateArgs { sweep: false, .. }),
             })
         ));
     }
