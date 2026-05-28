@@ -10,6 +10,8 @@ pub mod common;
 pub mod error;
 /// JSON output formatting and field selection.
 pub mod output;
+/// Machine-readable CLI schema generation.
+pub mod schema;
 
 use clap::Parser;
 
@@ -30,6 +32,7 @@ pub async fn run() -> i32 {
         Commands::Market(args) => commands::market::handle(args).await,
         Commands::Alert(args) => commands::alert::handle(args).await,
         Commands::Watchlist(args) => commands::watchlist::handle(args).await,
+        Commands::Schema => schema::handle(),
         Commands::Completions(args) => {
             commands::completions::handle(args);
             0

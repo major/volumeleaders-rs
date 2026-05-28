@@ -40,6 +40,7 @@ volumeleaders-rs/
 | API client work | `src/` | Library modules export client, session, request builders, response models, errors, and pagination |
 | CLI work | `src/cli/` | Clap args, command routing, output formatting, and CLI helper modules |
 | CLI runtime errors | `src/cli/error.rs` | Structured JSON stderr envelope and semantic exit-code mapping |
+| CLI schema | `src/cli/schema.rs` | Machine-readable command metadata generated from the live clap tree |
 | Fixtures | `tests/fixtures/` | JSON payload contracts used by tests |
 | Local commands | `Makefile` | `make check` runs fmt, clippy, test, doc; `make patch-coverage` checks changed-line coverage; `make machete` checks unused dependencies |
 | CI behavior | `.github/workflows/ci.yml` | Linux, macOS, Windows test and clippy matrix |
@@ -64,6 +65,7 @@ volumeleaders-rs/
 - The package is publishable as `rusty-volumeleaders`; keep crate metadata valid for crates.io.
 - The CLI binary remains `volumeleaders-agent` and is built only when the `cli` feature is enabled. `cli` is enabled by default.
 - Runtime CLI errors are emitted to stderr as `{"ok":false,"error":{"kind":"...","message":"..."}}`; stdout remains compact JSON for successful commands.
+- `volumeleaders-agent schema` emits machine-readable discovery metadata from `Cli::command()` so command paths, help text, aliases, auth requirements, and arguments cannot drift from clap definitions.
 - Semantic CLI exit codes are `0` success, `2` usage error, `3` auth error, `4` HTTP transport error, `5` API error, `6` JSON parse or output transformation error, and `7` reserved for strict empty results.
 - Library consumers that do not need the CLI should use `rusty-volumeleaders = { version = "0.4.0", default-features = false }` to avoid clap and CLI-only dependencies.
 - Formatting follows `cargo fmt --all` and `.editorconfig`: UTF-8, 4-space indent, final newline, trim trailing whitespace except Markdown.

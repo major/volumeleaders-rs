@@ -1,0 +1,295 @@
+//! Machine-readable schema generated from the live clap command tree.
+
+use clap::{Arg, ArgAction, Command, CommandFactory};
+use serde::Serialize;
+
+use crate::cli::Cli;
+use crate::cli::output::{finish_output, print_json};
+
+const SCHEMA_VERSION: u8 = 1;
+const BINARY_NAME: &str = "volumeleaders-agent";
+
+/// Emit the CLI schema as compact JSON.
+pub fn handle() -> i32 {
+    finish_output(print_json(&build_schema()))
+}
+
+#[derive(Debug, Serialize)]
+struct CliSchema {
+    schema_version: u8,
+    binary: &'static str,
+    version: &'static str,
+    auth: AuthSchema,
+    commands: Vec<CommandSchema>,
+}
+
+#[derive(Debug, Serialize)]
+struct AuthSchema {
+    kind: &'static str,
+    sources: [&'static str; 2],
+    network_required_for_doctor: bool,
+}
+
+#[derive(Debug, Serialize)]
+struct CommandSchema {
+    path: Vec<String>,
+    preferred_path: String,
+    aliases: Vec<String>,
+    auth_required: bool,
+    about: Option<String>,
+    long_about: Option<String>,
+    args: Vec<ArgSchema>,
+}
+
+#[derive(Debug, Serialize)]
+struct ArgSchema {
+    long: Option<String>,
+    short: Option<char>,
+    value_name: Option<String>,
+    kind: ArgKind,
+    required: bool,
+    default: Option<Vec<String>>,
+    parser: String,
+    possible_values: Vec<String>,
+    multi_value: bool,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "snake_case")]
+enum ArgKind {
+    Flag,
+    Option,
+    Positional,
+}
+
+fn build_schema() -> CliSchema {
+    let command = Cli::command();
+    let mut commands = Vec::new();
+
+    collect_leaf_commands(&command, &mut Vec::new(), &mut commands);
+    commands.sort_by(|left, right| left.preferred_path.cmp(&right.preferred_path));
+
+    CliSchema {
+        schema_version: SCHEMA_VERSION,
+        binary: BINARY_NAME,
+        version: env!("CARGO_PKG_VERSION"),
+        auth: AuthSchema {
+            kind: "browser_cookies",
+            sources: ["chrome", "firefox"],
+            network_required_for_doctor: false,
+        },
+        commands,
+    }
+}
+
+fn collect_leaf_commands(
+    command: &Command,
+    path: &mut Vec<String>,
+    commands: &mut Vec<CommandSchema>,
+) {
+    for subcommand in command
+        .get_subcommands()
+        .filter(|command| !command.is_hide_set())
+    {
+        path.push(subcommand.get_name().to_string());
+        if subcommand.has_subcommands() {
+            collect_leaf_commands(subcommand, path, commands);
+        } else {
+            commands.push(command_schema(subcommand, path));
+        }
+        path.pop();
+    }
+}
+
+fn command_schema(command: &Command, path: &[String]) -> CommandSchema {
+    CommandSchema {
+        path: path.to_vec(),
+        preferred_path: path.join(" "),
+        aliases: command
+            .get_visible_aliases()
+            .map(ToString::to_string)
+            .collect(),
+        auth_required: auth_required(path),
+        about: command.get_about().map(ToString::to_string),
+        long_about: command.get_long_about().map(ToString::to_string),
+        args: command
+            .get_arguments()
+            .filter(|arg| !arg.is_hide_set())
+            .map(arg_schema)
+            .collect(),
+    }
+}
+
+fn auth_required(path: &[String]) -> bool {
+    !matches!(path, [command] if command == "schema" || command == "completions")
+}
+
+fn arg_schema(arg: &Arg) -> ArgSchema {
+    ArgSchema {
+        long: arg.get_long().map(ToString::to_string),
+        short: arg.get_short(),
+        value_name: value_name(arg),
+        kind: arg_kind(arg),
+        required: arg.is_required_set(),
+        default: default_values(arg),
+        parser: parser_name(arg),
+        possible_values: possible_values(arg),
+        multi_value: multi_value(arg),
+    }
+}
+
+fn value_name(arg: &Arg) -> Option<String> {
+    arg.get_value_names()
+        .and_then(|names| names.first())
+        .map(ToString::to_string)
+}
+
+fn arg_kind(arg: &Arg) -> ArgKind {
+    if arg.get_long().is_none() && arg.get_short().is_none() {
+        return ArgKind::Positional;
+    }
+
+    match arg.get_action() {
+        ArgAction::SetTrue
+        | ArgAction::SetFalse
+        | ArgAction::Count
+        | ArgAction::Help
+        | ArgAction::Version => ArgKind::Flag,
+        _ => ArgKind::Option,
+    }
+}
+
+fn default_values(arg: &Arg) -> Option<Vec<String>> {
+    let values: Vec<String> = arg
+        .get_default_values()
+        .iter()
+        .map(|value| value.to_string_lossy().into_owned())
+        .collect();
+
+    (!values.is_empty()).then_some(values)
+}
+
+fn parser_name(arg: &Arg) -> String {
+    if !possible_values(arg).is_empty() {
+        return "enum".to_string();
+    }
+
+    match arg.get_action() {
+        ArgAction::SetTrue | ArgAction::SetFalse => "bool",
+        ArgAction::Count => "count",
+        _ => "string",
+    }
+    .to_string()
+}
+
+fn possible_values(arg: &Arg) -> Vec<String> {
+    arg.get_value_parser()
+        .possible_values()
+        .map(|values| values.map(|value| value.get_name().to_string()).collect())
+        .unwrap_or_default()
+}
+
+fn multi_value(arg: &Arg) -> bool {
+    matches!(arg.get_action(), ArgAction::Append | ArgAction::Count)
+        || arg
+            .get_num_args()
+            .is_some_and(|range| range.max_values() > 1)
+}
+
+#[cfg(test)]
+mod tests {
+    use clap::{Arg, ArgAction};
+    use serde_json::Value;
+
+    use super::{build_schema, parser_name};
+
+    fn schema_value() -> Value {
+        serde_json::to_value(build_schema()).unwrap()
+    }
+
+    #[test]
+    fn schema_includes_root_contract() {
+        let schema = schema_value();
+
+        assert_eq!(schema["schema_version"], 1);
+        assert_eq!(schema["binary"], "volumeleaders-agent");
+        assert_eq!(schema["version"], env!("CARGO_PKG_VERSION"));
+        assert_eq!(schema["auth"]["kind"], "browser_cookies");
+        assert_eq!(
+            schema["auth"]["sources"],
+            serde_json::json!(["chrome", "firefox"])
+        );
+    }
+
+    #[test]
+    fn schema_includes_leaf_commands_from_clap_tree() {
+        let schema = schema_value();
+        let commands = schema["commands"].as_array().unwrap();
+        let paths: Vec<_> = commands
+            .iter()
+            .map(|command| command["preferred_path"].as_str().unwrap())
+            .collect();
+
+        assert!(paths.contains(&"schema"));
+        assert!(paths.contains(&"trade list"));
+        assert!(paths.contains(&"volume institutional"));
+        assert!(paths.contains(&"market earnings"));
+        assert!(paths.contains(&"watchlist configs"));
+        assert!(paths.contains(&"alert configs"));
+    }
+
+    #[test]
+    fn schema_marks_local_discovery_commands_as_auth_free() {
+        let schema = schema_value();
+        let commands = schema["commands"].as_array().unwrap();
+
+        let schema_command = commands
+            .iter()
+            .find(|command| command["preferred_path"] == "schema")
+            .unwrap();
+        let trade_command = commands
+            .iter()
+            .find(|command| command["preferred_path"] == "trade list")
+            .unwrap();
+
+        assert_eq!(schema_command["auth_required"], false);
+        assert_eq!(trade_command["auth_required"], true);
+    }
+
+    #[test]
+    fn schema_includes_argument_metadata() {
+        let schema = schema_value();
+        let trade_list = schema["commands"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|command| command["preferred_path"] == "trade list")
+            .unwrap();
+        let args = trade_list["args"].as_array().unwrap();
+
+        assert!(args.iter().any(|arg| arg["long"] == "fields"));
+        assert!(
+            args.iter()
+                .any(|arg| arg["long"] == "all-fields" && arg["kind"] == "flag")
+        );
+        assert!(
+            args.iter()
+                .any(|arg| arg["long"] == "limit" && arg["default"] == serde_json::json!(["1000"]))
+        );
+        assert!(
+            args.iter()
+                .any(|arg| arg["kind"] == "positional" && arg["multi_value"] == true)
+        );
+    }
+
+    #[test]
+    fn parser_names_cover_flag_action_types() {
+        let false_flag = Arg::new("disabled")
+            .long("disabled")
+            .action(ArgAction::SetFalse);
+        let count_flag = Arg::new("verbose").short('v').action(ArgAction::Count);
+
+        assert_eq!(parser_name(&false_flag), "bool");
+        assert_eq!(parser_name(&count_flag), "count");
+    }
+}

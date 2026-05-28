@@ -47,8 +47,11 @@ The CLI reads browser cookies automatically. If auth fails, log in to VolumeLead
 
 Semantic exit codes are stable for automation: `0` means success, `2` is clap usage or argument validation, `3` is browser auth failure, `4` is HTTP transport failure, `5` is a VolumeLeaders API error response, `6` is JSON parsing or output transformation failure, and `7` is reserved for strict empty-result handling.
 
+Use `schema` for machine-readable CLI discovery. It emits compact JSON generated from the live clap command tree with the binary version, browser-cookie auth model, leaf command paths, help text, aliases, auth requirements, and argument metadata.
+
 ```bash
 cargo run -- --help
+cargo run -- schema
 cargo run -- report list
 cargo run -- trade list
 cargo run -- completions bash
@@ -58,6 +61,7 @@ After building or installing, run the binary as `volumeleaders-agent`:
 
 ```bash
 volumeleaders-agent report list
+volumeleaders-agent schema | jq '.commands[] | select(.preferred_path == "trade list")'
 volumeleaders-agent trade list
 volumeleaders-agent completions zsh > _volumeleaders-agent
 ```
