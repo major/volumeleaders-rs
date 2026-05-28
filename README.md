@@ -53,6 +53,8 @@ Use global `-v`, `-vv`, or `-vvv` to enable info, debug, or trace diagnostics on
 
 Use `schema` for machine-readable CLI discovery. It emits compact JSON generated from the live clap command tree with the binary version, browser-cookie auth model, leaf command paths, help text, aliases, auth requirements, and argument metadata.
 
+Top-level aliases are available for the highest-frequency trade commands: `trades` for `trade list`, `dashboard` for `trade dashboard`, and `levels` for `trade levels`. The schema keeps the canonical `trade ...` preferred paths and reports alias metadata so automation can normalize either form.
+
 Use `commands` for lightweight CLI discovery. It emits a sorted plain-text list of leaf command paths, or grouped command names with short descriptions when run with `--grouped`.
 
 Use `doctor` for a safe local readiness check before running live data commands. It emits compact JSON with the CLI version, browser-cookie auth status, and live-connectivity status without making a network request by default.
@@ -71,6 +73,9 @@ cargo run -- help exit-codes
 cargo run -- schema
 cargo run -- -vv doctor
 cargo run -- --strict-empty trade list NVDA
+cargo run -- trades NVDA
+cargo run -- dashboard NVDA
+cargo run -- levels NVDA
 cargo run -- report list
 cargo run -- trade list
 cargo run -- trade list --help
@@ -84,6 +89,9 @@ volumeleaders-agent doctor
 volumeleaders-agent commands
 volumeleaders-agent help examples
 volumeleaders-agent -vv trade list NVDA
+volumeleaders-agent trades NVDA
+volumeleaders-agent dashboard NVDA
+volumeleaders-agent levels NVDA
 volumeleaders-agent report list
 volumeleaders-agent schema | jq '.commands[] | select(.preferred_path == "trade list")'
 volumeleaders-agent trade list

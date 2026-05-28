@@ -84,6 +84,8 @@ Use `schema` and `commands` for binary-native CLI discovery.
 
 `volumeleaders-agent schema` emits compact JSON generated from the live clap tree. It includes the binary version, auth model, leaf command paths, aliases, auth requirements, help text, and argument metadata.
 
+Common top-level aliases such as `trades`, `dashboard`, and `levels` are reported with their canonical `trade ...` preferred paths so agents can normalize generated commands.
+
 `volumeleaders-agent commands` emits one sorted leaf command path per line. It is lighter than `schema` and useful when an agent only needs to choose a command.
 
 `volumeleaders-agent commands --grouped` emits top-level groups with short descriptions for each leaf command.
@@ -105,10 +107,13 @@ volumeleaders-agent schema | jq '.commands[] | select(.preferred_path == "trade 
 
 volumeleaders-agent report list
 volumeleaders-agent report dark-pool-sweeps
+volumeleaders-agent trades NVDA
 volumeleaders-agent trade list NVDA
 volumeleaders-agent -vv trade list NVDA
 volumeleaders-agent --strict-empty trade list NVDA --start-date 2026-05-01 --end-date 2026-05-27 --fields ticker,date,price,volume,venue
+volumeleaders-agent dashboard NVDA
 volumeleaders-agent trade dashboard NVDA
+volumeleaders-agent levels NVDA
 
 volumeleaders-agent volume institutional --date 2026-05-27 --tickers AAPL
 volumeleaders-agent volume institutional --date 2026-05-27 --limit 50
@@ -132,6 +137,8 @@ mod tests {
         assert!(topic_text(HelpTopic::ExitCodes).contains("3  auth error"));
         assert!(topic_text(HelpTopic::ExitCodes).contains("-vvv"));
         assert!(topic_text(HelpTopic::Schema).contains("commands --grouped"));
+        assert!(topic_text(HelpTopic::Schema).contains("trades"));
+        assert!(topic_text(HelpTopic::Examples).contains("trades NVDA"));
         assert!(topic_text(HelpTopic::Examples).contains("--strict-empty trade list NVDA"));
         assert!(topic_text(HelpTopic::Examples).contains("-vv trade list NVDA"));
     }

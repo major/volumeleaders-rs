@@ -31,7 +31,7 @@ pub use args::{
 /// Parses CLI arguments, routes to the appropriate command handler, and returns
 /// the process exit code.
 pub async fn run() -> i32 {
-    let cli = Cli::parse();
+    let cli = Cli::parse_from(args::normalize_alias_args(std::env::args()));
     logging::init(cli.verbose);
     output::configure_strict_empty(
         cli.strict_empty,

@@ -70,6 +70,7 @@ volumeleaders-rs/
 - Runtime CLI errors are emitted to stderr as `{"ok":false,"error":{"kind":"...","message":"..."}}`; stdout remains compact JSON for successful commands.
 - Global `-v`/`-vv`/`-vvv` enables info/debug/trace diagnostics on stderr only; default logging is warn, stdout must remain parseable command output, and sensitive cookie/XSRF values must stay redacted.
 - Global `--strict-empty` converts empty record-array outputs into `empty_result` stderr JSON with exit code `7`; object, discovery, help, completion, and diagnostic outputs are not strict-empty candidates.
+- Top-level aliases `trades`, `dashboard`, and `levels` execute canonical `trade list`, `trade dashboard`, and `trade levels`; schema metadata keeps canonical preferred paths with alias metadata.
 - `volumeleaders-agent commands` emits a plain-text leaf command list, with `--grouped` for grouped descriptions, generated from the live clap tree.
 - `volumeleaders-agent doctor` emits local browser-cookie readiness diagnostics as compact JSON and skips live network checks by default.
 - `volumeleaders-agent help <topic>` emits plain-text operational guidance for auth, environment, exit codes, discovery, and examples. Root and command clap help remain available through `--help`.

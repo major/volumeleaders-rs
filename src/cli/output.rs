@@ -340,7 +340,7 @@ fn is_group_command(command: &str) -> bool {
 }
 
 fn empty_result_suggestion(command: &str) -> &'static str {
-    if command.starts_with("trade ") {
+    if command.starts_with("trade ") || matches!(command, "trades" | "dashboard" | "levels") {
         "try checking the ticker or widening the date range"
     } else if command.starts_with("report ") {
         "try a broader report, longer lookback, or fewer filters"
@@ -659,6 +659,9 @@ mod tests {
     #[test]
     fn empty_result_suggestions_are_command_aware() {
         assert!(empty_result_suggestion("report top-100-rank").contains("broader report"));
+        assert!(empty_result_suggestion("trades").contains("ticker"));
+        assert!(empty_result_suggestion("dashboard").contains("ticker"));
+        assert!(empty_result_suggestion("levels").contains("ticker"));
         assert!(empty_result_suggestion("volume institutional").contains("different date"));
         assert!(empty_result_suggestion("market earnings").contains("different date"));
         assert!(empty_result_suggestion("alert configs").contains("valid account state"));
