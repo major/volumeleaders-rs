@@ -183,63 +183,168 @@ pub struct WatchlistConfigFlags {
     pub max_trade_rank: i64,
 
     /// Include normal prints; pass false to exclude them, omitted uses the default true.
-    #[arg(long, default_value = "true")]
+    #[arg(
+        long,
+        action = clap::ArgAction::Set,
+        value_parser = clap::value_parser!(bool),
+        default_value = "true",
+        default_missing_value = "true",
+        num_args = 0..=1
+    )]
     pub normal_prints: bool,
 
     /// Include signature prints; pass false to exclude them, omitted uses the default true.
-    #[arg(long, default_value = "true")]
+    #[arg(
+        long,
+        action = clap::ArgAction::Set,
+        value_parser = clap::value_parser!(bool),
+        default_value = "true",
+        default_missing_value = "true",
+        num_args = 0..=1
+    )]
     pub signature_prints: bool,
 
     /// Include late prints; pass false to exclude them, omitted uses the default true.
-    #[arg(long, default_value = "true")]
+    #[arg(
+        long,
+        action = clap::ArgAction::Set,
+        value_parser = clap::value_parser!(bool),
+        default_value = "true",
+        default_missing_value = "true",
+        num_args = 0..=1
+    )]
     pub late_prints: bool,
 
     /// Include timely prints; pass false to exclude them, omitted uses the default true.
-    #[arg(long, default_value = "true")]
+    #[arg(
+        long,
+        action = clap::ArgAction::Set,
+        value_parser = clap::value_parser!(bool),
+        default_value = "true",
+        default_missing_value = "true",
+        num_args = 0..=1
+    )]
     pub timely_prints: bool,
 
     /// Include dark-pool trades; pass false to exclude them, omitted uses the default true.
-    #[arg(long, default_value = "true")]
+    #[arg(
+        long,
+        action = clap::ArgAction::Set,
+        value_parser = clap::value_parser!(bool),
+        default_value = "true",
+        default_missing_value = "true",
+        num_args = 0..=1
+    )]
     pub dark_pools: bool,
 
     /// Include lit-exchange trades; pass false to exclude them, omitted uses the default true.
-    #[arg(long, default_value = "true")]
+    #[arg(
+        long,
+        action = clap::ArgAction::Set,
+        value_parser = clap::value_parser!(bool),
+        default_value = "true",
+        default_missing_value = "true",
+        num_args = 0..=1
+    )]
     pub lit_exchanges: bool,
 
     /// Include sweep trades; pass false to exclude them, omitted uses the default true.
-    #[arg(long, default_value = "true")]
+    #[arg(
+        long,
+        action = clap::ArgAction::Set,
+        value_parser = clap::value_parser!(bool),
+        default_value = "true",
+        default_missing_value = "true",
+        num_args = 0..=1
+    )]
     pub sweeps: bool,
 
     /// Include block trades; pass false to exclude them, omitted uses the default true.
-    #[arg(long, default_value = "true")]
+    #[arg(
+        long,
+        action = clap::ArgAction::Set,
+        value_parser = clap::value_parser!(bool),
+        default_value = "true",
+        default_missing_value = "true",
+        num_args = 0..=1
+    )]
     pub blocks: bool,
 
     /// Include premarket trades; pass false to exclude them, omitted uses the default true.
-    #[arg(long, default_value = "true")]
+    #[arg(
+        long,
+        action = clap::ArgAction::Set,
+        value_parser = clap::value_parser!(bool),
+        default_value = "true",
+        default_missing_value = "true",
+        num_args = 0..=1
+    )]
     pub premarket_trades: bool,
 
     /// Include regular trading-hours trades; pass false to exclude them, omitted uses the default true.
-    #[arg(long, default_value = "true")]
+    #[arg(
+        long,
+        action = clap::ArgAction::Set,
+        value_parser = clap::value_parser!(bool),
+        default_value = "true",
+        default_missing_value = "true",
+        num_args = 0..=1
+    )]
     pub rth_trades: bool,
 
     /// Include after-hours trades; pass false to exclude them, omitted uses the default true.
-    #[arg(long, default_value = "true")]
+    #[arg(
+        long,
+        action = clap::ArgAction::Set,
+        value_parser = clap::value_parser!(bool),
+        default_value = "true",
+        default_missing_value = "true",
+        num_args = 0..=1
+    )]
     pub ah_trades: bool,
 
     /// Include opening trades; pass false to exclude them, omitted uses the default true.
-    #[arg(long, default_value = "true")]
+    #[arg(
+        long,
+        action = clap::ArgAction::Set,
+        value_parser = clap::value_parser!(bool),
+        default_value = "true",
+        default_missing_value = "true",
+        num_args = 0..=1
+    )]
     pub opening_trades: bool,
 
     /// Include closing trades; pass false to exclude them, omitted uses the default true.
-    #[arg(long, default_value = "true")]
+    #[arg(
+        long,
+        action = clap::ArgAction::Set,
+        value_parser = clap::value_parser!(bool),
+        default_value = "true",
+        default_missing_value = "true",
+        num_args = 0..=1
+    )]
     pub closing_trades: bool,
 
     /// Include phantom trades; pass false to exclude them, omitted uses the default true.
-    #[arg(long, default_value = "true")]
+    #[arg(
+        long,
+        action = clap::ArgAction::Set,
+        value_parser = clap::value_parser!(bool),
+        default_value = "true",
+        default_missing_value = "true",
+        num_args = 0..=1
+    )]
     pub phantom_trades: bool,
 
     /// Include offsetting trades; pass false to exclude them, omitted uses the default true.
-    #[arg(long, default_value = "true")]
+    #[arg(
+        long,
+        action = clap::ArgAction::Set,
+        value_parser = clap::value_parser!(bool),
+        default_value = "true",
+        default_missing_value = "true",
+        num_args = 0..=1
+    )]
     pub offsetting_trades: bool,
 
     /// Daily RSI overbought filter: -1 ignore, 0 require no, 1 require yes.
@@ -529,6 +634,59 @@ mod tests {
             .collect();
         assert_eq!(rsi_entries.len(), 1);
         assert_eq!(rsi_entries[0].1, "-1");
+    }
+
+    #[test]
+    fn create_can_disable_default_true_watchlist_boolean() {
+        let cli = Cli::try_parse_from([
+            "volumeleaders-agent",
+            "watchlist",
+            "create",
+            "--name",
+            "NoNormalPrints",
+            "--normal-prints",
+            "false",
+        ])
+        .expect("--normal-prints false should parse");
+
+        assert!(matches!(
+            cli.command,
+            crate::cli::Commands::Watchlist(WatchlistArgs {
+                command: WatchlistCommand::Create(CreateArgs {
+                    name,
+                    config: WatchlistConfigFlags {
+                        normal_prints: false,
+                        ..
+                    },
+                }),
+            }) if name == "NoNormalPrints"
+        ));
+    }
+
+    #[test]
+    fn create_keeps_bare_default_true_watchlist_boolean_enabled() {
+        let cli = Cli::try_parse_from([
+            "volumeleaders-agent",
+            "watchlist",
+            "create",
+            "--name",
+            "NormalPrints",
+            "--normal-prints",
+        ])
+        .expect("bare --normal-prints should still parse as true");
+
+        assert!(matches!(
+            cli.command,
+            crate::cli::Commands::Watchlist(WatchlistArgs {
+                command: WatchlistCommand::Create(CreateArgs {
+                    name,
+                    config: WatchlistConfigFlags {
+                        normal_prints: true,
+                        ..
+                    },
+                }),
+            }) if name == "NormalPrints"
+        ));
     }
 
     #[test]
