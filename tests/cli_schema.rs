@@ -34,4 +34,13 @@ fn schema_command_emits_machine_readable_contract() {
                 command["preferred_path"] == "doctor" && command["auth_required"] == false
             })
     );
+    assert!(
+        schema["commands"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|command| {
+                command["preferred_path"] == "commands" && command["auth_required"] == false
+            })
+    );
 }

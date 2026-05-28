@@ -51,6 +51,8 @@ pub enum Commands {
     Watchlist(WatchlistArgs),
     /// Check local auth and environment readiness as JSON.
     Doctor,
+    /// List available leaf command paths.
+    Commands(CommandsArgs),
     /// Emit machine-readable command metadata as JSON.
     Schema,
     /// Generate shell completions.
@@ -103,6 +105,14 @@ pub struct WatchlistArgs {
     /// Watchlist subcommand to run.
     #[command(subcommand)]
     pub command: WatchlistCommand,
+}
+
+/// Arguments for command discovery output.
+#[derive(Debug, Args)]
+pub struct CommandsArgs {
+    /// Group commands by their top-level command with short descriptions.
+    #[arg(long)]
+    pub grouped: bool,
 }
 
 /// Arguments for shell completion generation (populated in a later wave).
