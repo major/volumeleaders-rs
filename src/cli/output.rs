@@ -4,6 +4,7 @@ use serde::Serialize;
 use serde_json::Value;
 
 use crate::cli::common::trade_transforms::{TradeRecordKind, transformed_trade_values};
+use crate::cli::error::{json_error, usage_error};
 
 /// Writes `value` as compact JSON to stdout, newline-terminated.
 pub fn print_json<T: Serialize>(value: &T) -> io::Result<()> {
@@ -235,10 +236,10 @@ pub fn print_result<T: Serialize>(value: &T) -> io::Result<()> {
 pub fn finish_output(result: io::Result<()>) -> i32 {
     match result {
         Ok(()) => 0,
-        Err(err) => {
-            eprintln!("output error: {err}");
-            1
+        Err(err) if err.kind() == io::ErrorKind::InvalidInput => {
+            usage_error(format!("output error: {err}"))
         }
+        Err(err) => json_error(format!("output error: {err}")),
     }
 }
 
@@ -252,6 +253,8 @@ fn write_json<W: Write, T: Serialize>(writer: &mut W, value: &T) -> io::Result<(
 #[cfg(test)]
 mod tests {
     use serde::Serialize;
+
+    use crate::cli::error::{EXIT_JSON_ERROR, EXIT_USAGE_ERROR};
 
     use super::{
         finish_output, print_records, records_to_values, selected_fields, write_json,
@@ -414,6 +417,16 @@ mod tests {
     #[test]
     fn finish_output_maps_result_to_exit_code() {
         assert_eq!(finish_output(Ok(())), 0);
-        assert_eq!(finish_output(Err(std::io::Error::other("broken pipe"))), 1);
+        assert_eq!(
+            finish_output(Err(std::io::Error::new(
+                std::io::ErrorKind::InvalidInput,
+                "unknown output field"
+            ))),
+            EXIT_USAGE_ERROR
+        );
+        assert_eq!(
+            finish_output(Err(std::io::Error::other("broken pipe"))),
+            EXIT_JSON_ERROR
+        );
     }
 }

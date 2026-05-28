@@ -6,6 +6,8 @@ pub mod args;
 pub mod commands;
 /// Shared CLI utilities: auth, dates, formatting, tickers, types.
 pub mod common;
+/// Structured runtime error rendering and semantic exit-code mapping.
+pub mod error;
 /// JSON output formatting and field selection.
 pub mod output;
 
