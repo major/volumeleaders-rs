@@ -33,6 +33,8 @@ struct AuthSchema {
 #[derive(Debug, Serialize)]
 struct CommandSchema {
     path: Vec<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    alias_for: Option<Vec<String>>,
     preferred_path: String,
     aliases: Vec<String>,
     auth_required: bool,
@@ -72,7 +74,12 @@ fn build_schema() -> CliSchema {
     let mut commands = Vec::new();
 
     collect_leaf_commands(&command, &mut Vec::new(), &global_args, &mut commands);
-    commands.sort_by(|left, right| left.preferred_path.cmp(&right.preferred_path));
+    add_alias_commands(&mut commands);
+    commands.sort_by(|left, right| {
+        left.preferred_path
+            .cmp(&right.preferred_path)
+            .then_with(|| left.path.cmp(&right.path))
+    });
 
     CliSchema {
         schema_version: SCHEMA_VERSION,
@@ -118,6 +125,7 @@ fn command_schema(command: &Command, path: &[String], global_args: &[ArgSchema])
 
     CommandSchema {
         path: path.to_vec(),
+        alias_for: None,
         preferred_path: path.join(" "),
         aliases: command
             .get_visible_aliases()
@@ -127,6 +135,33 @@ fn command_schema(command: &Command, path: &[String], global_args: &[ArgSchema])
         about: command.get_about().map(ToString::to_string),
         long_about: command.get_long_about().map(ToString::to_string),
         args,
+    }
+}
+
+fn add_alias_commands(commands: &mut Vec<CommandSchema>) {
+    for (alias, canonical) in [
+        ("trades", ["trade", "list"]),
+        ("dashboard", ["trade", "dashboard"]),
+        ("levels", ["trade", "levels"]),
+    ] {
+        let canonical_path = canonical.map(str::to_string).to_vec();
+        let Some(canonical_command) = commands
+            .iter()
+            .find(|command| command.path == canonical_path)
+        else {
+            continue;
+        };
+
+        commands.push(CommandSchema {
+            path: vec![alias.to_string()],
+            alias_for: Some(canonical_path),
+            preferred_path: canonical_command.preferred_path.clone(),
+            aliases: Vec::new(),
+            auth_required: canonical_command.auth_required,
+            about: Some(format!("Alias for `{}`.", canonical_command.preferred_path)),
+            long_about: canonical_command.long_about.clone(),
+            args: canonical_command.args.clone(),
+        });
     }
 }
 
@@ -211,7 +246,7 @@ mod tests {
     use clap::{Arg, ArgAction};
     use serde_json::Value;
 
-    use super::{build_schema, parser_name};
+    use super::{CommandSchema, add_alias_commands, build_schema, parser_name};
 
     fn schema_value() -> Value {
         serde_json::to_value(build_schema()).unwrap()
@@ -245,6 +280,8 @@ mod tests {
         assert!(paths.contains(&"doctor"));
         assert!(paths.contains(&"help"));
         assert!(paths.contains(&"trade list"));
+        assert!(paths.contains(&"trade dashboard"));
+        assert!(paths.contains(&"trade levels"));
         assert!(paths.contains(&"volume institutional"));
         assert!(paths.contains(&"market earnings"));
         assert!(paths.contains(&"watchlist configs"));
@@ -285,13 +322,72 @@ mod tests {
     }
 
     #[test]
+    fn schema_includes_top_level_alias_metadata() {
+        let schema = schema_value();
+        let commands = schema["commands"].as_array().unwrap();
+
+        let trades_alias = commands
+            .iter()
+            .find(|command| command["path"] == serde_json::json!(["trades"]))
+            .unwrap();
+        let dashboard_alias = commands
+            .iter()
+            .find(|command| command["path"] == serde_json::json!(["dashboard"]))
+            .unwrap();
+        let levels_alias = commands
+            .iter()
+            .find(|command| command["path"] == serde_json::json!(["levels"]))
+            .unwrap();
+
+        assert_eq!(
+            trades_alias["alias_for"],
+            serde_json::json!(["trade", "list"])
+        );
+        assert_eq!(trades_alias["preferred_path"], "trade list");
+        assert_eq!(trades_alias["auth_required"], true);
+        assert_eq!(
+            dashboard_alias["alias_for"],
+            serde_json::json!(["trade", "dashboard"])
+        );
+        assert_eq!(dashboard_alias["preferred_path"], "trade dashboard");
+        assert_eq!(
+            levels_alias["alias_for"],
+            serde_json::json!(["trade", "levels"])
+        );
+        assert_eq!(levels_alias["preferred_path"], "trade levels");
+    }
+
+    #[test]
+    fn alias_generation_skips_missing_canonical_commands() {
+        let mut commands = vec![CommandSchema {
+            path: vec!["trade".to_string(), "list".to_string()],
+            alias_for: None,
+            preferred_path: "trade list".to_string(),
+            aliases: Vec::new(),
+            auth_required: true,
+            about: Some("List trades".to_string()),
+            long_about: Some("List trades.\n\nExamples:\n  volumeleaders-agent trade list NVDA\n  volumeleaders-agent trade list AAPL".to_string()),
+            args: Vec::new(),
+        }];
+
+        add_alias_commands(&mut commands);
+
+        assert!(commands.iter().any(|command| command.path == ["trades"]));
+        assert!(
+            commands
+                .iter()
+                .all(|command| command.path != ["dashboard"] && command.path != ["levels"])
+        );
+    }
+
+    #[test]
     fn schema_includes_argument_metadata() {
         let schema = schema_value();
         let trade_list = schema["commands"]
             .as_array()
             .unwrap()
             .iter()
-            .find(|command| command["preferred_path"] == "trade list")
+            .find(|command| command["path"] == serde_json::json!(["trade", "list"]))
             .unwrap();
         let args = trade_list["args"].as_array().unwrap();
 

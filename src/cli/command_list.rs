@@ -79,7 +79,25 @@ fn leaf_commands() -> Vec<LeafCommand> {
     let mut leaves = Vec::new();
 
     collect_leaf_commands(&command, &mut Vec::new(), &mut leaves);
+    leaves.extend(alias_commands());
     leaves
+}
+
+fn alias_commands() -> [LeafCommand; 3] {
+    [
+        LeafCommand {
+            path: vec!["trades".to_string()],
+            about: Some("Alias for `trade list`.".to_string()),
+        },
+        LeafCommand {
+            path: vec!["dashboard".to_string()],
+            about: Some("Alias for `trade dashboard`.".to_string()),
+        },
+        LeafCommand {
+            path: vec!["levels".to_string()],
+            about: Some("Alias for `trade levels`.".to_string()),
+        },
+    ]
 }
 
 fn collect_leaf_commands(command: &Command, path: &mut Vec<String>, leaves: &mut Vec<LeafCommand>) {
@@ -134,10 +152,13 @@ mod tests {
 
         assert_eq!(lines, sorted);
         assert!(lines.contains(&"commands"));
+        assert!(lines.contains(&"dashboard"));
         assert!(lines.contains(&"doctor"));
         assert!(lines.contains(&"help"));
+        assert!(lines.contains(&"levels"));
         assert!(lines.contains(&"schema"));
         assert!(lines.contains(&"trade list"));
+        assert!(lines.contains(&"trades"));
         assert!(lines.contains(&"volume institutional"));
         assert!(lines.contains(&"watchlist tickers"));
     }
@@ -169,6 +190,13 @@ mod tests {
             output.lines().any(
                 |line| line.starts_with("  help  ") && line.contains("operational help topics")
             )
+        );
+        assert!(output.contains("trades\n"));
+        assert!(
+            output
+                .lines()
+                .any(|line| line.starts_with("  trades  ")
+                    && line.contains("Alias for `trade list`"))
         );
     }
 

@@ -56,8 +56,19 @@ fn schema_command_emits_machine_readable_contract() {
         .as_array()
         .unwrap()
         .iter()
-        .find(|command| command["preferred_path"] == "trade list")
+        .find(|command| command["path"] == serde_json::json!(["trade", "list"]))
         .unwrap();
+    let trades_alias = schema["commands"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|command| command["path"] == serde_json::json!(["trades"]))
+        .unwrap();
+    assert_eq!(
+        trades_alias["alias_for"],
+        serde_json::json!(["trade", "list"])
+    );
+    assert_eq!(trades_alias["preferred_path"], "trade list");
     assert!(trade_list["args"].as_array().unwrap().iter().any(|arg| {
         arg["long"] == "strict-empty" && arg["kind"] == "flag" && arg["parser"] == "enum"
     }));

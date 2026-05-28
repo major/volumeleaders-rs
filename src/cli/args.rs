@@ -42,6 +42,32 @@ pub struct Cli {
     pub command: Commands,
 }
 
+/// Rewrites supported top-level aliases into their canonical command paths.
+pub fn normalize_alias_args(args: impl IntoIterator<Item = String>) -> Vec<String> {
+    let mut args = args.into_iter().collect::<Vec<_>>();
+    let Some(index) = args
+        .iter()
+        .enumerate()
+        .skip(1)
+        .find_map(|(index, arg)| (!arg.starts_with('-')).then_some(index))
+    else {
+        return args;
+    };
+
+    let replacement = match args[index].as_str() {
+        "trades" => Some(["trade", "list"]),
+        "dashboard" => Some(["trade", "dashboard"]),
+        "levels" => Some(["trade", "levels"]),
+        _ => None,
+    };
+
+    if let Some(replacement) = replacement {
+        args.splice(index..=index, replacement.map(str::to_string));
+    }
+
+    args
+}
+
 /// Top-level command groups.
 #[derive(Debug, Subcommand)]
 #[allow(clippy::large_enum_variant)]
@@ -174,7 +200,7 @@ pub struct CompletionsArgs {
 mod tests {
     use clap::{Command, CommandFactory, Parser};
 
-    use super::Cli;
+    use super::{Cli, normalize_alias_args};
 
     #[test]
     fn command_tree_is_valid() {
@@ -211,6 +237,61 @@ mod tests {
 
         assert_eq!(before_command.verbose, 2);
         assert_eq!(after_command.verbose, 3);
+    }
+
+    #[test]
+    fn top_level_trade_aliases_normalize_to_canonical_paths() {
+        assert_eq!(
+            normalize_alias_args(["volumeleaders-agent", "trades", "NVDA"].map(str::to_string)),
+            ["volumeleaders-agent", "trade", "list", "NVDA"]
+        );
+        assert_eq!(
+            normalize_alias_args(["volumeleaders-agent", "dashboard", "NVDA"].map(str::to_string)),
+            ["volumeleaders-agent", "trade", "dashboard", "NVDA"]
+        );
+        assert_eq!(
+            normalize_alias_args(["volumeleaders-agent", "levels", "NVDA"].map(str::to_string)),
+            ["volumeleaders-agent", "trade", "levels", "NVDA"]
+        );
+    }
+
+    #[test]
+    fn top_level_trade_aliases_normalize_after_global_flags() {
+        assert_eq!(
+            normalize_alias_args(
+                [
+                    "volumeleaders-agent",
+                    "--strict-empty",
+                    "-vv",
+                    "trades",
+                    "NVDA"
+                ]
+                .map(str::to_string)
+            ),
+            [
+                "volumeleaders-agent",
+                "--strict-empty",
+                "-vv",
+                "trade",
+                "list",
+                "NVDA"
+            ]
+        );
+
+        assert_eq!(
+            normalize_alias_args(
+                ["volumeleaders-agent", "trade", "list", "NVDA"].map(str::to_string)
+            ),
+            ["volumeleaders-agent", "trade", "list", "NVDA"]
+        );
+    }
+
+    #[test]
+    fn top_level_trade_aliases_leave_flag_only_invocations_unchanged() {
+        assert_eq!(
+            normalize_alias_args(["volumeleaders-agent", "--version"].map(str::to_string)),
+            ["volumeleaders-agent", "--version"]
+        );
     }
 
     #[test]
