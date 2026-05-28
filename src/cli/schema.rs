@@ -46,6 +46,7 @@ struct CommandSchema {
 
 #[derive(Clone, Debug, Serialize)]
 struct ArgSchema {
+    name: String,
     long: Option<String>,
     short: Option<char>,
     value_name: Option<String>,
@@ -189,6 +190,7 @@ fn auth_required(path: &[String]) -> bool {
 
 fn arg_schema(arg: &Arg) -> ArgSchema {
     ArgSchema {
+        name: arg_name(arg),
         long: arg.get_long().map(ToString::to_string),
         short: arg.get_short(),
         value_name: value_name(arg),
@@ -199,6 +201,12 @@ fn arg_schema(arg: &Arg) -> ArgSchema {
         possible_values: possible_values(arg),
         multi_value: multi_value(arg),
     }
+}
+
+fn arg_name(arg: &Arg) -> String {
+    arg.get_long()
+        .map(ToString::to_string)
+        .unwrap_or_else(|| arg.get_id().to_string())
 }
 
 fn value_name(arg: &Arg) -> Option<String> {
@@ -483,29 +491,81 @@ mod tests {
             .unwrap();
         let args = trade_list["args"].as_array().unwrap();
 
-        assert!(args.iter().any(|arg| arg["long"] == "fields"));
         assert!(
             args.iter()
-                .any(|arg| arg["long"] == "all-fields" && arg["kind"] == "flag")
+                .any(|arg| arg["name"] == "fields" && arg["long"] == "fields")
         );
-        assert!(
-            args.iter()
-                .any(|arg| arg["long"] == "limit" && arg["default"] == serde_json::json!(["1000"]))
-        );
-        assert!(
-            args.iter()
-                .any(|arg| arg["kind"] == "positional" && arg["multi_value"] == true)
-        );
+        assert!(args.iter().any(|arg| arg["name"] == "all-fields"
+            && arg["long"] == "all-fields"
+            && arg["kind"] == "flag"));
+        assert!(args.iter().any(|arg| arg["name"] == "limit"
+            && arg["long"] == "limit"
+            && arg["default"] == serde_json::json!(["1000"])));
+        assert!(args.iter().any(|arg| arg["name"] == "tickers"
+            && arg["kind"] == "positional"
+            && arg["value_name"] == "TICKERS"
+            && arg["multi_value"] == true));
         assert!(args.iter().any(|arg| {
-            arg["long"] == "strict-empty" && arg["kind"] == "flag" && arg["parser"] == "enum"
+            arg["name"] == "strict-empty"
+                && arg["long"] == "strict-empty"
+                && arg["kind"] == "flag"
+                && arg["parser"] == "enum"
         }));
         assert!(args.iter().any(|arg| {
-            arg["long"] == "verbose"
+            arg["name"] == "verbose"
+                && arg["long"] == "verbose"
                 && arg["short"] == "v"
                 && arg["kind"] == "flag"
                 && arg["parser"] == "count"
                 && arg["multi_value"] == true
         }));
+    }
+
+    #[test]
+    fn schema_positionals_have_stable_names() {
+        let schema = schema_value();
+        let commands = schema["commands"].as_array().unwrap();
+
+        for (path, expected_name, expected_value_name, expected_required, expected_multi_value) in [
+            (
+                serde_json::json!(["trade", "list"]),
+                "tickers",
+                "TICKERS",
+                false,
+                true,
+            ),
+            (
+                serde_json::json!(["trade", "dashboard"]),
+                "ticker",
+                "TICKER",
+                true,
+                false,
+            ),
+            (serde_json::json!(["help"]), "topic", "TOPIC", true, false),
+            (
+                serde_json::json!(["completions"]),
+                "shell",
+                "SHELL",
+                true,
+                false,
+            ),
+        ] {
+            let command = commands
+                .iter()
+                .find(|command| command["path"] == path)
+                .unwrap();
+            let positional = command["args"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .find(|arg| arg["kind"] == "positional")
+                .unwrap();
+
+            assert_eq!(positional["name"], expected_name);
+            assert_eq!(positional["value_name"], expected_value_name);
+            assert_eq!(positional["required"], expected_required);
+            assert_eq!(positional["multi_value"], expected_multi_value);
+        }
     }
 
     #[test]
@@ -524,6 +584,7 @@ mod tests {
             .find(|arg| arg["kind"] == "positional")
             .unwrap();
 
+        assert_eq!(topic_arg["name"], "topic");
         assert_eq!(topic_arg["parser"], "enum");
         assert_eq!(
             topic_arg["possible_values"],

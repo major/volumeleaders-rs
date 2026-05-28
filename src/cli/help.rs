@@ -34,7 +34,7 @@ Guidance for non-interactive automation and coding agents:
    Run `volumeleaders-agent doctor` before authenticated data commands when automation needs to confirm browser-cookie readiness. `doctor` is local-only by default and does not make a network request.
 
 2. Discover commands before guessing.
-   Use `volumeleaders-agent commands` for a quick leaf-command list, `volumeleaders-agent commands --grouped` for grouped descriptions, `volumeleaders-agent schema` for machine-readable command, alias, auth, help, and argument metadata, and `volumeleaders-agent fields <command path>` for field projection metadata.
+   Use `volumeleaders-agent commands` for a quick leaf-command list, `volumeleaders-agent commands --grouped` for grouped descriptions, `volumeleaders-agent schema` for machine-readable command, alias, auth, help, and stable argument metadata, and `volumeleaders-agent fields <command path>` for field projection metadata.
 
 3. Keep streams separate.
    Successful data commands write compact JSON to stdout. Discovery and help commands write plain text to stdout. Diagnostics, verbosity logs from `-v`/`-vv`/`-vvv`, and structured runtime errors go to stderr.
@@ -117,7 +117,7 @@ const SCHEMA_HELP: &str = r#"schema
 
 Use `schema` and `commands` for binary-native CLI discovery.
 
-`volumeleaders-agent schema` emits compact JSON generated from the live clap tree. It includes the binary version, auth model, leaf command paths, explicit alias metadata, auth requirements, help text, and argument metadata.
+`volumeleaders-agent schema` emits compact JSON generated from the live clap tree. It includes the binary version, auth model, leaf command paths, explicit alias metadata, auth requirements, help text, and argument metadata with stable names.
 
 `volumeleaders-agent fields <command path>` emits compact JSON with output fields accepted by `--fields`, including each exact field name, short description, and type hint. It does not need live API rows.
 
