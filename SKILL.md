@@ -11,6 +11,7 @@ volumeleaders-agent doctor
 volumeleaders-agent schema
 volumeleaders-agent commands
 volumeleaders-agent commands --grouped
+volumeleaders-agent help agent
 volumeleaders-agent help auth
 volumeleaders-agent help environment
 volumeleaders-agent help exit-codes
@@ -23,6 +24,7 @@ volumeleaders-agent trade list --help
 - `schema` is the authoritative machine-readable command contract generated from the live clap tree.
 - `commands` is the lightweight plain-text leaf command list. Use `--grouped` for descriptions.
 - `help <topic>` gives operational guidance when README access is unavailable.
+- `help agent` summarizes the recommended non-interactive automation flow.
 - Command-specific `--help` includes an `Examples:` section for every visible leaf command.
 
 ## Invocation contract
@@ -111,6 +113,7 @@ Discovery:
 
 ```bash
 volumeleaders-agent commands --grouped
+volumeleaders-agent help agent
 volumeleaders-agent schema | jq '.commands[] | select(.preferred_path == "trade list")'
 volumeleaders-agent help examples
 ```

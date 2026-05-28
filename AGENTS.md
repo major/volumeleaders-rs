@@ -76,7 +76,7 @@ volumeleaders-rs/
 - Top-level aliases `trades`, `dashboard`, and `levels` execute canonical `trade list`, `trade dashboard`, and `trade levels`; schema metadata keeps canonical preferred paths with alias metadata.
 - `volumeleaders-agent commands` emits a plain-text leaf command list, with `--grouped` for grouped descriptions, generated from the live clap tree.
 - `volumeleaders-agent doctor` emits local browser-cookie readiness diagnostics as compact JSON and skips live network checks by default.
-- `volumeleaders-agent help <topic>` emits plain-text operational guidance for auth, environment, exit codes, discovery, and examples. Root and command clap help remain available through `--help`.
+- `volumeleaders-agent help <topic>` emits plain-text operational guidance for agent automation, auth, environment, exit codes, discovery, and examples. Root and command clap help remain available through `--help`.
 - Every visible leaf command includes a concise `about` and command-specific `long_about` with an `Examples:` section containing at least two `volumeleaders-agent` invocations.
 - `volumeleaders-agent schema` emits machine-readable discovery metadata from `Cli::command()` so command paths, help text, aliases, auth requirements, and arguments cannot drift from clap definitions.
 - CLI drift tests assert every visible clap leaf appears in `commands` and `schema`, every leaf has examples, aliases retain canonical preferred paths, and global flags appear in schema metadata.

@@ -177,6 +177,8 @@ pub struct HelpArgs {
 /// Built-in operational help topics.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
 pub enum HelpTopic {
+    /// Automation guidance for non-interactive agents.
+    Agent,
     /// Browser-cookie authentication and local diagnostics.
     Auth,
     /// Local environment expectations.
