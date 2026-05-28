@@ -664,8 +664,7 @@ async fn execute_dashboard(args: &DashboardArgs) -> i32 {
 
     let trades_req = dashboard_trades_request(args, &ticker, &start, &end);
     let clusters_req = dashboard_clusters_request(args, &ticker, &start, &end);
-    let levels_req =
-        dashboard_levels_request(&ticker, &start, &end, nearest_level_count(args.count));
+    let levels_req = dashboard_levels_request(&ticker, &start, &end, args.count);
     let bombs_req = dashboard_bombs_request(args, &ticker, &start, &end);
 
     let (trades_result, clusters_result, levels_result, bombs_result) = tokio::join!(
@@ -1392,7 +1391,7 @@ mod tests {
             "Levels",
             &DEFAULT_DASHBOARD_COUNT.to_string()
         ));
-        assert!(levels.encode().contains("length=-1"));
+        assert!(levels.encode().contains("length=10"));
         assert!(has_filter(
             bombs.extra_values(),
             "TradeClusterBombRank",
@@ -2422,10 +2421,10 @@ mod tests {
     }
 
     #[test]
-    fn dashboard_levels_request_uses_negative_one_length() {
+    fn dashboard_levels_request_uses_display_count_for_length() {
         let request = dashboard_levels_request("AAPL", "2026-01-01", "2026-01-02", 10);
 
-        assert!(request.encode().contains("length=-1"));
+        assert!(request.encode().contains("length=10"));
         assert!(has_filter(request.extra_values(), "Levels", "10"));
     }
 
