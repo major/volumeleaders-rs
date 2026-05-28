@@ -247,19 +247,19 @@ pub struct ClustersArgs {
     pub dates: OptionalDateRangeArgs,
     #[command(flatten)]
     pub ranges: TradeRangeArgs,
-    /// VCD filter.
+    /// Minimum volume-concentration delta score to include.
     #[arg(long)]
     pub vcd: Option<i32>,
-    /// Security type key.
+    /// Security type code, such as 1 for stocks, 26 for ETFs, or 4 for REITs.
     #[arg(long = "security-type")]
     pub security_type: Option<i32>,
-    /// Relative size threshold.
+    /// Minimum relative-size bucket to include, such as 5, 10, 25, 50, or 100.
     #[arg(long = "relative-size")]
     pub relative_size: Option<i32>,
-    /// Sector/industry filter.
+    /// Sector or industry text filter accepted by the VolumeLeaders API.
     #[arg(long)]
     pub sector: Option<String>,
-    /// Trade cluster rank filter.
+    /// Maximum trade-cluster rank to include; lower ranks are more significant.
     #[arg(long = "trade-cluster-rank", default_value_t = 100)]
     pub trade_cluster_rank: i32,
     #[command(flatten)]
@@ -282,19 +282,19 @@ pub struct ClusterBombsArgs {
     pub dates: OptionalDateRangeArgs,
     #[command(flatten)]
     pub ranges: VolumeDollarRangeArgs,
-    /// VCD filter.
+    /// Minimum volume-concentration delta score to include.
     #[arg(long)]
     pub vcd: Option<i32>,
-    /// Security type key.
+    /// Security type code, such as 1 for stocks, 26 for ETFs, or 4 for REITs.
     #[arg(long = "security-type")]
     pub security_type: Option<i32>,
-    /// Relative size threshold.
+    /// Minimum relative-size bucket to include, such as 5, 10, 25, 50, or 100.
     #[arg(long = "relative-size")]
     pub relative_size: Option<i32>,
-    /// Sector/industry filter.
+    /// Sector or industry text filter accepted by the VolumeLeaders API.
     #[arg(long)]
     pub sector: Option<String>,
-    /// Trade cluster bomb rank filter.
+    /// Maximum trade-cluster-bomb rank to include; lower ranks are more significant.
     #[arg(long = "trade-cluster-bomb-rank", default_value_t = -1)]
     pub trade_cluster_bomb_rank: i32,
     #[command(flatten)]
@@ -353,16 +353,16 @@ pub struct LevelTouchesArgs {
     pub dates: OptionalDateRangeArgs,
     #[command(flatten)]
     pub ranges: TradeRangeArgs,
-    /// Trade level rank filter.
+    /// Maximum trade-level rank to include; lower ranks are more significant.
     #[arg(long = "trade-level-rank", default_value_t = 5)]
     pub trade_level_rank: i32,
     /// Number of levels to include.
     #[arg(long = "trade-level-count", default_value_t = DEFAULT_LEVEL_TOUCH_COUNT)]
     pub trade_level_count: usize,
-    /// VCD filter.
+    /// Minimum volume-concentration delta score to include.
     #[arg(long)]
     pub vcd: Option<i32>,
-    /// Relative size threshold.
+    /// Minimum relative-size bucket to include, such as 5, 10, 25, 50, or 100.
     #[arg(long = "relative-size")]
     pub relative_size: Option<i32>,
     #[command(flatten)]
@@ -393,16 +393,22 @@ pub struct OptionalDateRangeArgs {
 #[allow(missing_docs)]
 #[derive(Debug, Args)]
 pub struct TradeRangeArgs {
+    /// Minimum share volume to include.
     #[arg(long = "min-volume")]
     pub min_volume: Option<i64>,
+    /// Maximum share volume to include.
     #[arg(long = "max-volume")]
     pub max_volume: Option<i64>,
+    /// Minimum trade price to include.
     #[arg(long = "min-price")]
     pub min_price: Option<f64>,
+    /// Maximum trade price to include.
     #[arg(long = "max-price")]
     pub max_price: Option<f64>,
+    /// Minimum trade dollar value to include.
     #[arg(long = "min-dollars")]
     pub min_dollars: Option<f64>,
+    /// Maximum trade dollar value to include.
     #[arg(long = "max-dollars")]
     pub max_dollars: Option<f64>,
 }
@@ -411,12 +417,16 @@ pub struct TradeRangeArgs {
 #[allow(missing_docs)]
 #[derive(Debug, Args)]
 pub struct VolumeDollarRangeArgs {
+    /// Minimum share volume to include.
     #[arg(long = "min-volume")]
     pub min_volume: Option<i64>,
+    /// Maximum share volume to include.
     #[arg(long = "max-volume")]
     pub max_volume: Option<i64>,
+    /// Minimum trade or cluster dollar value to include.
     #[arg(long = "min-dollars")]
     pub min_dollars: Option<f64>,
+    /// Maximum trade or cluster dollar value to include.
     #[arg(long = "max-dollars")]
     pub max_dollars: Option<f64>,
 }
@@ -425,44 +435,64 @@ pub struct VolumeDollarRangeArgs {
 #[allow(missing_docs)]
 #[derive(Debug, Args)]
 pub struct TradeFilterArgs {
+    /// Trade condition code filter accepted by the VolumeLeaders API.
     #[arg(long)]
     pub conditions: Option<String>,
+    /// Minimum volume-concentration delta score to include.
     #[arg(long)]
     pub vcd: Option<i32>,
+    /// Security type code, such as 1 for stocks, 26 for ETFs, or 4 for REITs.
     #[arg(long = "security-type")]
     pub security_type: Option<i32>,
+    /// Minimum relative-size bucket to include, such as 5, 10, 25, 50, or 100.
     #[arg(long = "relative-size")]
     pub relative_size: Option<i32>,
+    /// Filter dark-pool trades: true includes only dark-pool prints, false excludes them, omitted includes both.
     #[arg(long = "dark-pools", value_parser = parse_tri_state_filter)]
     pub dark_pools: Option<TriStateFilter>,
+    /// Filter sweep trades: true includes only sweeps, false excludes them, omitted includes both.
     #[arg(long, value_parser = parse_tri_state_filter)]
     pub sweeps: Option<TriStateFilter>,
+    /// Filter late prints: true includes only late prints, false excludes them, omitted includes both.
     #[arg(long = "late-prints", value_parser = parse_tri_state_filter)]
     pub late_prints: Option<TriStateFilter>,
+    /// Filter signature prints: true includes only signature prints, false excludes them, omitted includes both.
     #[arg(long = "sig-prints", value_parser = parse_tri_state_filter)]
     pub sig_prints: Option<TriStateFilter>,
+    /// Filter even-share prints: true includes only even-share prints, false excludes them, omitted includes both.
     #[arg(long = "even-shared", value_parser = parse_tri_state_filter)]
     pub even_shared: Option<TriStateFilter>,
+    /// Maximum trade rank to include, where lower ranks are more significant.
     #[arg(long = "trade-rank")]
     pub trade_rank: Option<i32>,
+    /// Snapshot rank bucket to include, where lower ranks are more significant.
     #[arg(long = "rank-snapshot")]
     pub rank_snapshot: Option<i32>,
+    /// Market-cap bucket code accepted by the VolumeLeaders API.
     #[arg(long = "market-cap")]
     pub market_cap: Option<i32>,
+    /// Filter premarket trades: true includes only premarket prints, false excludes them, omitted includes both.
     #[arg(long = "premarket", value_parser = parse_tri_state_filter)]
     pub premarket: Option<TriStateFilter>,
+    /// Filter regular-hours trades: true includes only regular-session prints, false excludes them, omitted includes both.
     #[arg(long, value_parser = parse_tri_state_filter)]
     pub rth: Option<TriStateFilter>,
+    /// Filter after-hours trades: true includes only after-hours prints, false excludes them, omitted includes both.
     #[arg(long, value_parser = parse_tri_state_filter)]
     pub ah: Option<TriStateFilter>,
+    /// Filter opening trades: true includes only opening prints, false excludes them, omitted includes both.
     #[arg(long = "opening", value_parser = parse_tri_state_filter)]
     pub opening: Option<TriStateFilter>,
+    /// Filter closing trades: true includes only closing prints, false excludes them, omitted includes both.
     #[arg(long = "closing", value_parser = parse_tri_state_filter)]
     pub closing: Option<TriStateFilter>,
+    /// Filter phantom prints: true includes only phantom prints, false excludes them, omitted includes both.
     #[arg(long = "phantom", value_parser = parse_tri_state_filter)]
     pub phantom: Option<TriStateFilter>,
+    /// Filter offsetting prints: true includes only offsetting prints, false excludes them, omitted includes both.
     #[arg(long = "offsetting", value_parser = parse_tri_state_filter)]
     pub offsetting: Option<TriStateFilter>,
+    /// Sector or industry text filter accepted by the VolumeLeaders API.
     #[arg(long)]
     pub sector: Option<String>,
 }
@@ -473,36 +503,52 @@ pub struct TradeFilterArgs {
 #[allow(missing_docs)]
 #[derive(Debug, Args)]
 pub struct DashboardFilterArgs {
+    /// Trade condition code filter accepted by the chart endpoint.
     #[arg(long)]
     pub conditions: Option<String>,
+    /// Minimum volume-concentration delta score to include.
     #[arg(long)]
     pub vcd: Option<i32>,
+    /// Minimum relative-size bucket to include, such as 5, 10, 25, 50, or 100.
     #[arg(long = "relative-size")]
     pub relative_size: Option<i32>,
+    /// Filter dark-pool trades: true includes only dark-pool prints, false excludes them, omitted includes both.
     #[arg(long = "dark-pools", value_parser = parse_tri_state_filter)]
     pub dark_pools: Option<TriStateFilter>,
+    /// Filter sweep trades: true includes only sweeps, false excludes them, omitted includes both.
     #[arg(long, value_parser = parse_tri_state_filter)]
     pub sweeps: Option<TriStateFilter>,
+    /// Filter late prints: true includes only late prints, false excludes them, omitted includes both.
     #[arg(long = "late-prints", value_parser = parse_tri_state_filter)]
     pub late_prints: Option<TriStateFilter>,
+    /// Filter signature prints: true includes only signature prints, false excludes them, omitted includes both.
     #[arg(long = "sig-prints", value_parser = parse_tri_state_filter)]
     pub sig_prints: Option<TriStateFilter>,
+    /// Maximum trade rank to include, where lower ranks are more significant.
     #[arg(long = "trade-rank")]
     pub trade_rank: Option<i32>,
+    /// Filter premarket trades: true includes only premarket prints, false excludes them, omitted includes both.
     #[arg(long = "premarket", value_parser = parse_tri_state_filter)]
     pub premarket: Option<TriStateFilter>,
+    /// Filter regular-hours trades: true includes only regular-session prints, false excludes them, omitted includes both.
     #[arg(long, value_parser = parse_tri_state_filter)]
     pub rth: Option<TriStateFilter>,
+    /// Filter after-hours trades: true includes only after-hours prints, false excludes them, omitted includes both.
     #[arg(long, value_parser = parse_tri_state_filter)]
     pub ah: Option<TriStateFilter>,
+    /// Filter opening trades: true includes only opening prints, false excludes them, omitted includes both.
     #[arg(long = "opening", value_parser = parse_tri_state_filter)]
     pub opening: Option<TriStateFilter>,
+    /// Filter closing trades: true includes only closing prints, false excludes them, omitted includes both.
     #[arg(long = "closing", value_parser = parse_tri_state_filter)]
     pub closing: Option<TriStateFilter>,
+    /// Filter phantom prints: true includes only phantom prints, false excludes them, omitted includes both.
     #[arg(long = "phantom", value_parser = parse_tri_state_filter)]
     pub phantom: Option<TriStateFilter>,
+    /// Filter offsetting prints: true includes only offsetting prints, false excludes them, omitted includes both.
     #[arg(long = "offsetting", value_parser = parse_tri_state_filter)]
     pub offsetting: Option<TriStateFilter>,
+    /// Sector or industry text filter accepted by the chart endpoint.
     #[arg(long)]
     pub sector: Option<String>,
 }
@@ -511,12 +557,16 @@ pub struct DashboardFilterArgs {
 #[allow(missing_docs)]
 #[derive(Debug, Args)]
 pub struct PageArgs {
+    /// Zero-based row offset for paged API requests.
     #[arg(long, default_value_t = 0)]
     pub start: i32,
+    /// Number of rows to request from the API.
     #[arg(long, default_value_t = 100)]
     pub length: i32,
+    /// Zero-based API sort column index.
     #[arg(long = "order-col", default_value_t = 1)]
     pub order_col: i32,
+    /// API sort direction for the selected order column.
     #[arg(long = "order-dir", value_enum, default_value = "desc")]
     pub order_dir: OrderDirection,
 }
@@ -525,10 +575,13 @@ pub struct PageArgs {
 #[allow(missing_docs)]
 #[derive(Debug, Args)]
 pub struct FixedPageArgs {
+    /// Zero-based row offset for paged API requests.
     #[arg(long, default_value_t = 0)]
     pub start: i32,
+    /// Zero-based API sort column index.
     #[arg(long = "order-col", default_value_t = 1)]
     pub order_col: i32,
+    /// API sort direction for the selected order column.
     #[arg(long = "order-dir", value_enum, default_value = "desc")]
     pub order_dir: OrderDirection,
 }
