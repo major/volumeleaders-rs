@@ -15,7 +15,7 @@
 
 name: Release
 permissions:
-  "contents": "write"
+  "contents": "read"
 
 # This task will run whenever you push a git tag that looks like a version
 # like "1.0.0", "v0.1.0-prerelease.1", "my-app/0.1.0", "releases/v1.0.0", etc.
@@ -133,6 +133,9 @@ jobs:
           rustup toolchain install stable --profile minimal
           rustup default stable
           rustc --version
+      - uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2
+        with:
+          workspaces: target -> target
       - name: Install dist
         run: ${{ matrix.install_dist.run }}
       # Get the dist-manifest
@@ -185,6 +188,7 @@ jobs:
         with:
           persist-credentials: false
           submodules: recursive
+
       - name: Install cached dist
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
         with:
@@ -228,6 +232,8 @@ jobs:
     env:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     runs-on: "ubuntu-24.04"
+    permissions:
+      contents: write
     outputs:
       val: ${{ steps.host.outputs.manifest }}
     steps:
@@ -235,6 +241,7 @@ jobs:
         with:
           persist-credentials: false
           submodules: recursive
+
       - name: Install cached dist
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
         with:
@@ -300,3 +307,30 @@ jobs:
         with:
           persist-credentials: false
           submodules: recursive
+
+  # Publish to crates.io using OIDC trusted publishing
+  #
+  # crates.io Trusted Publisher setup (one-time, in crate settings):
+  #   Owner:    major
+  #   Repo:     volumeleaders-rs
+  #   Workflow: release.yml
+  #   Package:  rusty-volumeleaders
+  publish:
+    needs: [host]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          persist-credentials: false
+      - uses: dtolnay/rust-toolchain@29eef336d9b2848a0b548edc03f92a220660cdb8 # stable
+        with:
+          toolchain: stable
+      - uses: rust-lang/crates-io-auth-action@bbd81622f20ce9e2dd9622e3218b975523e45bbe # v1
+        id: auth
+      - name: Publish to crates.io
+        run: cargo publish
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ steps.auth.outputs.token }}

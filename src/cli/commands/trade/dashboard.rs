@@ -1,7 +1,7 @@
 use serde::Serialize;
 use serde_json::{Map, Value};
 
-use crate::common::trade_transforms::transform_trade_dashboard;
+use crate::cli::common::trade_transforms::transform_trade_dashboard;
 
 use super::{DashboardArgs, DateRange};
 
@@ -41,10 +41,10 @@ pub(super) struct TradeDashboard {
     pub(super) ticker: String,
     pub(super) date_range: DateRange,
     pub(super) count: usize,
-    pub(super) trades: Vec<volumeleaders_client::Trade>,
-    pub(super) clusters: Vec<volumeleaders_client::TradeCluster>,
-    pub(super) levels: Vec<volumeleaders_client::TradeLevel>,
-    pub(super) cluster_bombs: Vec<volumeleaders_client::TradeClusterBomb>,
+    pub(super) trades: Vec<crate::Trade>,
+    pub(super) clusters: Vec<crate::TradeCluster>,
+    pub(super) levels: Vec<crate::TradeLevel>,
+    pub(super) cluster_bombs: Vec<crate::TradeClusterBomb>,
 }
 
 #[derive(Debug, Default, PartialEq, Eq)]

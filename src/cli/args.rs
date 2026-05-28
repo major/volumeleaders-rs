@@ -1,12 +1,12 @@
 use clap::{Args, Parser, Subcommand};
 use clap_complete::Shell;
 
-use crate::commands::alert::AlertCommand;
-use crate::commands::market::MarketCommand;
-use crate::commands::report::ReportCommand;
-use crate::commands::trade::TradeCommand;
-use crate::commands::volume::VolumeCommand;
-use crate::commands::watchlist::WatchlistCommand;
+use crate::cli::commands::alert::AlertCommand;
+use crate::cli::commands::market::MarketCommand;
+use crate::cli::commands::report::ReportCommand;
+use crate::cli::commands::trade::TradeCommand;
+use crate::cli::commands::volume::VolumeCommand;
+use crate::cli::commands::watchlist::WatchlistCommand;
 
 /// CLI tool for querying VolumeLeaders institutional trade data.
 #[derive(Debug, Parser)]

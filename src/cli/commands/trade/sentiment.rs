@@ -72,7 +72,7 @@ struct SentimentDayAccumulator {
 }
 
 pub(super) fn summarize_trade_sentiment(
-    trades: &[volumeleaders_client::Trade],
+    trades: &[crate::Trade],
     start: &str,
     end: &str,
 ) -> TradeSentiment {
@@ -106,7 +106,7 @@ pub(super) fn summarize_trade_sentiment(
 }
 
 impl SentimentDayAccumulator {
-    fn add(&mut self, side: SentimentSide, trade: &volumeleaders_client::Trade) {
+    fn add(&mut self, side: SentimentSide, trade: &crate::Trade) {
         match side {
             SentimentSide::Bear => self.bear.add(trade),
             SentimentSide::Bull => self.bull.add(trade),
@@ -140,7 +140,7 @@ impl SentimentDayAccumulator {
 }
 
 impl SentimentAccumulator {
-    fn add(&mut self, trade: &volumeleaders_client::Trade) {
+    fn add(&mut self, trade: &crate::Trade) {
         self.trades += 1;
         let dollars = trade.dollars.and_then(|d| d.to_f64()).unwrap_or(0.0);
         self.dollars += dollars;
@@ -163,9 +163,7 @@ pub(super) enum SentimentSide {
     Bull,
 }
 
-pub(super) fn classify_trade_sentiment_side(
-    trade: &volumeleaders_client::Trade,
-) -> Option<SentimentSide> {
+pub(super) fn classify_trade_sentiment_side(trade: &crate::Trade) -> Option<SentimentSide> {
     for field in [&trade.sector, &trade.name, &trade.industry]
         .into_iter()
         .filter_map(Option::as_deref)

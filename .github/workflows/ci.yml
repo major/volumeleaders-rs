@@ -5,6 +5,9 @@ on:
     branches: [main]
   pull_request:
 
+permissions:
+  contents: read
+
 env:
   CARGO_TERM_COLOR: always
 
@@ -36,7 +39,7 @@ jobs:
           components: clippy
           rustflags: ""
       - name: Run clippy
-        run: cargo clippy --all-targets -- -D clippy::all -A clippy::needless_borrow -A clippy::large_enum_variant
+        run: cargo clippy --workspace --all-targets -- -D warnings
 
   test:
     name: Test (${{ matrix.os }})
@@ -51,7 +54,7 @@ jobs:
           toolchain: stable
           rustflags: ""
       - name: Run tests
-        run: cargo test
+        run: cargo test --workspace
 
   msrv:
     name: MSRV
@@ -62,7 +65,7 @@ jobs:
         with:
           toolchain: "1.95"
           rustflags: ""
-      - run: cargo test --locked
+      - run: cargo test --workspace --locked
 
   coverage:
     name: Coverage
@@ -76,7 +79,7 @@ jobs:
           toolchain: stable
           components: llvm-tools
           rustflags: ""
-      - uses: taiki-e/install-action@213ccc1a076163c093f914550b94feb90fab916d # v2.79.2
+      - uses: taiki-e/install-action@8f531eaecd1898bc3da7d104ad91bee98d1b97bd # v2.79.9
         with:
           tool: cargo-llvm-cov
       - name: Enforce 90% line coverage
@@ -88,6 +91,20 @@ jobs:
           files: lcov.info
           fail_ci_if_error: true
 
+  machete:
+    name: Unused dependencies
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+      - uses: actions-rust-lang/setup-rust-toolchain@46268bd060767258de96ed93c1251119784f2ab6 # v1.16.1
+        with:
+          toolchain: stable
+          rustflags: ""
+      - uses: taiki-e/install-action@8f531eaecd1898bc3da7d104ad91bee98d1b97bd # v2.79.9
+        with:
+          tool: cargo-machete
+      - run: cargo machete
+
   docs:
     name: Docs
     runs-on: ubuntu-latest
@@ -97,6 +114,7 @@ jobs:
         with:
           toolchain: stable
           rustflags: ""
-      - run: cargo doc --no-deps
+      - name: Build docs
+        run: cargo doc --workspace --no-deps
         env:
-          RUSTDOCFLAGS: -D warnings
+          RUSTDOCFLAGS: -D rustdoc::broken-intra-doc-links -D rustdoc::private-intra-doc-links

@@ -1,9 +1,9 @@
-use volumeleaders_client::{
+use crate::{
     DataTablesColumn, TradeClusterBombsRequest, TradeClustersRequest, TradeLevelsRequest,
     TradesRequest,
 };
 
-use crate::common::types::TriStateFilter;
+use crate::cli::common::types::TriStateFilter;
 
 use super::{
     ClusterBombsArgs, ClustersArgs, DEFAULT_MAX_DOLLARS, DEFAULT_MAX_PRICE, DEFAULT_MAX_VOLUME,
