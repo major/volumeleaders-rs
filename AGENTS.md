@@ -39,6 +39,7 @@ volumeleaders-rs/
 | Package metadata and feature gates | `Cargo.toml` | Single package with default `cli` feature and `volumeleaders-agent` binary |
 | API client work | `src/` | Library modules export client, session, request builders, response models, errors, and pagination |
 | CLI work | `src/cli/` | Clap args, command routing, output formatting, and CLI helper modules |
+| CLI command discovery | `src/cli/command_list.rs` | Plain-text leaf command listings generated from the live clap tree |
 | CLI runtime errors | `src/cli/error.rs` | Structured JSON stderr envelope and semantic exit-code mapping |
 | CLI doctor | `src/cli/doctor.rs` | Local auth and environment readiness diagnostics without default network calls |
 | CLI schema | `src/cli/schema.rs` | Machine-readable command metadata generated from the live clap tree |
@@ -66,6 +67,7 @@ volumeleaders-rs/
 - The package is publishable as `rusty-volumeleaders`; keep crate metadata valid for crates.io.
 - The CLI binary remains `volumeleaders-agent` and is built only when the `cli` feature is enabled. `cli` is enabled by default.
 - Runtime CLI errors are emitted to stderr as `{"ok":false,"error":{"kind":"...","message":"..."}}`; stdout remains compact JSON for successful commands.
+- `volumeleaders-agent commands` emits a plain-text leaf command list, with `--grouped` for grouped descriptions, generated from the live clap tree.
 - `volumeleaders-agent doctor` emits local browser-cookie readiness diagnostics as compact JSON and skips live network checks by default.
 - `volumeleaders-agent schema` emits machine-readable discovery metadata from `Cli::command()` so command paths, help text, aliases, auth requirements, and arguments cannot drift from clap definitions.
 - Semantic CLI exit codes are `0` success, `2` usage error, `3` auth error, `4` HTTP transport error, `5` API error, `6` JSON parse or output transformation error, and `7` reserved for strict empty results.

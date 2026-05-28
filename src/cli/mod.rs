@@ -2,6 +2,8 @@
 
 /// Clap argument definitions and top-level command structs.
 pub mod args;
+/// Human-readable command discovery output.
+pub mod command_list;
 /// Command handlers for each CLI subcommand group.
 pub mod commands;
 /// Shared CLI utilities: auth, dates, formatting, tickers, types.
@@ -18,8 +20,8 @@ pub mod schema;
 use clap::Parser;
 
 pub use args::{
-    AlertArgs, Cli, Commands, CompletionsArgs, MarketArgs, ReportArgs, TradeArgs, VolumeArgs,
-    WatchlistArgs,
+    AlertArgs, Cli, Commands, CommandsArgs, CompletionsArgs, MarketArgs, ReportArgs, TradeArgs,
+    VolumeArgs, WatchlistArgs,
 };
 
 /// Parses CLI arguments, routes to the appropriate command handler, and returns
@@ -35,6 +37,7 @@ pub async fn run() -> i32 {
         Commands::Alert(args) => commands::alert::handle(args).await,
         Commands::Watchlist(args) => commands::watchlist::handle(args).await,
         Commands::Doctor => doctor::handle(),
+        Commands::Commands(args) => command_list::handle(args),
         Commands::Schema => schema::handle(),
         Commands::Completions(args) => {
             commands::completions::handle(args);
