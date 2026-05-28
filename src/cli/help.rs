@@ -117,7 +117,7 @@ const SCHEMA_HELP: &str = r#"schema
 
 Use `schema` and `commands` for binary-native CLI discovery.
 
-`volumeleaders-agent schema` emits compact JSON generated from the live clap tree. It includes the binary version, auth model, leaf command paths, explicit alias metadata, auth requirements, help text, and argument metadata with stable names.
+`volumeleaders-agent schema` emits compact JSON generated from the live clap tree. It includes the binary version, auth model, leaf command paths, explicit alias metadata, auth requirements, help text, argument metadata with stable names, and structured command examples.
 
 `volumeleaders-agent fields <command path>` emits compact JSON with output fields accepted by `--fields`, including each exact field name, short description, and type hint. It does not need live API rows.
 
@@ -126,6 +126,8 @@ Common top-level aliases such as `trades`, `dashboard`, and `levels` are reporte
 `volumeleaders-agent commands` emits one sorted leaf command path per line. It is lighter than `schema` and useful when an agent only needs to choose a command.
 
 `volumeleaders-agent commands --grouped` emits top-level groups with short descriptions for each leaf command.
+
+Each schema command entry can include an `examples` array with structured copy-paste commands so automation does not need to parse `long_about` prose.
 
 Useful discovery commands:
 - volumeleaders-agent commands
@@ -160,6 +162,8 @@ volumeleaders-agent volume institutional --date 2026-05-27 --tickers AAPL
 volumeleaders-agent volume institutional --date 2026-05-27 --limit 50
 volumeleaders-agent market earnings --start-date 2026-05-01 --end-date 2026-05-27
 volumeleaders-agent watchlist tickers --watchlist-key 123
+
+These examples are also exposed as structured schema `examples` entries for machine-readable discovery.
 "#;
 
 #[cfg(test)]
