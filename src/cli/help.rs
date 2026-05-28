@@ -34,13 +34,13 @@ Guidance for non-interactive automation and coding agents:
    Run `volumeleaders-agent doctor` before authenticated data commands when automation needs to confirm browser-cookie readiness. `doctor` is local-only by default and does not make a network request.
 
 2. Discover commands before guessing.
-   Use `volumeleaders-agent commands` for a quick leaf-command list, `volumeleaders-agent commands --grouped` for grouped descriptions, and `volumeleaders-agent schema` for machine-readable command, alias, auth, help, and argument metadata.
+   Use `volumeleaders-agent commands` for a quick leaf-command list, `volumeleaders-agent commands --grouped` for grouped descriptions, `volumeleaders-agent schema` for machine-readable command, alias, auth, help, and argument metadata, and `volumeleaders-agent fields <command path>` for field projection metadata.
 
 3. Keep streams separate.
    Successful data commands write compact JSON to stdout. Discovery and help commands write plain text to stdout. Diagnostics, verbosity logs from `-v`/`-vv`/`-vvv`, and structured runtime errors go to stderr.
 
 4. Shape output deliberately.
-   Use command-specific `--fields` or `--all-fields` when available, and pipe stdout to external `jq` for inspection or transformations.
+   Use `volumeleaders-agent fields trade list` to discover exact case-sensitive field names before passing command-specific `--fields` or `--all-fields`, and pipe stdout to external `jq` for inspection or transformations.
 
 5. Treat empty rows and mutations carefully.
    Use global `--strict-empty` when an empty record array should fail automation with exit code 7. Avoid mutating alert and watchlist commands unless the user explicitly requested the mutation.
@@ -52,6 +52,7 @@ Copy-paste examples:
 
 volumeleaders-agent doctor
 volumeleaders-agent commands --grouped
+volumeleaders-agent fields trade list
 volumeleaders-agent schema | jq '.commands[] | select(.preferred_path == "trade list")'
 volumeleaders-agent help exit-codes
 volumeleaders-agent --strict-empty trades NVDA
@@ -118,6 +119,8 @@ Use `schema` and `commands` for binary-native CLI discovery.
 
 `volumeleaders-agent schema` emits compact JSON generated from the live clap tree. It includes the binary version, auth model, leaf command paths, aliases, auth requirements, help text, and argument metadata.
 
+`volumeleaders-agent fields <command path>` emits compact JSON with output fields accepted by `--fields`, including each exact field name, short description, and type hint. It does not need live API rows.
+
 Common top-level aliases such as `trades`, `dashboard`, and `levels` are reported with their canonical `trade ...` preferred paths so agents can normalize generated commands.
 
 `volumeleaders-agent commands` emits one sorted leaf command path per line. It is lighter than `schema` and useful when an agent only needs to choose a command.
@@ -127,6 +130,8 @@ Common top-level aliases such as `trades`, `dashboard`, and `levels` are reporte
 Useful discovery commands:
 - volumeleaders-agent commands
 - volumeleaders-agent commands --grouped
+- volumeleaders-agent fields trade list
+- volumeleaders-agent fields volume institutional
 - volumeleaders-agent schema | jq '.commands[] | select(.preferred_path == "trade list")'
 "#;
 
@@ -137,6 +142,8 @@ High-value command examples:
 volumeleaders-agent doctor
 volumeleaders-agent commands
 volumeleaders-agent commands --grouped
+volumeleaders-agent fields trade list
+volumeleaders-agent fields volume institutional | jq '.fields[].name'
 volumeleaders-agent schema | jq '.commands[] | select(.preferred_path == "trade list")'
 
 volumeleaders-agent report list
@@ -144,7 +151,7 @@ volumeleaders-agent report dark-pool-sweeps
 volumeleaders-agent trades NVDA
 volumeleaders-agent trade list NVDA
 volumeleaders-agent -vv trade list NVDA
-volumeleaders-agent --strict-empty trade list NVDA --start-date 2026-05-01 --end-date 2026-05-27 --fields ticker,date,price,volume,venue
+volumeleaders-agent --strict-empty trade list NVDA --start-date 2026-05-01 --end-date 2026-05-27 --fields Ticker,DateTime,Price,Dollars
 volumeleaders-agent dashboard NVDA
 volumeleaders-agent trade dashboard NVDA
 volumeleaders-agent levels NVDA
@@ -169,13 +176,16 @@ mod tests {
         assert!(topic_text(HelpTopic::Auth).contains("doctor"));
         assert!(topic_text(HelpTopic::Agent).contains("non-interactive automation"));
         assert!(topic_text(HelpTopic::Agent).contains("commands --grouped"));
+        assert!(topic_text(HelpTopic::Agent).contains("fields trade list"));
         assert!(topic_text(HelpTopic::Agent).contains("--strict-empty trades NVDA"));
         assert!(topic_text(HelpTopic::Environment).contains("browser profiles"));
         assert!(topic_text(HelpTopic::ExitCodes).contains("3  auth error"));
         assert!(topic_text(HelpTopic::ExitCodes).contains("-vvv"));
         assert!(topic_text(HelpTopic::Schema).contains("commands --grouped"));
+        assert!(topic_text(HelpTopic::Schema).contains("fields volume institutional"));
         assert!(topic_text(HelpTopic::Schema).contains("trades"));
         assert!(topic_text(HelpTopic::Examples).contains("trades NVDA"));
+        assert!(topic_text(HelpTopic::Examples).contains("fields trade list"));
         assert!(topic_text(HelpTopic::Examples).contains("--strict-empty trade list NVDA"));
         assert!(topic_text(HelpTopic::Examples).contains("-vv trade list NVDA"));
     }

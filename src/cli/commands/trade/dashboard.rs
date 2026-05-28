@@ -2,6 +2,7 @@ use serde::Serialize;
 use serde_json::{Map, Value};
 
 use crate::cli::common::trade_transforms::transform_trade_dashboard;
+use crate::cli::field_metadata;
 
 use super::{DashboardArgs, DateRange};
 
@@ -148,12 +149,30 @@ fn apply_selected_dashboard_section(
         return Ok(());
     }
     let matched = filter_dashboard_section(map, section, &fields, false);
-    if matched == 0 && section_has_rows(map, section) {
+    if matched == 0
+        && section_has_rows(map, section)
+        && !fields_match_known_dashboard_fields(section, &fields)
+    {
         return Err(format!(
             "no requested dashboard fields matched `{section}` rows; field names are case-sensitive"
         ));
     }
     Ok(())
+}
+
+fn fields_match_known_dashboard_fields(section: &str, fields: &[String]) -> bool {
+    fields
+        .iter()
+        .any(|field| dashboard_field_is_known(section, field.as_str()))
+}
+
+fn dashboard_field_is_known(section: &str, field: &str) -> bool {
+    let prefix = format!("{section}.");
+    field_metadata::field_names("trade dashboard")
+        .into_iter()
+        .flatten()
+        .filter_map(|name| name.strip_prefix(&prefix).map(str::to_string))
+        .any(|name| name == field)
 }
 
 fn dashboard_section_fields(section_fields: &[String], unqualified: &[String]) -> Vec<String> {

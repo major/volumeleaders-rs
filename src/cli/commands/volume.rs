@@ -9,7 +9,8 @@ use crate::cli::common::auth::{handle_api_error, make_client};
 use crate::cli::common::tickers::parse_tickers;
 use crate::cli::common::trade_transforms::TradeRecordKind;
 use crate::cli::common::types::OrderDirection;
-use crate::cli::output::{finish_output, print_transformed_record_values};
+use crate::cli::field_metadata;
+use crate::cli::output::{finish_output, print_transformed_record_values_with_allowed_fields};
 
 const VOLUME_HEADERS: [&str; 16] = [
     "Date",
@@ -167,12 +168,14 @@ fn output_records<T: serde::Serialize>(
     fields: Option<&str>,
     all_fields: bool,
 ) -> i32 {
-    finish_output(print_transformed_record_values(
+    let allowed_fields = field_metadata::field_names("volume institutional");
+    finish_output(print_transformed_record_values_with_allowed_fields(
         records,
         TradeRecordKind::Trade,
         &VOLUME_HEADERS,
         fields,
         all_fields,
+        allowed_fields.as_deref(),
     ))
 }
 
@@ -180,9 +183,14 @@ fn output_records<T: serde::Serialize>(
 mod tests {
     use clap::CommandFactory;
 
+    use crate::Trade;
     use crate::cli::Cli;
 
     use super::*;
+
+    fn trade(value: serde_json::Value) -> Trade {
+        serde_json::from_value(value).unwrap()
+    }
 
     fn sample_args() -> VolumeOptions {
         VolumeOptions {
@@ -233,5 +241,32 @@ mod tests {
             .collect();
 
         assert_eq!(names, vec!["institutional", "ah-institutional", "total"]);
+    }
+
+    #[test]
+    fn output_records_accepts_discovered_metadata_field_absent_from_rows() {
+        let records = vec![trade(serde_json::json!({
+            "Ticker": "AAPL",
+            "Date": "/Date(1767312000000)/",
+            "Price": 200.0,
+            "Dollars": 10_000_000.0
+        }))];
+
+        assert_eq!(output_records(&records, Some("events"), false), 0);
+    }
+
+    #[test]
+    fn output_records_rejects_field_missing_from_metadata() {
+        let records = vec![trade(serde_json::json!({
+            "Ticker": "AAPL",
+            "Date": "/Date(1767312000000)/",
+            "Price": 200.0,
+            "Dollars": 10_000_000.0
+        }))];
+
+        assert_eq!(
+            output_records(&records, Some("NotAField"), false),
+            crate::cli::error::EXIT_USAGE_ERROR
+        );
     }
 }

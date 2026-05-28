@@ -117,6 +117,17 @@ pub fn print_record_values(
     fields: Option<&str>,
     all_fields: bool,
 ) -> io::Result<()> {
+    print_record_values_with_allowed_fields(records, compact_headers, fields, all_fields, None)
+}
+
+/// Outputs pre-serialized record values with command metadata-backed field validation.
+pub(crate) fn print_record_values_with_allowed_fields(
+    records: &[Value],
+    compact_headers: &[&str],
+    fields: Option<&str>,
+    all_fields: bool,
+    allowed_fields: Option<&[String]>,
+) -> io::Result<()> {
     strict_empty_error_if_needed(records.is_empty())?;
     write_record_values(
         io::stdout().lock(),
@@ -124,6 +135,7 @@ pub fn print_record_values(
         compact_headers,
         fields,
         all_fields,
+        allowed_fields,
     )
 }
 
@@ -135,10 +147,37 @@ pub fn print_transformed_record_values<T: Serialize>(
     fields: Option<&str>,
     all_fields: bool,
 ) -> io::Result<()> {
+    print_transformed_record_values_with_allowed_fields(
+        records,
+        kind,
+        compact_headers,
+        fields,
+        all_fields,
+        None,
+    )
+}
+
+/// Transforms trade-shaped records and validates custom fields against command metadata.
+pub(crate) fn print_transformed_record_values_with_allowed_fields<T: Serialize>(
+    records: &[T],
+    kind: TradeRecordKind,
+    compact_headers: &[&str],
+    fields: Option<&str>,
+    all_fields: bool,
+    allowed_fields: Option<&[String]>,
+) -> io::Result<()> {
     strict_empty_error_if_needed(records.is_empty())?;
     transformed_trade_values(records, kind)
         .map_err(|err| io::Error::new(io::ErrorKind::InvalidData, err))
-        .and_then(|values| print_record_values(&values, compact_headers, fields, all_fields))
+        .and_then(|values| {
+            print_record_values_with_allowed_fields(
+                &values,
+                compact_headers,
+                fields,
+                all_fields,
+                allowed_fields,
+            )
+        })
 }
 
 /// Writes pre-serialized record values to `writer`.
@@ -148,6 +187,7 @@ pub(crate) fn write_record_values<W: Write>(
     compact_headers: &[&str],
     fields: Option<&str>,
     all_fields: bool,
+    allowed_fields: Option<&[String]>,
 ) -> io::Result<()> {
     strict_empty_error_if_needed(records.is_empty())?;
     let custom_fields = selected_fields(fields);
@@ -155,7 +195,7 @@ pub(crate) fn write_record_values<W: Write>(
         fields.is_some_and(|fields| fields.trim().eq_ignore_ascii_case("all"));
 
     if let Some(fields) = custom_fields.as_deref() {
-        validate_value_fields(records, fields)?;
+        validate_value_fields(records, fields, allowed_fields)?;
     }
 
     if all_fields || raw_fields_requested {
@@ -185,13 +225,28 @@ pub fn print_records<T: Serialize>(
     fields: Option<&str>,
     all_fields: bool,
 ) -> io::Result<()> {
+    print_records_with_allowed_fields(records, compact_headers, fields, all_fields, None)
+}
+
+/// Outputs record lists with command metadata-backed field validation.
+pub(crate) fn print_records_with_allowed_fields<T: Serialize>(
+    records: &[T],
+    compact_headers: &[&str],
+    fields: Option<&str>,
+    all_fields: bool,
+    allowed_fields: Option<&[String]>,
+) -> io::Result<()> {
     strict_empty_error_if_needed(records.is_empty())?;
     let custom_fields = selected_fields(fields);
     let raw_fields_requested =
         fields.is_some_and(|fields| fields.trim().eq_ignore_ascii_case("all"));
 
     if let Some(fields) = custom_fields.as_deref() {
-        validate_record_fields(records, fields)?;
+        if let Some(allowed_fields) = allowed_fields {
+            validate_selected_fields(allowed_fields.to_vec(), fields)?;
+        } else {
+            validate_record_fields(records, fields)?;
+        }
     }
 
     if all_fields || raw_fields_requested {
@@ -233,8 +288,15 @@ fn filter_record_values(records: &[Value], fields: &[String]) -> Vec<Value> {
         .collect()
 }
 
-fn validate_value_fields(records: &[Value], fields: &[String]) -> io::Result<()> {
-    validate_selected_fields(available_value_fields(records), fields)
+fn validate_value_fields(
+    records: &[Value],
+    fields: &[String],
+    allowed_fields: Option<&[String]>,
+) -> io::Result<()> {
+    let available = allowed_fields
+        .map(<[String]>::to_vec)
+        .unwrap_or_else(|| available_value_fields(records));
+    validate_selected_fields(available, fields)
 }
 
 fn validate_selected_fields(available: Vec<String>, fields: &[String]) -> io::Result<()> {
@@ -371,8 +433,10 @@ mod tests {
 
     use super::{
         configure_strict_empty, empty_result_suggestion, finish_output, print_record_values,
-        print_records, print_transformed_record_values, records_to_values, selected_fields,
-        set_strict_empty_context, strict_empty_command_from_args, write_json, write_record_values,
+        print_record_values_with_allowed_fields, print_records, print_records_with_allowed_fields,
+        print_transformed_record_values, print_transformed_record_values_with_allowed_fields,
+        records_to_values, selected_fields, set_strict_empty_context,
+        strict_empty_command_from_args, write_json, write_record_values,
     };
 
     #[derive(Debug, Serialize)]
@@ -477,6 +541,7 @@ mod tests {
             &["symbol", "price"],
             Some("symbol"),
             false,
+            None,
         )
         .unwrap();
 
@@ -507,12 +572,110 @@ mod tests {
             &["symbol", "price"],
             Some("ticker"),
             false,
+            None,
         )
         .unwrap_err();
 
         assert_eq!(err.kind(), std::io::ErrorKind::InvalidInput);
         assert!(err.to_string().contains("unknown output field"));
         assert!(err.to_string().contains("ticker"));
+    }
+
+    #[test]
+    fn write_record_values_accepts_metadata_field_absent_from_rows() {
+        set_strict_empty_context(None);
+        let values = vec![serde_json::json!({"symbol": "AAPL"})];
+        let allowed_fields = vec!["symbol".to_string(), "events".to_string()];
+        let mut buf = Vec::new();
+
+        write_record_values(
+            &mut buf,
+            &values,
+            &["symbol"],
+            Some("events"),
+            false,
+            Some(&allowed_fields),
+        )
+        .unwrap();
+
+        let output = String::from_utf8(buf).unwrap();
+        let parsed: serde_json::Value = serde_json::from_str(output.trim()).unwrap();
+        assert_eq!(parsed, serde_json::json!([{}]));
+    }
+
+    #[test]
+    fn write_record_values_rejects_field_missing_from_metadata() {
+        set_strict_empty_context(None);
+        let values = vec![serde_json::json!({"symbol": "AAPL", "price": 150.5})];
+        let allowed_fields = vec!["symbol".to_string()];
+        let mut buf = Vec::new();
+
+        let err = write_record_values(
+            &mut buf,
+            &values,
+            &["symbol"],
+            Some("price"),
+            false,
+            Some(&allowed_fields),
+        )
+        .unwrap_err();
+
+        assert_eq!(err.kind(), std::io::ErrorKind::InvalidInput);
+        assert!(err.to_string().contains("price"));
+    }
+
+    #[test]
+    fn print_record_values_with_allowed_fields_accepts_metadata_fields() {
+        set_strict_empty_context(None);
+        let values = vec![serde_json::json!({"symbol": "AAPL"})];
+        let allowed_fields = vec!["symbol".to_string(), "events".to_string()];
+
+        print_record_values_with_allowed_fields(
+            &values,
+            &["symbol"],
+            Some("events"),
+            false,
+            Some(&allowed_fields),
+        )
+        .unwrap();
+    }
+
+    #[test]
+    fn print_records_with_allowed_fields_accepts_metadata_fields() {
+        set_strict_empty_context(None);
+        let records = sample_records();
+        let allowed_fields = vec!["symbol".to_string(), "events".to_string()];
+
+        print_records_with_allowed_fields(
+            &records,
+            &["symbol"],
+            Some("events"),
+            false,
+            Some(&allowed_fields),
+        )
+        .unwrap();
+    }
+
+    #[test]
+    fn print_transformed_record_values_with_allowed_fields_accepts_metadata_fields() {
+        set_strict_empty_context(None);
+        let records = vec![serde_json::json!({
+            "Ticker": "AAPL",
+            "Date": "/Date(1767312000000)/",
+            "Price": 150.5,
+            "Dollars": 1_000_000.0
+        })];
+        let allowed_fields = vec!["Ticker".to_string(), "events".to_string()];
+
+        print_transformed_record_values_with_allowed_fields(
+            &records,
+            TradeRecordKind::Trade,
+            &["Ticker"],
+            Some("events"),
+            false,
+            Some(&allowed_fields),
+        )
+        .unwrap();
     }
 
     #[test]
@@ -525,7 +688,7 @@ mod tests {
             .collect();
         let mut buf = Vec::new();
 
-        write_record_values(&mut buf, &values, &["symbol"], Some("all"), false).unwrap();
+        write_record_values(&mut buf, &values, &["symbol"], Some("all"), false, None).unwrap();
 
         let output = String::from_utf8(buf).unwrap();
         let parsed: serde_json::Value = serde_json::from_str(output.trim()).unwrap();
@@ -591,8 +754,8 @@ mod tests {
         let mut buf = Vec::new();
         configure_strict_empty(true, Some("watchlist configs".to_string()));
 
-        let err =
-            write_record_values(&mut buf, &records, &["Name"], Some("all"), false).unwrap_err();
+        let err = write_record_values(&mut buf, &records, &["Name"], Some("all"), false, None)
+            .unwrap_err();
 
         assert_eq!(err.kind(), std::io::ErrorKind::NotFound);
         assert!(err.to_string().contains("valid account state"));

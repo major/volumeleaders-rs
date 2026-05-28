@@ -12,6 +12,8 @@ pub mod common;
 pub mod doctor;
 /// Structured runtime error rendering and semantic exit-code mapping.
 pub mod error;
+/// Static output field metadata for commands that support field projection.
+pub mod field_metadata;
 /// Built-in operational help topics.
 pub mod help;
 /// Stderr-only tracing initialization for CLI diagnostics.
@@ -24,8 +26,8 @@ pub mod schema;
 use clap::Parser;
 
 pub use args::{
-    AlertArgs, Cli, Commands, CommandsArgs, CompletionsArgs, HelpArgs, HelpTopic, MarketArgs,
-    ReportArgs, TradeArgs, VolumeArgs, WatchlistArgs,
+    AlertArgs, Cli, Commands, CommandsArgs, CompletionsArgs, FieldsArgs, HelpArgs, HelpTopic,
+    MarketArgs, ReportArgs, TradeArgs, VolumeArgs, WatchlistArgs,
 };
 
 /// Parses CLI arguments, routes to the appropriate command handler, and returns
@@ -47,6 +49,7 @@ pub async fn run() -> i32 {
         Commands::Watchlist(args) => commands::watchlist::handle(args).await,
         Commands::Doctor => doctor::handle(),
         Commands::Commands(args) => command_list::handle(args),
+        Commands::Fields(args) => commands::fields::handle(args),
         Commands::Help(args) => help::handle(args),
         Commands::Schema => schema::handle(),
         Commands::Completions(args) => {

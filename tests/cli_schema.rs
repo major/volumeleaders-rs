@@ -49,6 +49,15 @@ fn schema_command_emits_machine_readable_contract() {
             .unwrap()
             .iter()
             .any(|command| {
+                command["preferred_path"] == "fields" && command["auth_required"] == false
+            })
+    );
+    assert!(
+        schema["commands"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|command| {
                 command["preferred_path"] == "help" && command["auth_required"] == false
             })
     );
@@ -77,5 +86,16 @@ fn schema_command_emits_machine_readable_contract() {
             && arg["short"] == "v"
             && arg["kind"] == "flag"
             && arg["parser"] == "count"
+    }));
+    let fields = schema["commands"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|command| command["path"] == serde_json::json!(["fields"]))
+        .unwrap();
+    assert!(fields["args"].as_array().unwrap().iter().any(|arg| {
+        arg["kind"] == "positional"
+            && arg["value_name"] == "COMMAND_PATH"
+            && arg["multi_value"] == true
     }));
 }
