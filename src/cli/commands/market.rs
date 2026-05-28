@@ -23,8 +23,14 @@ const DEFAULT_EARNINGS_FIELDS: [&str; 6] = [
 #[derive(Debug, Subcommand)]
 pub enum MarketCommand {
     /// Query earnings data.
+    #[command(
+        long_about = "Query earnings dates and related trade counts.\n\nExamples:\n  volumeleaders-agent market earnings\n  volumeleaders-agent market earnings --start-date 2026-05-01 --end-date 2026-05-27 --fields Ticker,EarningsDate,TradeCount"
+    )]
     Earnings(EarningsArgs),
     /// Query exhaustion scores.
+    #[command(
+        long_about = "Query market exhaustion scores for a date.\n\nExamples:\n  volumeleaders-agent market exhaustion\n  volumeleaders-agent market exhaustion --date 2026-05-27"
+    )]
     Exhaustion(ExhaustionArgs),
 }
 

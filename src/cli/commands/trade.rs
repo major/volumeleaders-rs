@@ -113,25 +113,52 @@ struct DateRange {
 #[derive(Debug, Subcommand)]
 pub enum TradeCommand {
     /// Query institutional trades.
+    #[command(
+        long_about = "Query institutional trades with optional ticker, date, range, and output filters.\n\nExamples:\n  volumeleaders-agent trade list NVDA\n  volumeleaders-agent trade list NVDA --start-date 2026-05-01 --end-date 2026-05-27 --fields ticker,date,price,volume,venue"
+    )]
     List(ListArgs),
     /// Query a ticker institutional dashboard.
+    #[command(
+        long_about = "Query a ticker institutional dashboard with trades, clusters, and levels.\n\nExamples:\n  volumeleaders-agent trade dashboard NVDA\n  volumeleaders-agent trade dashboard NVDA --start-date 2026-05-01 --end-date 2026-05-27 --fields trades.Ticker,trades.Price,clusters.Dollars"
+    )]
     Dashboard(DashboardArgs),
     /// Summarize leveraged ETF bull and bear flow by day.
+    #[command(
+        long_about = "Summarize leveraged ETF bull and bear flow by day.\n\nExamples:\n  volumeleaders-agent trade sentiment\n  volumeleaders-agent trade sentiment --start-date 2026-05-01 --end-date 2026-05-27 --min-dollars 1000000"
+    )]
     Sentiment(SentimentArgs),
     /// Query aggregated trade clusters.
+    #[command(
+        long_about = "Query aggregated trade clusters with optional ticker and rank filters.\n\nExamples:\n  volumeleaders-agent trade clusters NVDA\n  volumeleaders-agent trade clusters NVDA AAPL --start-date 2026-05-01 --end-date 2026-05-27 --relative-size 10 --fields ticker,date,dollars"
+    )]
     Clusters(ClustersArgs),
     /// Query trade cluster bombs.
-    #[command(name = "cluster-bombs")]
+    #[command(
+        name = "cluster-bombs",
+        long_about = "Query trade cluster bombs with optional ticker and dollar filters.\n\nExamples:\n  volumeleaders-agent trade cluster-bombs NVDA\n  volumeleaders-agent trade cluster-bombs NVDA --start-date 2026-05-01 --end-date 2026-05-27 --min-dollars 5000000 --start 50"
+    )]
     ClusterBombs(ClusterBombsArgs),
     /// Query trade alerts for a date.
+    #[command(
+        long_about = "Query trade alerts for a specific trading date.\n\nExamples:\n  volumeleaders-agent trade alerts --date 2026-05-27\n  volumeleaders-agent trade alerts --date 2026-05-27 --start 50 --length 50 --fields ticker,price,volume"
+    )]
     Alerts(AlertsArgs),
     /// Query trade cluster alerts for a date.
-    #[command(name = "cluster-alerts")]
+    #[command(
+        name = "cluster-alerts",
+        long_about = "Query trade cluster alerts for a specific trading date.\n\nExamples:\n  volumeleaders-agent trade cluster-alerts --date 2026-05-27\n  volumeleaders-agent trade cluster-alerts --date 2026-05-27 --start 50 --length 50 --all-fields"
+    )]
     ClusterAlerts(AlertsArgs),
     /// Query significant price levels for a ticker.
+    #[command(
+        long_about = "Query significant price levels for a ticker.\n\nExamples:\n  volumeleaders-agent trade levels NVDA\n  volumeleaders-agent trade levels NVDA --start-date 2026-05-01 --end-date 2026-05-27 --trade-level-count 10 --fields ticker,price,rank"
+    )]
     Levels(LevelsArgs),
     /// Query trade events at notable price levels.
-    #[command(name = "level-touches")]
+    #[command(
+        name = "level-touches",
+        long_about = "Query trade events at notable price levels for a ticker.\n\nExamples:\n  volumeleaders-agent trade level-touches NVDA\n  volumeleaders-agent trade level-touches NVDA --start-date 2026-05-01 --end-date 2026-05-27 --trade-level-rank 5 --relative-size 10"
+    )]
     LevelTouches(LevelTouchesArgs),
 }
 

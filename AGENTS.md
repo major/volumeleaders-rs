@@ -71,6 +71,7 @@ volumeleaders-rs/
 - `volumeleaders-agent commands` emits a plain-text leaf command list, with `--grouped` for grouped descriptions, generated from the live clap tree.
 - `volumeleaders-agent doctor` emits local browser-cookie readiness diagnostics as compact JSON and skips live network checks by default.
 - `volumeleaders-agent help <topic>` emits plain-text operational guidance for auth, environment, exit codes, discovery, and examples. Root and command clap help remain available through `--help`.
+- Every visible leaf command includes a concise `about` and command-specific `long_about` with an `Examples:` section containing at least two `volumeleaders-agent` invocations.
 - `volumeleaders-agent schema` emits machine-readable discovery metadata from `Cli::command()` so command paths, help text, aliases, auth requirements, and arguments cannot drift from clap definitions.
 - Semantic CLI exit codes are `0` success, `2` usage error, `3` auth error, `4` HTTP transport error, `5` API error, `6` JSON parse or output transformation error, and `7` reserved for strict empty results.
 - Library consumers that do not need the CLI should use `rusty-volumeleaders = { version = "0.4.0", default-features = false }` to avoid clap and CLI-only dependencies.

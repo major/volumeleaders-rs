@@ -405,39 +405,75 @@ pub static REPORT_PRESETS: &[ReportPreset] = &[
 #[derive(Debug, Subcommand)]
 pub enum ReportCommand {
     /// List available report presets.
+    #[command(
+        long_about = "List available report presets and their command names.\n\nExamples:\n  volumeleaders-agent report list\n  volumeleaders-agent report list | jq '.[].command'"
+    )]
     List,
     /// Top 100 ranked institutional trades.
-    #[command(name = "top-100-rank")]
+    #[command(
+        name = "top-100-rank",
+        long_about = "Run the top 100 ranked institutional trades preset.\n\nExamples:\n  volumeleaders-agent report top-100-rank\n  volumeleaders-agent report top-100-rank --tickers NVDA,AAPL --days 5 --limit 50"
+    )]
     Top100Rank(#[command(flatten)] ReportFlags),
     /// Top 10 ranked institutional trades.
-    #[command(name = "top-10-rank")]
+    #[command(
+        name = "top-10-rank",
+        long_about = "Run the top 10 ranked institutional trades preset.\n\nExamples:\n  volumeleaders-agent report top-10-rank\n  volumeleaders-agent report top-10-rank --tickers NVDA --start-date 2026-05-01 --end-date 2026-05-27"
+    )]
     Top10Rank(#[command(flatten)] ReportFlags),
     /// Dark pool sweep trades.
-    #[command(name = "dark-pool-sweeps")]
+    #[command(
+        name = "dark-pool-sweeps",
+        long_about = "Run the dark pool sweep trades preset.\n\nExamples:\n  volumeleaders-agent report dark-pool-sweeps\n  volumeleaders-agent report dark-pool-sweeps --tickers SPY,QQQ --days 3 --fields ticker,date,price,volume"
+    )]
     DarkPoolSweeps(#[command(flatten)] ReportFlags),
     /// Disproportionately large trades relative to average.
-    #[command(name = "disproportionately-large")]
+    #[command(
+        name = "disproportionately-large",
+        long_about = "Run the disproportionately large trades preset.\n\nExamples:\n  volumeleaders-agent report disproportionately-large\n  volumeleaders-agent report disproportionately-large --tickers AAPL --limit 25 --summary-group ticker"
+    )]
     DisproportionatelyLarge(#[command(flatten)] ReportFlags),
     /// Institutional trades in leveraged ETFs.
-    #[command(name = "leveraged-etfs")]
+    #[command(
+        name = "leveraged-etfs",
+        long_about = "Run the leveraged ETF institutional trades preset.\n\nExamples:\n  volumeleaders-agent report leveraged-etfs\n  volumeleaders-agent report leveraged-etfs --days 10 --limit 100 --fields ticker,date,price,dollars"
+    )]
     LeveragedEtfs(#[command(flatten)] ReportFlags),
     /// Trades with overbought RSI conditions.
-    #[command(name = "rsi-overbought")]
+    #[command(
+        name = "rsi-overbought",
+        long_about = "Run the overbought RSI trades preset.\n\nExamples:\n  volumeleaders-agent report rsi-overbought\n  volumeleaders-agent report rsi-overbought --tickers NVDA,MSFT --days 7 --limit 40"
+    )]
     RsiOverbought(#[command(flatten)] ReportFlags),
     /// Trades with oversold RSI conditions.
-    #[command(name = "rsi-oversold")]
+    #[command(
+        name = "rsi-oversold",
+        long_about = "Run the oversold RSI trades preset.\n\nExamples:\n  volumeleaders-agent report rsi-oversold\n  volumeleaders-agent report rsi-oversold --tickers TSLA --start-date 2026-05-01 --end-date 2026-05-27"
+    )]
     RsiOversold(#[command(flatten)] ReportFlags),
     /// Dark pool trades at 20x relative size.
-    #[command(name = "dark-pool-20x")]
+    #[command(
+        name = "dark-pool-20x",
+        long_about = "Run the dark pool trades at 20x relative size preset.\n\nExamples:\n  volumeleaders-agent report dark-pool-20x\n  volumeleaders-agent report dark-pool-20x --tickers AAPL,NVDA --days 5 --limit 50"
+    )]
     DarkPool20x(#[command(flatten)] ReportFlags),
     /// Top 30 ranked trades at 10x size in the 99th percentile.
-    #[command(name = "top-30-rank-10x-99th")]
+    #[command(
+        name = "top-30-rank-10x-99th",
+        long_about = "Run the top 30 ranked 10x size 99th percentile preset.\n\nExamples:\n  volumeleaders-agent report top-30-rank-10x-99th\n  volumeleaders-agent report top-30-rank-10x-99th --tickers QQQ --days 2 --all-fields"
+    )]
     Top30Rank10x99th(#[command(flatten)] ReportFlags),
     /// Phantom print trades (dark pool only).
-    #[command(name = "phantom-trades")]
+    #[command(
+        name = "phantom-trades",
+        long_about = "Run the phantom print trades preset.\n\nExamples:\n  volumeleaders-agent report phantom-trades\n  volumeleaders-agent report phantom-trades --tickers SPY --start-date 2026-05-01 --end-date 2026-05-27"
+    )]
     PhantomTrades(#[command(flatten)] ReportFlags),
     /// Offsetting institutional trades.
-    #[command(name = "offsetting-trades")]
+    #[command(
+        name = "offsetting-trades",
+        long_about = "Run the offsetting institutional trades preset.\n\nExamples:\n  volumeleaders-agent report offsetting-trades\n  volumeleaders-agent report offsetting-trades --tickers NVDA --days 5 --summary-group ticker"
+    )]
     OffsettingTrades(#[command(flatten)] ReportFlags),
 }
 

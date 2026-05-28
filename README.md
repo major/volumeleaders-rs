@@ -55,6 +55,8 @@ Use `doctor` for a safe local readiness check before running live data commands.
 
 Use `help <topic>` for built-in operational guidance when README access is unavailable. Topics are `auth`, `environment`, `exit-codes`, `schema`, and `examples`; regular clap help remains available with `--help` on the root or any subcommand.
 
+Every leaf command also includes an `Examples:` section in its command-specific `--help` output. Use those examples for copy-pasteable minimal and filtered invocations.
+
 ```bash
 cargo run -- --help
 cargo run -- commands
@@ -65,6 +67,7 @@ cargo run -- help exit-codes
 cargo run -- schema
 cargo run -- report list
 cargo run -- trade list
+cargo run -- trade list --help
 cargo run -- completions bash
 ```
 

@@ -27,12 +27,24 @@ const DEFAULT_CONFIGS_FIELDS: [&str; 9] = [
 #[derive(Debug, Subcommand)]
 pub enum AlertCommand {
     /// List all alert configurations.
+    #[command(
+        long_about = "List all saved alert configurations.\n\nExamples:\n  volumeleaders-agent alert configs\n  volumeleaders-agent alert configs --fields AlertConfigKey,Name,Tickers"
+    )]
     Configs(ConfigsArgs),
     /// Create a new alert configuration.
+    #[command(
+        long_about = "Create a new alert configuration with threshold filters.\n\nExamples:\n  volumeleaders-agent alert create --name LargeNVDA --tickers NVDA\n  volumeleaders-agent alert create --name BigTechSweeps --tickers AAPL,MSFT --trade-dollars-gte 1000000 --sweep true"
+    )]
     Create(CreateArgs),
     /// Edit an existing alert configuration.
+    #[command(
+        long_about = "Edit an existing alert configuration by key.\n\nExamples:\n  volumeleaders-agent alert edit --key 123 --name LargeNVDA\n  volumeleaders-agent alert edit --key 123 --tickers NVDA,AAPL --trade-dollars-gte 2000000 --dark-pool true"
+    )]
     Edit(EditArgs),
     /// Delete an alert configuration.
+    #[command(
+        long_about = "Delete an alert configuration by key.\n\nExamples:\n  volumeleaders-agent alert delete --key 123\n  volumeleaders-agent alert delete --key 456"
+    )]
     Delete(DeleteArgs),
 }
 
