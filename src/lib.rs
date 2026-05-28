@@ -1,4 +1,4 @@
-//! VolumeLeaders API client library.
+//! VolumeLeaders API client library and CLI.
 //!
 //! This project is unofficial and is not affiliated with, endorsed by, or
 //! sponsored by [volumeleaders.com](https://www.volumeleaders.com).
@@ -11,6 +11,9 @@ pub mod alerts;
 pub mod auth;
 /// Browser cookie extraction for session bootstrapping.
 pub mod browser_auth;
+/// Command-line interface for VolumeLeaders data.
+#[cfg(feature = "cli")]
+pub mod cli;
 /// HTTP client with cookie and XSRF header management.
 pub mod client;
 /// Trade cluster and cluster bomb DataTables endpoints.
@@ -46,6 +49,8 @@ pub use alerts::{
 };
 pub use auth::{extract_xsrf_token, is_login_page};
 pub use browser_auth::{extract_browser_cookies, session_from_browser};
+#[cfg(feature = "cli")]
+pub use cli::{Cli, run};
 pub use client::{Client, ClientConfig};
 pub use clusters::{TradeClusterBombsRequest, TradeClustersRequest};
 pub use datatables::{DataTablesColumn, DataTablesResponse};

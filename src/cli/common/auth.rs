@@ -1,11 +1,11 @@
-use volumeleaders_client::{Client, ClientError, Session};
+use crate::{Client, ClientError, Session};
 
 /// Browser cookie domain used for VolumeLeaders authentication.
 pub const VL_DOMAIN: &str = "volumeleaders.com";
 
 /// Build a VolumeLeaders client from browser cookies and a fresh page XSRF token.
 pub async fn make_client_from_browser(domain: &str) -> Result<Client, i32> {
-    let session = match volumeleaders_client::session_from_browser(domain) {
+    let session = match crate::session_from_browser(domain) {
         Ok(session) => session,
         Err(err) => {
             eprintln!("auth error: {err}");
@@ -21,7 +21,7 @@ pub async fn make_client_from_browser(domain: &str) -> Result<Client, i32> {
         }
     };
 
-    let xsrf_token = match volumeleaders_client::extract_xsrf_token(&bootstrap_client).await {
+    let xsrf_token = match crate::extract_xsrf_token(&bootstrap_client).await {
         Ok(token) => token,
         Err(err) => {
             if err.is_auth_error() {

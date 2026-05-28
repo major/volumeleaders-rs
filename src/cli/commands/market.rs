@@ -1,14 +1,14 @@
 //! Market commands: earnings and exhaustion.
 
+use crate::{EarningsRequest, ExhaustionScoresRequest};
 use clap::{Args, Subcommand};
 use tracing::instrument;
-use volumeleaders_client::{EarningsRequest, ExhaustionScoresRequest};
 
 use crate::cli::MarketArgs;
-use crate::commands::scaffold::run_client_command;
-use crate::common::auth::{handle_api_error, make_client};
-use crate::common::dates::resolve_date_range;
-use crate::output::{finish_output, print_json, print_records};
+use crate::cli::commands::scaffold::run_client_command;
+use crate::cli::common::auth::{handle_api_error, make_client};
+use crate::cli::common::dates::resolve_date_range;
+use crate::cli::output::{finish_output, print_json, print_records};
 
 const DEFAULT_EARNINGS_FIELDS: [&str; 6] = [
     "Ticker",

@@ -8,14 +8,14 @@ use serde::Serialize;
 use tracing::instrument;
 
 use crate::cli::ReportArgs;
-use crate::common::DATE_FMT;
-use crate::common::TRADE_HEADERS;
-use crate::common::auth::{handle_api_error, make_client};
-use crate::common::dates::resolve_date_range;
-use crate::common::tickers::parse_tickers;
-use crate::common::trade_transforms::TradeRecordKind;
-use crate::common::types::SummaryGroup;
-use crate::output::{finish_output, print_json, print_transformed_record_values};
+use crate::cli::common::DATE_FMT;
+use crate::cli::common::TRADE_HEADERS;
+use crate::cli::common::auth::{handle_api_error, make_client};
+use crate::cli::common::dates::resolve_date_range;
+use crate::cli::common::tickers::parse_tickers;
+use crate::cli::common::trade_transforms::TradeRecordKind;
+use crate::cli::common::types::SummaryGroup;
+use crate::cli::output::{finish_output, print_json, print_transformed_record_values};
 
 /// Default trade limit when none is specified on the command line.
 const DEFAULT_LIMIT: usize = 500;
@@ -593,7 +593,7 @@ async fn execute_preset(args: &ReportArgs) -> i32 {
         }
     }
 
-    let request = volumeleaders_client::TradesRequest::new().with_trade_filters(filters);
+    let request = crate::TradesRequest::new().with_trade_filters(filters);
 
     let limit = flags.limit.unwrap_or(DEFAULT_LIMIT);
 
@@ -663,12 +663,12 @@ struct GroupStats {
 
 /// Builds a summary of trades grouped by the specified dimension.
 fn build_summary(
-    trades: &[volumeleaders_client::Trade],
+    trades: &[crate::Trade],
     group: SummaryGroup,
     start: &str,
     end: &str,
 ) -> ReportSummary {
-    let mut groups: HashMap<String, Vec<&volumeleaders_client::Trade>> = HashMap::new();
+    let mut groups: HashMap<String, Vec<&crate::Trade>> = HashMap::new();
 
     for trade in trades {
         let key = match group {
@@ -773,7 +773,7 @@ fn build_summary(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use volumeleaders_client::{AspNetDate, FlexBool};
+    use crate::{AspNetDate, FlexBool};
 
     #[test]
     fn preset_count_is_eleven() {
@@ -910,8 +910,8 @@ mod tests {
         dark_pool: bool,
         sweep: bool,
         cd: f64,
-    ) -> volumeleaders_client::Trade {
-        volumeleaders_client::Trade {
+    ) -> crate::Trade {
+        crate::Trade {
             ticker: Some(ticker.to_string()),
             date: Some(AspNetDate(Some(
                 chrono::DateTime::parse_from_rfc3339("2025-06-01T12:00:00Z")
@@ -1052,7 +1052,7 @@ mod tests {
 
     #[test]
     fn summary_empty_trades() {
-        let trades: Vec<volumeleaders_client::Trade> = vec![];
+        let trades: Vec<crate::Trade> = vec![];
         let summary = build_summary(&trades, SummaryGroup::Ticker, "2025-06-01", "2025-06-05");
 
         assert_eq!(summary.total_trades, 0);

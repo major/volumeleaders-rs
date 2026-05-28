@@ -7,22 +7,22 @@ mod filters;
 mod presets;
 mod sentiment;
 
+use crate::{
+    TradeClusterBombsRequest, TradeClustersRequest, TradeLevelTouchesRequest, TradesRequest,
+};
 use clap::{Args, Subcommand};
 use rust_decimal::prelude::ToPrimitive;
 use serde::Serialize;
 use tracing::instrument;
-use volumeleaders_client::{
-    TradeClusterBombsRequest, TradeClustersRequest, TradeLevelTouchesRequest, TradesRequest,
-};
 
 use crate::cli::TradeArgs;
-use crate::common::auth::{handle_api_error, make_client};
-use crate::common::dates::resolve_date_range;
-use crate::common::tickers::{parse_single_ticker, parse_tickers};
-use crate::common::trade_transforms::TradeRecordKind;
-use crate::common::types::{OrderDirection, SummaryGroup, TriStateFilter};
-use crate::common::{DATE_FMT, TRADE_HEADERS};
-use crate::output::{finish_output, print_json, print_transformed_record_values};
+use crate::cli::common::auth::{handle_api_error, make_client};
+use crate::cli::common::dates::resolve_date_range;
+use crate::cli::common::tickers::{parse_single_ticker, parse_tickers};
+use crate::cli::common::trade_transforms::TradeRecordKind;
+use crate::cli::common::types::{OrderDirection, SummaryGroup, TriStateFilter};
+use crate::cli::common::{DATE_FMT, TRADE_HEADERS};
+use crate::cli::output::{finish_output, print_json, print_transformed_record_values};
 
 use self::dashboard::{TradeDashboard, dashboard_output_value};
 use self::filters::{
@@ -793,7 +793,7 @@ async fn execute_cluster_bombs(args: &ClusterBombsArgs) -> i32 {
 
 #[instrument(skip_all)]
 async fn execute_alerts(args: &AlertsArgs) -> i32 {
-    let request = volumeleaders_client::TradeAlertsRequest::new()
+    let request = crate::TradeAlertsRequest::new()
         .with_start(args.page.start)
         .with_length(args.page.length)
         .with_order(args.page.order_col, args.page.order_dir.as_str(), "")
@@ -817,7 +817,7 @@ async fn execute_alerts(args: &AlertsArgs) -> i32 {
 
 #[instrument(skip_all)]
 async fn execute_cluster_alerts(args: &AlertsArgs) -> i32 {
-    let request = volumeleaders_client::TradeClusterAlertsRequest::new()
+    let request = crate::TradeClusterAlertsRequest::new()
         .with_start(args.page.start)
         .with_length(args.page.length)
         .with_order(args.page.order_col, args.page.order_dir.as_str(), "")
@@ -989,7 +989,7 @@ struct TradeGroupSummary {
 }
 
 fn build_summary(
-    trades: &[volumeleaders_client::Trade],
+    trades: &[crate::Trade],
     group: SummaryGroup,
     start: &str,
     end: &str,
@@ -1021,7 +1021,7 @@ fn build_summary(
     summary
 }
 
-fn summary_key(trade: &volumeleaders_client::Trade, group: SummaryGroup) -> String {
+fn summary_key(trade: &crate::Trade, group: SummaryGroup) -> String {
     match group {
         SummaryGroup::Ticker => trade.ticker.as_deref().unwrap_or("unknown").to_string(),
         SummaryGroup::Day => trade_day(trade),
@@ -1033,7 +1033,7 @@ fn summary_key(trade: &volumeleaders_client::Trade, group: SummaryGroup) -> Stri
     }
 }
 
-pub(super) fn trade_day(trade: &volumeleaders_client::Trade) -> String {
+pub(super) fn trade_day(trade: &crate::Trade) -> String {
     trade
         .date
         .as_ref()
@@ -1041,7 +1041,7 @@ pub(super) fn trade_day(trade: &volumeleaders_client::Trade) -> String {
         .unwrap_or_else(|| "unknown".to_string())
 }
 
-fn add_summary_group(acc: &mut TradeGroupAccumulator, trade: &volumeleaders_client::Trade) {
+fn add_summary_group(acc: &mut TradeGroupAccumulator, trade: &crate::Trade) {
     acc.trades += 1;
     acc.dollars += trade.dollars.and_then(|d| d.to_f64()).unwrap_or(0.0);
     acc.dollars_multiplier += trade.dollars_multiplier.unwrap_or(0.0);
@@ -1095,12 +1095,10 @@ fn summarize_group(acc: TradeGroupAccumulator) -> TradeGroupSummary {
 
 #[cfg(test)]
 mod tests {
+    use crate::{Trade, TradeCluster, TradeClusterAlert, TradeClusterBomb, TradeLevel};
     use serde_json::json;
-    use volumeleaders_client::{
-        Trade, TradeCluster, TradeClusterAlert, TradeClusterBomb, TradeLevel,
-    };
 
-    use crate::output::write_record_values;
+    use crate::cli::output::write_record_values;
 
     use super::*;
 
@@ -1158,7 +1156,7 @@ mod tests {
     }
 
     fn render_cluster_json(fields: Option<&str>, all_fields: bool) -> serde_json::Value {
-        let values = crate::common::trade_transforms::transformed_trade_values(
+        let values = crate::cli::common::trade_transforms::transformed_trade_values(
             &[cluster_fixture()],
             TradeRecordKind::Cluster,
         )
@@ -1519,7 +1517,7 @@ mod tests {
 
     #[test]
     fn cluster_alert_output_uses_cluster_transform_headers() {
-        let values = crate::common::trade_transforms::transformed_trade_values(
+        let values = crate::cli::common::trade_transforms::transformed_trade_values(
             &[cluster_alert_fixture()],
             TradeRecordKind::Cluster,
         )

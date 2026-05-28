@@ -1,22 +1,20 @@
-//! VolumeLeaders CLI agent.
-//!
-//! This project is unofficial and is not affiliated with, endorsed by, or
-//! sponsored by [volumeleaders.com](https://www.volumeleaders.com).
+//! Command-line interface for VolumeLeaders data.
 
-#![deny(missing_docs)]
-
-/// Clap command tree and top-level argument structs.
-pub mod cli;
+/// Clap argument definitions and top-level command structs.
+pub mod args;
 /// Command handlers for each CLI subcommand group.
 pub mod commands;
-/// Shared utilities: auth, dates, formatting, tickers, types.
+/// Shared CLI utilities: auth, dates, formatting, tickers, types.
 pub mod common;
 /// JSON output formatting and field selection.
 pub mod output;
 
 use clap::Parser;
 
-use crate::cli::{Cli, Commands};
+pub use args::{
+    AlertArgs, Cli, Commands, CompletionsArgs, MarketArgs, ReportArgs, TradeArgs, VolumeArgs,
+    WatchlistArgs,
+};
 
 /// Parses CLI arguments, routes to the appropriate command handler, and returns
 /// the process exit code.

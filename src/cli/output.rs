@@ -3,7 +3,7 @@ use std::io::{self, Write};
 use serde::Serialize;
 use serde_json::Value;
 
-use crate::common::trade_transforms::{TradeRecordKind, transformed_trade_values};
+use crate::cli::common::trade_transforms::{TradeRecordKind, transformed_trade_values};
 
 /// Writes `value` as compact JSON to stdout, newline-terminated.
 pub fn print_json<T: Serialize>(value: &T) -> io::Result<()> {

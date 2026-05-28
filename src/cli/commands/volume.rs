@@ -1,15 +1,15 @@
 //! Volume commands: institutional, after-hours institutional, and total volume.
 
+use crate::VolumeRequest;
 use clap::{Args, Subcommand};
 use tracing::instrument;
-use volumeleaders_client::VolumeRequest;
 
 use crate::cli::VolumeArgs;
-use crate::common::auth::{handle_api_error, make_client};
-use crate::common::tickers::parse_tickers;
-use crate::common::trade_transforms::TradeRecordKind;
-use crate::common::types::OrderDirection;
-use crate::output::{finish_output, print_transformed_record_values};
+use crate::cli::common::auth::{handle_api_error, make_client};
+use crate::cli::common::tickers::parse_tickers;
+use crate::cli::common::trade_transforms::TradeRecordKind;
+use crate::cli::common::types::OrderDirection;
+use crate::cli::output::{finish_output, print_transformed_record_values};
 
 const VOLUME_HEADERS: [&str; 16] = [
     "Date",

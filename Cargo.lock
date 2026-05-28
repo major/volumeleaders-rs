@@ -2905,6 +2905,27 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b39cdef0fa800fc44525c84ccb54a029961a8215f9619753635a9c0d2538d46d"
 
 [[package]]
+name = "rusty-volumeleaders"
+version = "0.4.0"
+dependencies = [
+ "chrono",
+ "clap",
+ "clap_complete",
+ "mockito",
+ "reqwest",
+ "rookie",
+ "rust_decimal",
+ "scraper",
+ "serde",
+ "serde_json",
+ "thiserror",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
+ "url",
+]
+
+[[package]]
 name = "ryu"
 version = "1.0.23"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3747,40 +3768,6 @@ name = "version_check"
 version = "0.9.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0b928f33d975fc6ad9f86c8f283853ad26bdd5b10b7f1542aa2fa15e2289105a"
-
-[[package]]
-name = "volumeleaders-agent"
-version = "0.4.0"
-dependencies = [
- "chrono",
- "clap",
- "clap_complete",
- "rust_decimal",
- "serde",
- "serde_json",
- "tokio",
- "tracing",
- "tracing-subscriber",
- "volumeleaders-client",
-]
-
-[[package]]
-name = "volumeleaders-client"
-version = "0.3.0"
-dependencies = [
- "chrono",
- "mockito",
- "reqwest",
- "rookie",
- "rust_decimal",
- "scraper",
- "serde",
- "serde_json",
- "thiserror",
- "tokio",
- "tracing",
- "url",
-]
 
 [[package]]
 name = "waker-fn"

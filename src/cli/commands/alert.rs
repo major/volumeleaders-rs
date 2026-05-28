@@ -1,15 +1,15 @@
 //! Alert commands: configs, create, edit, delete.
 
-use clap::{Args, Subcommand};
-use tracing::instrument;
-use volumeleaders_client::{
+use crate::{
     AlertConfigsRequest, DeleteAlertConfigRequest, SaveAlertConfigFields, SaveAlertConfigRequest,
 };
+use clap::{Args, Subcommand};
+use tracing::instrument;
 
 use crate::cli::AlertArgs;
-use crate::commands::scaffold::run_client_command;
-use crate::common::auth::{handle_api_error, make_client};
-use crate::output::{finish_output, print_json, print_records};
+use crate::cli::commands::scaffold::run_client_command;
+use crate::cli::common::auth::{handle_api_error, make_client};
+use crate::cli::output::{finish_output, print_json, print_records};
 
 const DEFAULT_CONFIGS_FIELDS: [&str; 9] = [
     "AlertConfigKey",
