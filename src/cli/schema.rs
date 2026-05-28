@@ -56,6 +56,12 @@ struct ArgSchema {
     required: bool,
     default: Option<Vec<String>>,
     parser: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    semantic_type: Option<&'static str>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    format: Option<&'static str>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    separators: Option<Vec<&'static str>>,
     possible_values: Vec<String>,
     multi_value: bool,
 }
@@ -193,8 +199,13 @@ fn auth_required(path: &[String]) -> bool {
 }
 
 fn arg_schema(arg: &Arg) -> ArgSchema {
+    let name = arg_name(arg);
+
     ArgSchema {
-        name: arg_name(arg),
+        semantic_type: semantic_type(&name, arg),
+        format: semantic_format(&name),
+        separators: semantic_separators(&name),
+        name,
         long: arg.get_long().map(ToString::to_string),
         short: arg.get_short(),
         value_name: value_name(arg),
@@ -205,6 +216,104 @@ fn arg_schema(arg: &Arg) -> ArgSchema {
         possible_values: possible_values(arg),
         multi_value: multi_value(arg),
     }
+}
+
+fn semantic_type(name: &str, arg: &Arg) -> Option<&'static str> {
+    if is_date_arg(name) {
+        return Some("date");
+    }
+    if name == "days" {
+        return Some("lookback-days");
+    }
+    if is_ticker_arg(name) {
+        return Some("ticker-list");
+    }
+    if is_money_arg(name) {
+        return Some("money");
+    }
+    if is_boolean_filter_arg(name, arg) {
+        return Some("boolean-filter");
+    }
+    if !possible_values(arg).is_empty() {
+        return Some("enum");
+    }
+    if is_integer_arg(name) {
+        return Some("integer");
+    }
+    if is_number_arg(name) {
+        return Some("number");
+    }
+
+    None
+}
+
+fn semantic_format(name: &str) -> Option<&'static str> {
+    is_date_arg(name).then_some("YYYY-MM-DD")
+}
+
+fn semantic_separators(name: &str) -> Option<Vec<&'static str>> {
+    is_ticker_arg(name).then_some(vec![",", " "])
+}
+
+fn is_date_arg(name: &str) -> bool {
+    matches!(name, "date" | "start-date" | "end-date")
+}
+
+fn is_ticker_arg(name: &str) -> bool {
+    matches!(name, "ticker" | "tickers")
+}
+
+fn is_money_arg(name: &str) -> bool {
+    name.contains("dollars") || name.contains("money")
+}
+
+fn is_boolean_filter_arg(name: &str, _arg: &Arg) -> bool {
+    matches!(
+        name,
+        "dark-pools"
+            | "sweeps"
+            | "late-prints"
+            | "sig-prints"
+            | "signature-prints"
+            | "normal-prints"
+            | "timely-prints"
+            | "lit-exchanges"
+            | "blocks"
+            | "premarket"
+            | "premarket-trades"
+            | "rth"
+            | "rth-trades"
+            | "ah"
+            | "ah-trades"
+            | "opening"
+            | "opening-trades"
+            | "closing"
+            | "closing-trades"
+            | "phantom"
+            | "phantom-trades"
+            | "offsetting"
+            | "even-shared"
+    )
+}
+
+fn is_integer_arg(name: &str) -> bool {
+    name == "limit"
+        || name == "length"
+        || name == "start"
+        || name.ends_with("count")
+        || name.contains("volume")
+        || name.contains("rank")
+        || name.contains("order-column")
+        || name.contains("security-type")
+}
+
+fn is_number_arg(name: &str) -> bool {
+    name.contains("price")
+        || name.contains("vcd")
+        || name.contains("multiplier")
+        || name.contains("relative-size")
+        || name.contains("rsi")
+        || name.contains("market-cap")
 }
 
 fn arg_name(arg: &Arg) -> String {
@@ -507,9 +616,12 @@ mod tests {
             && arg["kind"] == "flag"));
         assert!(args.iter().any(|arg| arg["name"] == "limit"
             && arg["long"] == "limit"
+            && arg["semantic_type"] == "integer"
             && arg["default"] == serde_json::json!(["1000"])));
         assert!(args.iter().any(|arg| arg["name"] == "tickers"
             && arg["kind"] == "positional"
+            && arg["semantic_type"] == "ticker-list"
+            && arg["separators"] == serde_json::json!([",", " "])
             && arg["value_name"] == "TICKERS"
             && arg["multi_value"] == true));
         assert!(args.iter().any(|arg| {
@@ -637,6 +749,95 @@ mod tests {
     }
 
     #[test]
+    fn schema_includes_semantic_argument_metadata() {
+        let schema = schema_value();
+        let commands = schema["commands"].as_array().unwrap();
+
+        assert_arg_semantics(
+            commands,
+            &["trade", "list"],
+            "start-date",
+            "date",
+            Some("YYYY-MM-DD"),
+            None,
+        );
+        assert_arg_semantics(
+            commands,
+            &["trade", "list"],
+            "tickers",
+            "ticker-list",
+            None,
+            Some(serde_json::json!([",", " "])),
+        );
+        assert_arg_semantics(
+            commands,
+            &["trade", "list"],
+            "min-dollars",
+            "money",
+            None,
+            None,
+        );
+        assert_arg_semantics(commands, &["trade", "list"], "limit", "integer", None, None);
+        assert_arg_semantics(
+            commands,
+            &["trade", "list"],
+            "min-price",
+            "number",
+            None,
+            None,
+        );
+        assert_arg_semantics(
+            commands,
+            &["trade", "list"],
+            "dark-pools",
+            "boolean-filter",
+            None,
+            None,
+        );
+        assert_arg_semantics(
+            commands,
+            &["volume", "institutional"],
+            "date",
+            "date",
+            Some("YYYY-MM-DD"),
+            None,
+        );
+        assert_arg_semantics(
+            commands,
+            &["volume", "institutional"],
+            "tickers",
+            "ticker-list",
+            None,
+            Some(serde_json::json!([",", " "])),
+        );
+        assert_arg_semantics(
+            commands,
+            &["watchlist", "create"],
+            "tickers",
+            "ticker-list",
+            None,
+            Some(serde_json::json!([",", " "])),
+        );
+        assert_arg_semantics(
+            commands,
+            &["watchlist", "create"],
+            "min-dollars",
+            "money",
+            None,
+            None,
+        );
+        assert_arg_semantics(
+            commands,
+            &["watchlist", "create"],
+            "normal-prints",
+            "boolean-filter",
+            None,
+            None,
+        );
+        assert_arg_semantics(commands, &["completions"], "shell", "enum", None, None);
+    }
+
+    #[test]
     fn schema_help_command_exposes_topic_values() {
         let schema = schema_value();
         let help = schema["commands"]
@@ -676,6 +877,35 @@ mod tests {
 
         assert_eq!(parser_name(&false_flag), "bool");
         assert_eq!(parser_name(&count_flag), "count");
+    }
+
+    fn assert_arg_semantics(
+        commands: &[Value],
+        path: &[&str],
+        name: &str,
+        semantic_type: &str,
+        format: Option<&str>,
+        separators: Option<Value>,
+    ) {
+        let command_path = path.iter().map(|part| part.to_string()).collect::<Vec<_>>();
+        let command = commands
+            .iter()
+            .find(|command| command["path"] == serde_json::json!(command_path))
+            .unwrap_or_else(|| panic!("missing command path {path:?}"));
+        let arg = command["args"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|arg| arg["name"] == name)
+            .unwrap_or_else(|| panic!("missing arg {name} for {path:?}"));
+
+        assert_eq!(arg["semantic_type"], semantic_type);
+        if let Some(format) = format {
+            assert_eq!(arg["format"], format);
+        }
+        if let Some(separators) = separators {
+            assert_eq!(arg["separators"], separators);
+        }
     }
 
     fn live_leaf_paths() -> Vec<Vec<String>> {

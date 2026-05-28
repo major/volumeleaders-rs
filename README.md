@@ -52,7 +52,7 @@ Use global `--strict-empty` when an empty record array should fail automation in
 
 Use global `-v`, `-vv`, or `-vvv` to enable info, debug, or trace diagnostics on stderr. Without `-v`, the CLI logs warnings and errors only. stdout remains reserved for command output so JSON pipelines stay clean, and sensitive browser-cookie material is never logged.
 
-Use `schema` for machine-readable CLI discovery. It emits compact JSON generated from the live clap command tree with the binary version, browser-cookie auth model, leaf command paths, help text, explicit alias metadata, auth requirements, argument metadata with stable names, and structured command examples.
+Use `schema` for machine-readable CLI discovery. It emits compact JSON generated from the live clap command tree with the binary version, browser-cookie auth model, leaf command paths, help text, explicit alias metadata, auth requirements, argument metadata with stable names and semantic types, and structured command examples.
 
 Use `fields <command path>` for machine-readable output field discovery before using `--fields`. It emits compact JSON with the preferred command path, exact case-sensitive field names accepted by `--fields`, short descriptions, and type hints. It does not need a live API response or non-empty result rows.
 
@@ -161,7 +161,7 @@ cargo doc --no-default-features --no-deps
 
 Most tests are inline `#[cfg(test)]` modules in `src/**`. Fixtures live in `tests/fixtures/*.json` and represent server payload contracts. HTTP tests use `mockito`.
 
-CLI drift tests assert that every visible clap leaf appears in `commands` and `schema`, every leaf has command-specific examples, structured schema examples stay valid, aliases keep canonical preferred paths, and global flags stay present in schema metadata.
+CLI drift tests assert that every visible clap leaf appears in `commands` and `schema`, every leaf has command-specific examples, structured schema examples stay valid, aliases keep canonical preferred paths, and global flags plus semantic argument metadata stay present in schema metadata.
 
 `make coverage` and CI enforce 90 percent line coverage with `cargo llvm-cov --all-features`; Codecov also requires 90 percent project coverage and 100 percent patch coverage for changed lines. Run `make patch-coverage` before opening a PR to generate `lcov.info` and check changed-line coverage against `main`. Override the base branch with `PATCH_COVERAGE_BASE=<branch>` or use `DIFF_COVER='uvx diff-cover'` if `diff-cover` is not installed as a standalone command.
 
