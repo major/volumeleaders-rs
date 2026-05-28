@@ -115,3 +115,56 @@ fn schema_command_emits_machine_readable_contract() {
             && arg["multi_value"] == true
     }));
 }
+
+#[test]
+fn schema_emits_structured_command_examples() {
+    let output = Command::new(env!("CARGO_BIN_EXE_volumeleaders-agent"))
+        .arg("schema")
+        .output()
+        .unwrap();
+
+    assert!(output.status.success());
+    assert!(output.stderr.is_empty());
+
+    let schema: Value = serde_json::from_slice(&output.stdout).unwrap();
+    let commands = schema["commands"].as_array().unwrap();
+    let trade_list = commands
+        .iter()
+        .find(|command| command["path"] == serde_json::json!(["trade", "list"]))
+        .unwrap();
+    let examples = trade_list["examples"].as_array().unwrap();
+
+    assert!(examples.iter().any(|example| {
+        example["description"] == "List recent trades for a ticker"
+            && example["command"] == "volumeleaders-agent trade list NVDA"
+    }));
+    assert!(examples.iter().any(|example| {
+        example["command"]
+            .as_str()
+            .is_some_and(|command| command.contains("--fields Ticker,DateTime,Price,Dollars"))
+    }));
+
+    let mut failures = Vec::new();
+    for command in commands {
+        let preferred_path = command["preferred_path"].as_str().unwrap();
+        for example in command["examples"].as_array().unwrap() {
+            let Some(command_text) = example["command"].as_str() else {
+                failures.push(format!(
+                    "{preferred_path}: example command is missing or not text"
+                ));
+                continue;
+            };
+            if !command_text.starts_with("volumeleaders-agent ") {
+                failures.push(format!(
+                    "{preferred_path}: example does not start with volumeleaders-agent: {command_text}"
+                ));
+            }
+        }
+    }
+
+    assert!(
+        failures.is_empty(),
+        "schema examples must be copy-pasteable commands:\n{}",
+        failures.join("\n")
+    );
+}

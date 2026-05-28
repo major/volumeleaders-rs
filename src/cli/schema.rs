@@ -4,6 +4,7 @@ use clap::{Arg, ArgAction, Command, CommandFactory};
 use serde::Serialize;
 
 use crate::cli::Cli;
+use crate::cli::command_examples::{CommandExample, examples_for_path};
 use crate::cli::output::{finish_output, print_json};
 
 const SCHEMA_VERSION: u8 = 1;
@@ -41,6 +42,7 @@ struct CommandSchema {
     auth_required: bool,
     about: Option<String>,
     long_about: Option<String>,
+    examples: Vec<CommandExample>,
     args: Vec<ArgSchema>,
 }
 
@@ -134,6 +136,7 @@ fn command_schema(command: &Command, path: &[String], global_args: &[ArgSchema])
         auth_required: auth_required(path),
         about: command.get_about().map(ToString::to_string),
         long_about: command.get_long_about().map(ToString::to_string),
+        examples: examples_for_path(path).to_vec(),
         args,
     }
 }
@@ -157,6 +160,7 @@ fn add_alias_commands(commands: &mut Vec<CommandSchema>) {
             auth_required: canonical_command.auth_required,
             about: Some(format!("Alias for `{}`.", canonical_command.preferred_path)),
             long_about: canonical_command.long_about.clone(),
+            examples: canonical_command.examples.clone(),
             args: canonical_command.args.clone(),
         });
     }
@@ -273,6 +277,8 @@ mod tests {
     use serde_json::Value;
 
     use crate::cli::Cli;
+
+    use crate::cli::command_examples::examples_for_path;
 
     use super::{CommandSchema, add_alias_commands, build_schema, parser_name};
 
@@ -467,6 +473,7 @@ mod tests {
             auth_required: true,
             about: Some("List trades".to_string()),
             long_about: Some("List trades.\n\nExamples:\n  volumeleaders-agent trade list NVDA\n  volumeleaders-agent trade list AAPL".to_string()),
+            examples: examples_for_path(&["trade".to_string(), "list".to_string()]).to_vec(),
             args: Vec::new(),
         }];
 
@@ -519,6 +526,67 @@ mod tests {
                 && arg["parser"] == "count"
                 && arg["multi_value"] == true
         }));
+    }
+
+    #[test]
+    fn schema_includes_structured_examples_for_required_commands() {
+        let schema = schema_value();
+        let commands = schema["commands"].as_array().unwrap();
+
+        for preferred_path in [
+            "doctor",
+            "commands",
+            "schema",
+            "trade list",
+            "trade dashboard",
+            "trade levels",
+            "report list",
+            "report dark-pool-sweeps",
+            "volume institutional",
+            "market earnings",
+            "watchlist tickers",
+        ] {
+            let command = commands
+                .iter()
+                .find(|command| command["preferred_path"] == preferred_path)
+                .unwrap_or_else(|| panic!("missing command {preferred_path}"));
+            let examples = command["examples"].as_array().unwrap();
+
+            assert!(
+                examples.len() >= 2,
+                "{preferred_path} should have at least two structured examples"
+            );
+            for example in examples {
+                assert!(
+                    example["description"]
+                        .as_str()
+                        .is_some_and(|value| !value.is_empty()),
+                    "{preferred_path} example should include a description"
+                );
+                assert!(
+                    example["command"]
+                        .as_str()
+                        .is_some_and(|value| value.starts_with("volumeleaders-agent ")),
+                    "{preferred_path} example should include a volumeleaders-agent command"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn schema_copies_structured_examples_to_aliases() {
+        let schema = schema_value();
+        let commands = schema["commands"].as_array().unwrap();
+        let trade_list = commands
+            .iter()
+            .find(|command| command["path"] == serde_json::json!(["trade", "list"]))
+            .unwrap();
+        let trades_alias = commands
+            .iter()
+            .find(|command| command["path"] == serde_json::json!(["trades"]))
+            .unwrap();
+
+        assert_eq!(trades_alias["examples"], trade_list["examples"]);
     }
 
     #[test]
