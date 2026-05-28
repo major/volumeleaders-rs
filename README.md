@@ -49,8 +49,11 @@ Semantic exit codes are stable for automation: `0` means success, `2` is clap us
 
 Use `schema` for machine-readable CLI discovery. It emits compact JSON generated from the live clap command tree with the binary version, browser-cookie auth model, leaf command paths, help text, aliases, auth requirements, and argument metadata.
 
+Use `doctor` for a safe local readiness check before running live data commands. It emits compact JSON with the CLI version, browser-cookie auth status, and live-connectivity status without making a network request by default.
+
 ```bash
 cargo run -- --help
+cargo run -- doctor
 cargo run -- schema
 cargo run -- report list
 cargo run -- trade list
@@ -60,6 +63,7 @@ cargo run -- completions bash
 After building or installing, run the binary as `volumeleaders-agent`:
 
 ```bash
+volumeleaders-agent doctor
 volumeleaders-agent report list
 volumeleaders-agent schema | jq '.commands[] | select(.preferred_path == "trade list")'
 volumeleaders-agent trade list

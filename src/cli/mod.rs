@@ -6,6 +6,8 @@ pub mod args;
 pub mod commands;
 /// Shared CLI utilities: auth, dates, formatting, tickers, types.
 pub mod common;
+/// Local environment and auth readiness diagnostics.
+pub mod doctor;
 /// Structured runtime error rendering and semantic exit-code mapping.
 pub mod error;
 /// JSON output formatting and field selection.
@@ -32,6 +34,7 @@ pub async fn run() -> i32 {
         Commands::Market(args) => commands::market::handle(args).await,
         Commands::Alert(args) => commands::alert::handle(args).await,
         Commands::Watchlist(args) => commands::watchlist::handle(args).await,
+        Commands::Doctor => doctor::handle(),
         Commands::Schema => schema::handle(),
         Commands::Completions(args) => {
             commands::completions::handle(args);

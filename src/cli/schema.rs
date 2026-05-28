@@ -121,7 +121,7 @@ fn command_schema(command: &Command, path: &[String]) -> CommandSchema {
 }
 
 fn auth_required(path: &[String]) -> bool {
-    !matches!(path, [command] if command == "schema" || command == "completions")
+    !matches!(path, [command] if command == "doctor" || command == "schema" || command == "completions")
 }
 
 fn arg_schema(arg: &Arg) -> ArgSchema {
@@ -231,6 +231,7 @@ mod tests {
             .collect();
 
         assert!(paths.contains(&"schema"));
+        assert!(paths.contains(&"doctor"));
         assert!(paths.contains(&"trade list"));
         assert!(paths.contains(&"volume institutional"));
         assert!(paths.contains(&"market earnings"));
@@ -247,12 +248,17 @@ mod tests {
             .iter()
             .find(|command| command["preferred_path"] == "schema")
             .unwrap();
+        let doctor_command = commands
+            .iter()
+            .find(|command| command["preferred_path"] == "doctor")
+            .unwrap();
         let trade_command = commands
             .iter()
             .find(|command| command["preferred_path"] == "trade list")
             .unwrap();
 
         assert_eq!(schema_command["auth_required"], false);
+        assert_eq!(doctor_command["auth_required"], false);
         assert_eq!(trade_command["auth_required"], true);
     }
 
