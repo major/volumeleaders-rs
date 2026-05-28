@@ -141,7 +141,7 @@ mod tests {
 
     use crate::cli::output::finish_output;
 
-    use super::{flat_commands_text, grouped_commands_text};
+    use super::{flat_commands_text, grouped_commands_text, leaf_commands};
 
     #[test]
     fn flat_commands_lists_sorted_leaf_paths() {
@@ -161,6 +161,22 @@ mod tests {
         assert!(lines.contains(&"trades"));
         assert!(lines.contains(&"volume institutional"));
         assert!(lines.contains(&"watchlist tickers"));
+    }
+
+    #[test]
+    fn flat_commands_matches_live_leaf_commands() {
+        let mut expected = leaf_commands()
+            .into_iter()
+            .map(|leaf| leaf.preferred_path())
+            .collect::<Vec<_>>();
+        expected.sort();
+
+        let actual = flat_commands_text()
+            .lines()
+            .map(ToString::to_string)
+            .collect::<Vec<_>>();
+
+        assert_eq!(actual, expected);
     }
 
     #[test]

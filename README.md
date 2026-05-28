@@ -154,6 +154,8 @@ cargo doc --no-default-features --no-deps
 
 Most tests are inline `#[cfg(test)]` modules in `src/**`. Fixtures live in `tests/fixtures/*.json` and represent server payload contracts. HTTP tests use `mockito`.
 
+CLI drift tests assert that every visible clap leaf appears in `commands` and `schema`, every leaf has command-specific examples, aliases keep canonical preferred paths, and global flags stay present in schema metadata.
+
 `make coverage` and CI enforce 90 percent line coverage with `cargo llvm-cov --all-features`; Codecov also requires 90 percent project coverage and 100 percent patch coverage for changed lines. Run `make patch-coverage` before opening a PR to generate `lcov.info` and check changed-line coverage against `main`. Override the base branch with `PATCH_COVERAGE_BASE=<branch>` or use `DIFF_COVER='uvx diff-cover'` if `diff-cover` is not installed as a standalone command.
 
 ## Release automation

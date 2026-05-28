@@ -45,6 +45,7 @@ volumeleaders-rs/
 | CLI doctor | `src/cli/doctor.rs` | Local auth and environment readiness diagnostics without default network calls |
 | CLI help topics | `src/cli/help.rs` | Built-in operational help topics for auth, environment, exit codes, discovery, and examples |
 | CLI schema | `src/cli/schema.rs` | Machine-readable command metadata generated from the live clap tree |
+| CLI drift tests | `src/cli/args.rs`, `src/cli/command_list.rs`, `src/cli/schema.rs` | Tests that keep clap leaves, command discovery, schema metadata, aliases, global flags, and help examples aligned |
 | LLM CLI contract | `SKILL.md` | Concise self-discovery, invocation, auth, flags, command catalog, examples, and development guide |
 | Fixtures | `tests/fixtures/` | JSON payload contracts used by tests |
 | Local commands | `Makefile` | `make check` runs fmt, clippy, test, doc; `make patch-coverage` checks changed-line coverage; `make machete` checks unused dependencies |
@@ -78,6 +79,7 @@ volumeleaders-rs/
 - `volumeleaders-agent help <topic>` emits plain-text operational guidance for auth, environment, exit codes, discovery, and examples. Root and command clap help remain available through `--help`.
 - Every visible leaf command includes a concise `about` and command-specific `long_about` with an `Examples:` section containing at least two `volumeleaders-agent` invocations.
 - `volumeleaders-agent schema` emits machine-readable discovery metadata from `Cli::command()` so command paths, help text, aliases, auth requirements, and arguments cannot drift from clap definitions.
+- CLI drift tests assert every visible clap leaf appears in `commands` and `schema`, every leaf has examples, aliases retain canonical preferred paths, and global flags appear in schema metadata.
 - `SKILL.md` is the concise LLM-facing CLI contract; keep it aligned with discovery commands, stdout/stderr behavior, auth, global flags, command catalog, examples, and CLI development checks.
 - Semantic CLI exit codes are `0` success, `2` usage error, `3` auth error, `4` HTTP transport error, `5` API error, `6` JSON parse or output transformation error, and `7` strict empty result.
 - Library consumers that do not need the CLI should use `rusty-volumeleaders = { version = "0.4.0", default-features = false }` to avoid clap and CLI-only dependencies.
