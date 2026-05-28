@@ -6,7 +6,7 @@ Rust 2024 single-crate project for VolumeLeaders access. The package is `rusty-v
 
 ## DOC FRESHNESS
 
-- Keep `AGENTS.md` and `README.md` current in the same change that modifies commands, public APIs, auth/session behavior, fixtures, CI, release flow, or project layout.
+- Keep `AGENTS.md`, `README.md`, and `SKILL.md` current in the same change that modifies commands, public APIs, auth/session behavior, fixtures, CI, release flow, or project layout.
 - Stale docs are worse than missing docs here. If code and docs disagree, update docs or remove the inaccurate claim.
 - Keep AGENTS files short and progressively disclosed. Parent coverage is preferred; add deeper files only when a subdirectory has distinct rules.
 
@@ -20,6 +20,7 @@ volumeleaders-rs/
 ├── codecov.yml                # Codecov project and patch coverage gates
 ├── README.md                  # Human project overview and commands
 ├── AGENTS.md                  # Project rules for agents
+├── SKILL.md                   # LLM-facing CLI operation and development contract
 ├── src/                       # API client library modules
 ├── src/cli/                   # CLI parser, commands, output, and helpers
 ├── tests/fixtures/            # JSON payload fixtures
@@ -44,6 +45,7 @@ volumeleaders-rs/
 | CLI doctor | `src/cli/doctor.rs` | Local auth and environment readiness diagnostics without default network calls |
 | CLI help topics | `src/cli/help.rs` | Built-in operational help topics for auth, environment, exit codes, discovery, and examples |
 | CLI schema | `src/cli/schema.rs` | Machine-readable command metadata generated from the live clap tree |
+| LLM CLI contract | `SKILL.md` | Concise self-discovery, invocation, auth, flags, command catalog, examples, and development guide |
 | Fixtures | `tests/fixtures/` | JSON payload contracts used by tests |
 | Local commands | `Makefile` | `make check` runs fmt, clippy, test, doc; `make patch-coverage` checks changed-line coverage; `make machete` checks unused dependencies |
 | CI behavior | `.github/workflows/ci.yml` | Linux, macOS, Windows test and clippy matrix |
@@ -76,6 +78,7 @@ volumeleaders-rs/
 - `volumeleaders-agent help <topic>` emits plain-text operational guidance for auth, environment, exit codes, discovery, and examples. Root and command clap help remain available through `--help`.
 - Every visible leaf command includes a concise `about` and command-specific `long_about` with an `Examples:` section containing at least two `volumeleaders-agent` invocations.
 - `volumeleaders-agent schema` emits machine-readable discovery metadata from `Cli::command()` so command paths, help text, aliases, auth requirements, and arguments cannot drift from clap definitions.
+- `SKILL.md` is the concise LLM-facing CLI contract; keep it aligned with discovery commands, stdout/stderr behavior, auth, global flags, command catalog, examples, and CLI development checks.
 - Semantic CLI exit codes are `0` success, `2` usage error, `3` auth error, `4` HTTP transport error, `5` API error, `6` JSON parse or output transformation error, and `7` strict empty result.
 - Library consumers that do not need the CLI should use `rusty-volumeleaders = { version = "0.4.0", default-features = false }` to avoid clap and CLI-only dependencies.
 - Formatting follows `cargo fmt --all` and `.editorconfig`: UTF-8, 4-space indent, final newline, trim trailing whitespace except Markdown.
@@ -121,5 +124,5 @@ cargo doc --no-default-features --no-deps
 - `dist-workspace.toml` configures cargo-dist for the `volumeleaders-agent` binary installers. Regenerate `.github/workflows/release.yml` after changing dist settings, then reapply the Rust toolchain update and OIDC publish job if cargo-dist drops them.
 - `.github/workflows/release.yml` publishes the single `rusty-volumeleaders` crate through OIDC trusted publishing after cargo-dist creates the GitHub Release.
 - The first crates.io release of `rusty-volumeleaders` must be published manually with a crates.io API token. After that, configure crates.io Trusted Publishing for repo `major/volumeleaders-rs`, workflow file `release.yml`, and package `rusty-volumeleaders`.
-- If a code change modifies public CLI behavior, update README examples and this file.
+- If a code change modifies public CLI behavior, update README examples, `SKILL.md`, and this file.
 - If a code change modifies request fields, response models, auth, fixtures, or pagination, update README scope notes and this file.
