@@ -265,7 +265,8 @@ impl SaveWatchListConfigRequest {
 
 /// Form payload for adding a ticker to an existing watchlist.
 #[allow(missing_docs)]
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "PascalCase")]
 pub struct AddTickerToWatchListRequest {
     pub watch_list_key: i64,
     pub ticker: String,

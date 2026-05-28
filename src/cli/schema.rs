@@ -40,6 +40,9 @@ struct CommandSchema {
     preferred_path: String,
     aliases: Vec<String>,
     auth_required: bool,
+    mutating: bool,
+    supports_dry_run: bool,
+    requires_confirmation: bool,
     about: Option<String>,
     long_about: Option<String>,
     examples: Vec<CommandExample>,
@@ -140,6 +143,9 @@ fn command_schema(command: &Command, path: &[String], global_args: &[ArgSchema])
         preferred_path: path.join(" "),
         aliases: aliases_for_path(path),
         auth_required: auth_required(path),
+        mutating: is_mutating(path),
+        supports_dry_run: supports_dry_run(path),
+        requires_confirmation: requires_confirmation(path),
         about: command.get_about().map(ToString::to_string),
         long_about: command.get_long_about().map(ToString::to_string),
         examples: examples_for_path(path).to_vec(),
@@ -164,6 +170,9 @@ fn add_alias_commands(commands: &mut Vec<CommandSchema>) {
             preferred_path: canonical_command.preferred_path.clone(),
             aliases: Vec::new(),
             auth_required: canonical_command.auth_required,
+            mutating: canonical_command.mutating,
+            supports_dry_run: canonical_command.supports_dry_run,
+            requires_confirmation: canonical_command.requires_confirmation,
             about: Some(format!("Alias for `{}`.", canonical_command.preferred_path)),
             long_about: canonical_command.long_about.clone(),
             examples: canonical_command.examples.clone(),
@@ -196,6 +205,28 @@ fn top_level_aliases() -> [(&'static str, [&'static str; 2]); 3] {
 
 fn auth_required(path: &[String]) -> bool {
     !matches!(path, [command] if command == "commands" || command == "doctor" || command == "fields" || command == "help" || command == "schema" || command == "completions")
+}
+
+fn is_mutating(path: &[String]) -> bool {
+    matches!(
+        path,
+        [group, command]
+            if (group == "alert" && matches!(command.as_str(), "create" | "edit" | "delete"))
+                || (group == "watchlist"
+                    && matches!(command.as_str(), "create" | "edit" | "delete" | "add-ticker"))
+    )
+}
+
+fn supports_dry_run(path: &[String]) -> bool {
+    is_mutating(path)
+}
+
+fn requires_confirmation(path: &[String]) -> bool {
+    matches!(
+        path,
+        [group, command]
+            if matches!(group.as_str(), "alert" | "watchlist") && command == "delete"
+    )
 }
 
 fn arg_schema(arg: &Arg) -> ArgSchema {
@@ -605,6 +636,9 @@ mod tests {
             preferred_path: "trade list".to_string(),
             aliases: vec!["trades".to_string()],
             auth_required: true,
+            mutating: false,
+            supports_dry_run: false,
+            requires_confirmation: false,
             about: Some("List trades".to_string()),
             long_about: Some("List trades.\n\nExamples:\n  volumeleaders-agent trade list NVDA\n  volumeleaders-agent trade list AAPL".to_string()),
             examples: examples_for_path(&["trade".to_string(), "list".to_string()]).to_vec(),
