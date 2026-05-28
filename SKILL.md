@@ -11,6 +11,7 @@ volumeleaders-agent doctor
 volumeleaders-agent schema
 volumeleaders-agent commands
 volumeleaders-agent commands --grouped
+volumeleaders-agent fields trade list
 volumeleaders-agent help agent
 volumeleaders-agent help auth
 volumeleaders-agent help environment
@@ -23,6 +24,7 @@ volumeleaders-agent trade list --help
 - `doctor` is local-only by default and reports browser-cookie readiness as compact JSON.
 - `schema` is the authoritative machine-readable command contract generated from the live clap tree.
 - `commands` is the lightweight plain-text leaf command list. Use `--grouped` for descriptions.
+- `fields <command path>` emits exact case-sensitive output field names, descriptions, and type hints for commands that support `--fields` without requiring live rows.
 - `help <topic>` gives operational guidance when README access is unavailable.
 - `help agent` summarizes the recommended non-interactive automation flow.
 - Command-specific `--help` includes an `Examples:` section for every visible leaf command.
@@ -34,7 +36,7 @@ volumeleaders-agent trade list --help
 - Runtime errors write one compact JSON object to stderr: `{"ok":false,"error":{"kind":"...","message":"..."}}`.
 - Diagnostic logs from `-v`, `-vv`, and `-vvv` go to stderr only. stdout must remain parseable command output.
 - Exit codes: `0` success, `2` usage error, `3` auth error, `4` HTTP transport error, `5` API error, `6` JSON parse or output transformation error, `7` strict empty result.
-- Commands that need live data require browser cookies. Local discovery commands (`doctor`, `schema`, `commands`, `help`, `completions`) do not require live API access.
+- Commands that need live data require browser cookies. Local discovery commands (`doctor`, `schema`, `commands`, `fields`, `help`, `completions`) do not require live API access.
 
 ## Auth model
 
@@ -74,7 +76,7 @@ Reusable shapes:
 | `DateRange` | `--start-date YYYY-MM-DD --end-date YYYY-MM-DD` | Used by many trade, market, and report commands. |
 | `TickerDateRange` | Ticker plus `--start-date` and `--end-date` | Common for trade list, dashboard, clusters, levels, and report filters. |
 | `Paged` | `--start N --length N`, or command-specific `--limit N` | DataTables-style commands use `start` and `length`; report and volume commands often use `limit`. |
-| `FieldsSelectable` | `--fields ticker,date,price` or `--all-fields` | Only use field names exposed by `schema` or command help. |
+| `FieldsSelectable` | `--fields Ticker,Date,Price` or `--all-fields` | Discover exact field names with `fields <command path>` before filtering. |
 
 ## Command catalog
 
@@ -92,6 +94,7 @@ Local discovery and setup:
 |------|-------------|
 | `commands` | List available leaf command paths. |
 | `doctor` | Check local auth and environment readiness as JSON. |
+| `fields` | Show output field metadata for commands that support `--fields`. |
 | `help` | Show built-in operational help topics. |
 | `schema` | Emit machine-readable command metadata as JSON. |
 | `completions` | Generate shell completions. |
@@ -113,6 +116,8 @@ Discovery:
 
 ```bash
 volumeleaders-agent commands --grouped
+volumeleaders-agent fields trade list
+volumeleaders-agent fields volume institutional | jq '.fields[].name'
 volumeleaders-agent help agent
 volumeleaders-agent schema | jq '.commands[] | select(.preferred_path == "trade list")'
 volumeleaders-agent help examples
@@ -130,7 +135,7 @@ Common data workflows:
 
 ```bash
 volumeleaders-agent trades NVDA
-volumeleaders-agent trade list NVDA --start-date 2026-05-01 --end-date 2026-05-27 --fields ticker,date,price,volume,venue
+volumeleaders-agent trade list NVDA --start-date 2026-05-01 --end-date 2026-05-27 --fields Ticker,DateTime,Price,Dollars
 volumeleaders-agent dashboard NVDA
 volumeleaders-agent levels NVDA
 volumeleaders-agent volume institutional --date 2026-05-27 --tickers AAPL

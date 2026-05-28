@@ -94,6 +94,11 @@ pub enum Commands {
         long_about = "List available leaf command paths from the live clap command tree.\n\nExamples:\n  volumeleaders-agent commands\n  volumeleaders-agent commands --grouped"
     )]
     Commands(CommandsArgs),
+    /// Show available output fields for a command path.
+    #[command(
+        long_about = "Show available output fields accepted by --fields for a command path as compact JSON.\n\nExamples:\n  volumeleaders-agent fields trade list\n  volumeleaders-agent fields volume institutional"
+    )]
+    Fields(FieldsArgs),
     /// Show built-in operational help topics.
     #[command(
         long_about = "Show built-in operational help topics when README access is unavailable.\n\nExamples:\n  volumeleaders-agent help auth\n  volumeleaders-agent help examples"
@@ -165,6 +170,14 @@ pub struct CommandsArgs {
     /// Group commands by their top-level command with short descriptions.
     #[arg(long)]
     pub grouped: bool,
+}
+
+/// Arguments for output field discovery.
+#[derive(Debug, Args)]
+pub struct FieldsArgs {
+    /// Command path to inspect, such as `trade list` or `volume institutional`.
+    #[arg(required = true, num_args = 1.., value_name = "COMMAND_PATH")]
+    pub command_path: Vec<String>,
 }
 
 /// Arguments for built-in operational help topics.

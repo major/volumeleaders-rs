@@ -23,7 +23,10 @@ use crate::cli::common::trade_transforms::TradeRecordKind;
 use crate::cli::common::types::{OrderDirection, SummaryGroup, TriStateFilter};
 use crate::cli::common::{DATE_FMT, TRADE_HEADERS};
 use crate::cli::error::usage_error;
-use crate::cli::output::{finish_output, print_json, print_transformed_record_values};
+use crate::cli::field_metadata;
+use crate::cli::output::{
+    finish_output, print_json, print_transformed_record_values_with_allowed_fields,
+};
 
 use self::dashboard::{TradeDashboard, dashboard_output_value};
 use self::filters::{
@@ -114,7 +117,7 @@ struct DateRange {
 pub enum TradeCommand {
     /// Query institutional trades.
     #[command(
-        long_about = "Query institutional trades with optional ticker, date, range, and output filters.\n\nExamples:\n  volumeleaders-agent trade list NVDA\n  volumeleaders-agent trade list NVDA --start-date 2026-05-01 --end-date 2026-05-27 --fields ticker,date,price,volume,venue"
+        long_about = "Query institutional trades with optional ticker, date, range, and output filters.\n\nExamples:\n  volumeleaders-agent trade list NVDA\n  volumeleaders-agent trade list NVDA --start-date 2026-05-01 --end-date 2026-05-27 --fields Ticker,DateTime,Price,Dollars,venue"
     )]
     List(ListArgs),
     /// Query a ticker institutional dashboard.
@@ -129,7 +132,7 @@ pub enum TradeCommand {
     Sentiment(SentimentArgs),
     /// Query aggregated trade clusters.
     #[command(
-        long_about = "Query aggregated trade clusters with optional ticker and rank filters.\n\nExamples:\n  volumeleaders-agent trade clusters NVDA\n  volumeleaders-agent trade clusters NVDA AAPL --start-date 2026-05-01 --end-date 2026-05-27 --relative-size 10 --fields ticker,date,dollars"
+        long_about = "Query aggregated trade clusters with optional ticker and rank filters.\n\nExamples:\n  volumeleaders-agent trade clusters NVDA\n  volumeleaders-agent trade clusters NVDA AAPL --start-date 2026-05-01 --end-date 2026-05-27 --relative-size 10 --fields Ticker,Date,Dollars"
     )]
     Clusters(ClustersArgs),
     /// Query trade cluster bombs.
@@ -140,7 +143,7 @@ pub enum TradeCommand {
     ClusterBombs(ClusterBombsArgs),
     /// Query trade alerts for a date.
     #[command(
-        long_about = "Query trade alerts for a specific trading date.\n\nExamples:\n  volumeleaders-agent trade alerts --date 2026-05-27\n  volumeleaders-agent trade alerts --date 2026-05-27 --start 50 --length 50 --fields ticker,price,volume"
+        long_about = "Query trade alerts for a specific trading date.\n\nExamples:\n  volumeleaders-agent trade alerts --date 2026-05-27\n  volumeleaders-agent trade alerts --date 2026-05-27 --start 50 --length 50 --fields Ticker,Price,Volume"
     )]
     Alerts(AlertsArgs),
     /// Query trade cluster alerts for a date.
@@ -151,7 +154,7 @@ pub enum TradeCommand {
     ClusterAlerts(AlertsArgs),
     /// Query significant price levels for a ticker.
     #[command(
-        long_about = "Query significant price levels for a ticker.\n\nExamples:\n  volumeleaders-agent trade levels NVDA\n  volumeleaders-agent trade levels NVDA --start-date 2026-05-01 --end-date 2026-05-27 --trade-level-count 10 --fields ticker,price,rank"
+        long_about = "Query significant price levels for a ticker.\n\nExamples:\n  volumeleaders-agent trade levels NVDA\n  volumeleaders-agent trade levels NVDA --start-date 2026-05-01 --end-date 2026-05-27 --trade-level-count 10 --fields Ticker,Price,TradeLevelRank"
     )]
     Levels(LevelsArgs),
     /// Query trade events at notable price levels.
@@ -648,6 +651,7 @@ async fn execute_list(args: &ListArgs) -> i32 {
             &TRADE_HEADERS,
             args.fields.as_deref(),
             args.all_fields,
+            "trade list",
         )
     };
     finish_output(output)
@@ -767,6 +771,7 @@ async fn execute_clusters(args: &ClustersArgs) -> i32 {
         &CLUSTER_HEADERS,
         args.fields.as_deref(),
         args.all_fields,
+        "trade cluster-bombs",
     )
 }
 
@@ -800,6 +805,7 @@ async fn execute_cluster_bombs(args: &ClusterBombsArgs) -> i32 {
         &BOMB_HEADERS,
         args.fields.as_deref(),
         args.all_fields,
+        "trade clusters",
     )
 }
 
@@ -824,6 +830,7 @@ async fn execute_alerts(args: &AlertsArgs) -> i32 {
         &ALERT_HEADERS,
         args.fields.as_deref(),
         args.all_fields,
+        "trade alerts",
     )
 }
 
@@ -848,6 +855,7 @@ async fn execute_cluster_alerts(args: &AlertsArgs) -> i32 {
         &CLUSTER_HEADERS,
         args.fields.as_deref(),
         args.all_fields,
+        "trade clusters",
     )
 }
 
@@ -878,6 +886,7 @@ async fn execute_levels(args: &LevelsArgs) -> i32 {
         &LEVEL_HEADERS,
         args.fields.as_deref(),
         args.all_fields,
+        "trade levels",
     )
 }
 
@@ -915,6 +924,7 @@ async fn execute_level_touches(args: &LevelTouchesArgs) -> i32 {
         &LEVEL_HEADERS,
         args.fields.as_deref(),
         args.all_fields,
+        "trade levels",
     )
 }
 
@@ -924,8 +934,9 @@ fn output_trade_records<T: Serialize>(
     headers: &[&str],
     fields: Option<&str>,
     all_fields: bool,
+    command_path: &str,
 ) -> i32 {
-    let result = print_trade_records(records, kind, headers, fields, all_fields);
+    let result = print_trade_records(records, kind, headers, fields, all_fields, command_path);
     finish_output(result)
 }
 
@@ -951,8 +962,26 @@ fn print_trade_records<T: Serialize>(
     headers: &[&str],
     fields: Option<&str>,
     all_fields: bool,
+    command_path: &str,
 ) -> std::io::Result<()> {
-    print_transformed_record_values(records, kind, headers, fields, all_fields)
+    let allowed_fields = trade_output_field_names(kind, command_path);
+    print_transformed_record_values_with_allowed_fields(
+        records,
+        kind,
+        headers,
+        fields,
+        all_fields,
+        allowed_fields.as_deref(),
+    )
+}
+
+fn trade_output_field_names(kind: TradeRecordKind, command_path: &str) -> Option<Vec<String>> {
+    let command_path = if matches!(kind, TradeRecordKind::ClusterBomb) {
+        "trade cluster-bombs"
+    } else {
+        command_path
+    };
+    field_metadata::field_names(command_path)
 }
 
 /// Clamp an arbitrary count to the nearest API-supported level count.
@@ -1172,8 +1201,15 @@ mod tests {
         )
         .expect("cluster serializes");
         let mut output = Vec::new();
-        write_record_values(&mut output, &values, &CLUSTER_HEADERS, fields, all_fields)
-            .expect("cluster output renders");
+        write_record_values(
+            &mut output,
+            &values,
+            &CLUSTER_HEADERS,
+            fields,
+            all_fields,
+            None,
+        )
+        .expect("cluster output renders");
 
         serde_json::from_slice(&output).expect("valid cluster json")
     }
@@ -1510,6 +1546,92 @@ mod tests {
     }
 
     #[test]
+    fn trade_output_accepts_discovered_metadata_field_absent_from_rows() {
+        let records = vec![trade(json!({
+            "Ticker": "AAPL",
+            "Date": "/Date(1767312000000)/",
+            "Price": 200.0,
+            "Dollars": 10_000_000.0
+        }))];
+
+        print_trade_records(
+            &records,
+            TradeRecordKind::Trade,
+            &TRADE_HEADERS,
+            Some("events"),
+            false,
+            "trade list",
+        )
+        .expect("discovered trade fields validate before row filtering");
+    }
+
+    #[test]
+    fn trade_output_rejects_field_missing_from_metadata() {
+        let records = vec![trade(json!({
+            "Ticker": "AAPL",
+            "Date": "/Date(1767312000000)/",
+            "Price": 200.0,
+            "Dollars": 10_000_000.0
+        }))];
+
+        let err = print_trade_records(
+            &records,
+            TradeRecordKind::Trade,
+            &TRADE_HEADERS,
+            Some("NotAField"),
+            false,
+            "trade list",
+        )
+        .unwrap_err();
+
+        assert_eq!(err.kind(), std::io::ErrorKind::InvalidInput);
+        assert!(err.to_string().contains("NotAField"));
+    }
+
+    #[test]
+    fn output_trade_records_finishes_metadata_validated_output() {
+        let records = vec![trade(json!({
+            "Ticker": "AAPL",
+            "Date": "/Date(1767312000000)/",
+            "Price": 200.0,
+            "Dollars": 10_000_000.0
+        }))];
+
+        assert_eq!(
+            output_trade_records(
+                &records,
+                TradeRecordKind::Trade,
+                &TRADE_HEADERS,
+                Some("events"),
+                false,
+                "trade list",
+            ),
+            0
+        );
+    }
+
+    #[test]
+    fn cluster_bomb_output_accepts_cluster_bomb_rank_metadata() {
+        let records = vec![cluster_bomb(json!({
+            "Ticker": "AAPL",
+            "Date": "/Date(1767312000000)/",
+            "Dollars": 40_000_000.0,
+            "TradeCount": 6,
+            "TradeClusterBombRank": 1
+        }))];
+
+        print_trade_records(
+            &records,
+            TradeRecordKind::ClusterBomb,
+            &BOMB_HEADERS,
+            Some("TradeClusterBombRank"),
+            false,
+            "trade cluster-bombs",
+        )
+        .expect("cluster-bomb metadata includes cluster-bomb rank");
+    }
+
+    #[test]
     fn cluster_output_all_fields_keeps_extra_fields_after_transforms() {
         let output = render_cluster_json(None, true);
         let row = output[0].as_object().unwrap();
@@ -1533,7 +1655,7 @@ mod tests {
         )
         .expect("cluster alert serializes");
         let mut output = Vec::new();
-        write_record_values(&mut output, &values, &CLUSTER_HEADERS, None, false)
+        write_record_values(&mut output, &values, &CLUSTER_HEADERS, None, false, None)
             .expect("cluster alert output renders");
         let output: serde_json::Value = serde_json::from_slice(&output).unwrap();
         let row = output[0].as_object().unwrap();
@@ -1577,6 +1699,26 @@ mod tests {
         let bomb = output["cluster_bombs"][0].as_object().unwrap();
         assert_eq!(bomb.len(), 1);
         assert_eq!(bomb["Volume"], 200_000);
+    }
+
+    #[test]
+    fn dashboard_output_accepts_discovered_field_absent_from_rows() {
+        let mut args = dashboard_args();
+        args.fields = Some("trades.venue".to_string());
+        let mut dashboard = dashboard_fixture();
+        dashboard.trades = vec![trade(json!({
+            "Ticker": "AAPL",
+            "Date": "/Date(1767312000000)/",
+            "Price": 200.0,
+            "Dollars": 10_000_000.0,
+            "DarkPool": false,
+            "Sweep": false
+        }))];
+
+        let output = dashboard_output_value(&dashboard, &args).unwrap();
+
+        let trade = output["trades"][0].as_object().unwrap();
+        assert!(trade.is_empty());
     }
 
     #[test]

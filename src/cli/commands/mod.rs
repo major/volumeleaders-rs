@@ -4,6 +4,8 @@
 pub mod alert;
 /// Shell completion generation.
 pub mod completions;
+/// Output field discovery commands.
+pub mod fields;
 /// Market data commands (earnings, exhaustion scores).
 pub mod market;
 /// Preset report commands for common trade scans.

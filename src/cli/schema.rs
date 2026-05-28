@@ -166,7 +166,7 @@ fn add_alias_commands(commands: &mut Vec<CommandSchema>) {
 }
 
 fn auth_required(path: &[String]) -> bool {
-    !matches!(path, [command] if command == "commands" || command == "doctor" || command == "help" || command == "schema" || command == "completions")
+    !matches!(path, [command] if command == "commands" || command == "doctor" || command == "fields" || command == "help" || command == "schema" || command == "completions")
 }
 
 fn arg_schema(arg: &Arg) -> ArgSchema {
@@ -280,6 +280,7 @@ mod tests {
         assert!(paths.contains(&"schema"));
         assert!(paths.contains(&"commands"));
         assert!(paths.contains(&"doctor"));
+        assert!(paths.contains(&"fields"));
         assert!(paths.contains(&"help"));
         assert!(paths.contains(&"trade list"));
         assert!(paths.contains(&"trade dashboard"));
@@ -350,6 +351,10 @@ mod tests {
             .iter()
             .find(|command| command["preferred_path"] == "help")
             .unwrap();
+        let fields_command = commands
+            .iter()
+            .find(|command| command["preferred_path"] == "fields")
+            .unwrap();
         let trade_command = commands
             .iter()
             .find(|command| command["preferred_path"] == "trade list")
@@ -358,6 +363,7 @@ mod tests {
         assert_eq!(schema_command["auth_required"], false);
         assert_eq!(doctor_command["auth_required"], false);
         assert_eq!(commands_command["auth_required"], false);
+        assert_eq!(fields_command["auth_required"], false);
         assert_eq!(help_command["auth_required"], false);
         assert_eq!(trade_command["auth_required"], true);
     }

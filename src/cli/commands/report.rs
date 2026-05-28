@@ -424,7 +424,7 @@ pub enum ReportCommand {
     /// Dark pool sweep trades.
     #[command(
         name = "dark-pool-sweeps",
-        long_about = "Run the dark pool sweep trades preset.\n\nExamples:\n  volumeleaders-agent report dark-pool-sweeps\n  volumeleaders-agent report dark-pool-sweeps --tickers SPY,QQQ --days 3 --fields ticker,date,price,volume"
+        long_about = "Run the dark pool sweep trades preset.\n\nExamples:\n  volumeleaders-agent report dark-pool-sweeps\n  volumeleaders-agent report dark-pool-sweeps --tickers SPY,QQQ --days 3 --fields Ticker,DateTime,Price,Dollars"
     )]
     DarkPoolSweeps(#[command(flatten)] ReportFlags),
     /// Disproportionately large trades relative to average.
@@ -436,7 +436,7 @@ pub enum ReportCommand {
     /// Institutional trades in leveraged ETFs.
     #[command(
         name = "leveraged-etfs",
-        long_about = "Run the leveraged ETF institutional trades preset.\n\nExamples:\n  volumeleaders-agent report leveraged-etfs\n  volumeleaders-agent report leveraged-etfs --days 10 --limit 100 --fields ticker,date,price,dollars"
+        long_about = "Run the leveraged ETF institutional trades preset.\n\nExamples:\n  volumeleaders-agent report leveraged-etfs\n  volumeleaders-agent report leveraged-etfs --days 10 --limit 100 --fields Ticker,DateTime,Price,Dollars"
     )]
     LeveragedEtfs(#[command(flatten)] ReportFlags),
     /// Trades with overbought RSI conditions.
