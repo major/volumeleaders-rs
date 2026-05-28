@@ -42,7 +42,9 @@ GitHub releases also provide cargo-dist archives and shell or PowerShell install
 
 ## CLI usage
 
-The CLI reads browser cookies automatically. If auth fails, log in to VolumeLeaders in the browser and retry. Command output goes to stdout as compact JSON by default. Pipe through `jq` for pretty-printed output. Errors and logs go to stderr.
+The CLI reads browser cookies automatically. If auth fails, log in to VolumeLeaders in the browser and retry. Command output goes to stdout as compact JSON by default. Pipe through `jq` for pretty-printed output. Runtime errors are written to stderr as one compact JSON line such as `{"ok":false,"error":{"kind":"auth_error","message":"browser cookies are missing or expired"}}`.
+
+Semantic exit codes are stable for automation: `0` means success, `2` is clap usage or argument validation, `3` is browser auth failure, `4` is HTTP transport failure, `5` is a VolumeLeaders API error response, `6` is JSON parsing or output transformation failure, and `7` is reserved for strict empty-result handling.
 
 ```bash
 cargo run -- --help

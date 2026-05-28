@@ -1,5 +1,7 @@
 use crate::{Client, ClientError, Session};
 
+use crate::cli::error::client_error;
+
 /// Browser cookie domain used for VolumeLeaders authentication.
 pub const VL_DOMAIN: &str = "volumeleaders.com";
 
@@ -7,39 +9,23 @@ pub const VL_DOMAIN: &str = "volumeleaders.com";
 pub async fn make_client_from_browser(domain: &str) -> Result<Client, i32> {
     let session = match crate::session_from_browser(domain) {
         Ok(session) => session,
-        Err(err) => {
-            eprintln!("auth error: {err}");
-            return Err(2);
-        }
+        Err(err) => return Err(client_error(&err)),
     };
 
     let bootstrap_client = match Client::new(session.clone()) {
         Ok(client) => client,
-        Err(err) => {
-            eprintln!("client error: {err}");
-            return Err(1);
-        }
+        Err(err) => return Err(client_error(&err)),
     };
 
     let xsrf_token = match crate::extract_xsrf_token(&bootstrap_client).await {
         Ok(token) => token,
-        Err(err) => {
-            if err.is_auth_error() {
-                eprintln!("auth error: {err}");
-                return Err(2);
-            }
-            eprintln!("client error: {err}");
-            return Err(1);
-        }
+        Err(err) => return Err(client_error(&err)),
     };
 
     let refreshed_session = Session::new(session.cookies().to_vec(), xsrf_token);
     match Client::new(refreshed_session) {
         Ok(client) => Ok(client),
-        Err(err) => {
-            eprintln!("client error: {err}");
-            Err(1)
-        }
+        Err(err) => Err(client_error(&err)),
     }
 }
 
@@ -50,11 +36,5 @@ pub async fn make_client() -> Result<Client, i32> {
 
 /// Convert API errors into CLI exit codes and messages.
 pub fn handle_api_error(err: ClientError) -> i32 {
-    if err.is_auth_error() {
-        eprintln!("auth error: {err}");
-        2
-    } else {
-        eprintln!("API error: {err}");
-        1
-    }
+    client_error(&err)
 }

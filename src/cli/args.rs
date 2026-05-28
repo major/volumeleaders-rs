@@ -16,10 +16,10 @@ use crate::cli::commands::watchlist::WatchlistCommand;
     about = "CLI tool for querying VolumeLeaders institutional trade data",
     long_about = "volumeleaders-agent queries institutional trade data from VolumeLeaders.\n\n\
         Use it for trades, volume leaderboards, market data, alerts, and watchlists.\n\n\
-        Auth: reads browser cookies automatically. If auth fails with exit code 2,\n\
+        Auth: reads browser cookies automatically. If auth fails with exit code 3,\n\
         log in at https://www.volumeleaders.com in your browser, then retry.\n\n\
         Output: compact JSON to stdout. Pipe through jq for pretty-printing.\n\
-        Errors and logs go to stderr.",
+        Runtime errors use one structured JSON line on stderr.",
     arg_required_else_help = true,
     propagate_version = true
 )]

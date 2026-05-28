@@ -15,6 +15,7 @@ use crate::cli::common::dates::resolve_date_range;
 use crate::cli::common::tickers::parse_tickers;
 use crate::cli::common::trade_transforms::TradeRecordKind;
 use crate::cli::common::types::SummaryGroup;
+use crate::cli::error::usage_error;
 use crate::cli::output::{finish_output, print_json, print_transformed_record_values};
 
 /// Default trade limit when none is specified on the command line.
@@ -542,31 +543,21 @@ fn execute_list() -> i32 {
 async fn execute_preset(args: &ReportArgs) -> i32 {
     let preset_name = match args.command.preset_name() {
         Some(name) => name,
-        None => {
-            eprintln!("unexpected command state");
-            return 1;
-        }
+        None => return usage_error("unexpected command state"),
     };
 
     let flags = match args.command.flags() {
         Some(f) => f,
-        None => {
-            eprintln!("unexpected command state");
-            return 1;
-        }
+        None => return usage_error("unexpected command state"),
     };
 
     if flags.summary_group.is_some() && (flags.fields.is_some() || flags.all_fields) {
-        eprintln!("--fields and --all-fields cannot be used with summary output");
-        return 1;
+        return usage_error("--fields and --all-fields cannot be used with summary output");
     }
 
     let preset = match REPORT_PRESETS.iter().find(|p| p.use_name == preset_name) {
         Some(p) => p,
-        None => {
-            eprintln!("unknown preset: {preset_name}");
-            return 1;
-        }
+        None => return usage_error(format!("unknown preset: {preset_name}")),
     };
 
     // Build the trade filters first, then hand them to the client request builder.

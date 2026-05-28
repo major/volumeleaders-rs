@@ -22,6 +22,7 @@ use crate::cli::common::tickers::{parse_single_ticker, parse_tickers};
 use crate::cli::common::trade_transforms::TradeRecordKind;
 use crate::cli::common::types::{OrderDirection, SummaryGroup, TriStateFilter};
 use crate::cli::common::{DATE_FMT, TRADE_HEADERS};
+use crate::cli::error::usage_error;
 use crate::cli::output::{finish_output, print_json, print_transformed_record_values};
 
 use self::dashboard::{TradeDashboard, dashboard_output_value};
@@ -565,12 +566,10 @@ fn resolve_trade_list_range(args: &OptionalDateRangeArgs) -> (String, String) {
 #[instrument(skip_all)]
 async fn execute_list(args: &ListArgs) -> i32 {
     if args.group_by.is_some() && !args.summary {
-        eprintln!("--group-by only works with --summary");
-        return 1;
+        return usage_error("--group-by only works with --summary");
     }
     if args.summary && (args.fields.is_some() || args.all_fields) {
-        eprintln!("--fields and --all-fields cannot be used with --summary");
-        return 1;
+        return usage_error("--fields and --all-fields cannot be used with --summary");
     }
 
     let tickers = parse_ticker_args(&args.tickers);
@@ -583,8 +582,7 @@ async fn execute_list(args: &ListArgs) -> i32 {
         let preset = match find_trade_preset(preset_name) {
             Some(preset) => preset,
             None => {
-                eprintln!("unknown trade preset: {preset_name}");
-                return 1;
+                return usage_error(format!("unknown trade preset: {preset_name}"));
             }
         };
         filters = default_trade_list_filters();
@@ -679,10 +677,7 @@ async fn execute_dashboard(args: &DashboardArgs) -> i32 {
     };
     let dashboard = match dashboard_output_value(&dashboard, args) {
         Ok(value) => value,
-        Err(message) => {
-            eprintln!("field error: {message}");
-            return 1;
-        }
+        Err(message) => return usage_error(format!("field error: {message}")),
     };
     finish_output(print_json(&dashboard))
 }
@@ -691,10 +686,7 @@ async fn execute_dashboard(args: &DashboardArgs) -> i32 {
 async fn execute_sentiment(args: &SentimentArgs) -> i32 {
     let (start, end) = match resolve_required_range(&args.dates) {
         Ok(range) => range,
-        Err(message) => {
-            eprintln!("{message}");
-            return 1;
-        }
+        Err(message) => return usage_error(message),
     };
     let mut filters = default_trade_filters(args.ranges.min_dollars.unwrap_or(5_000_000.0), 97);
     apply_trade_ranges(&mut filters, &args.ranges, 5_000_000.0);
@@ -723,10 +715,7 @@ async fn execute_sentiment(args: &SentimentArgs) -> i32 {
 async fn execute_clusters(args: &ClustersArgs) -> i32 {
     let (start, end) = match resolve_required_range(&args.dates) {
         Ok(range) => range,
-        Err(message) => {
-            eprintln!("{message}");
-            return 1;
-        }
+        Err(message) => return usage_error(message),
     };
     let request = TradeClustersRequest::new()
         .with_start(args.page.start)
@@ -759,10 +748,7 @@ async fn execute_clusters(args: &ClustersArgs) -> i32 {
 async fn execute_cluster_bombs(args: &ClusterBombsArgs) -> i32 {
     let (start, end) = match resolve_required_range(&args.dates) {
         Ok(range) => range,
-        Err(message) => {
-            eprintln!("{message}");
-            return 1;
-        }
+        Err(message) => return usage_error(message),
     };
     let request = TradeClusterBombsRequest::new()
         .with_start(args.page.start)
@@ -842,8 +828,9 @@ async fn execute_cluster_alerts(args: &AlertsArgs) -> i32 {
 #[instrument(skip_all)]
 async fn execute_levels(args: &LevelsArgs) -> i32 {
     if !validate_trade_level_count(args.trade_level_count) {
-        eprintln!("--trade-level-count must be one of 5, 10, 20, or 50 for trade level retrieval");
-        return 1;
+        return usage_error(
+            "--trade-level-count must be one of 5, 10, 20, or 50 for trade level retrieval",
+        );
     }
     let ticker = parse_single_ticker(&args.ticker);
     let (start, end) = resolve_with_default(&args.dates, 365);
@@ -871,19 +858,16 @@ async fn execute_levels(args: &LevelsArgs) -> i32 {
 #[instrument(skip_all)]
 async fn execute_level_touches(args: &LevelTouchesArgs) -> i32 {
     if !validate_trade_level_count(args.trade_level_count) {
-        eprintln!("--trade-level-count must be one of 5, 10, 20, or 50 for trade level retrieval");
-        return 1;
+        return usage_error(
+            "--trade-level-count must be one of 5, 10, 20, or 50 for trade level retrieval",
+        );
     }
     if !(1..=50).contains(&args.page.length) {
-        eprintln!("--length must be between 1 and 50 for trade level touch retrieval");
-        return 1;
+        return usage_error("--length must be between 1 and 50 for trade level touch retrieval");
     }
     let (start, end) = match resolve_required_range(&args.dates) {
         Ok(range) => range,
-        Err(message) => {
-            eprintln!("{message}");
-            return 1;
-        }
+        Err(message) => return usage_error(message),
     };
     let ticker = parse_single_ticker(&args.ticker);
     let request = TradeLevelTouchesRequest::new()
