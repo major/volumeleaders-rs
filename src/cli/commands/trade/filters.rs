@@ -308,12 +308,13 @@ pub(super) fn dashboard_levels_request(
     end: &str,
     count: usize,
 ) -> TradeLevelsRequest {
+    let levels = super::nearest_level_count(count);
     TradeLevelsRequest::new()
         .with_columns(trade_level_chart_columns())
-        .with_length(-1)
+        .with_length(count as i32)
         .with_search("", false)
         .with_order(0, "desc", "Price")
-        .with_chart_filters(ticker, start, end, count)
+        .with_chart_filters(ticker, start, end, levels)
 }
 
 pub(super) fn dashboard_bombs_request(
