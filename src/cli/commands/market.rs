@@ -49,7 +49,7 @@ pub struct EarningsArgs {
     #[arg(long)]
     pub days: Option<u32>,
 
-    /// Comma-separated field list for output.
+    /// Exact, case-sensitive output fields to keep, comma-separated; discover with `fields market earnings`.
     #[arg(long, conflicts_with = "all_fields")]
     pub fields: Option<String>,
     /// Return every field from the VolumeLeaders API response.

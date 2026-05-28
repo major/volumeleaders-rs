@@ -40,13 +40,13 @@ Use `volumeleaders-agent commands` for a quick leaf-command list, `volumeleaders
    Successful data commands write compact JSON to stdout. Discovery and help commands write plain text to stdout. Diagnostics, verbosity logs from `-v`/`-vv`/`-vvv`, and structured runtime errors go to stderr.
 
 4. Shape output deliberately.
-   Use `volumeleaders-agent fields trade list` to discover exact case-sensitive field names before passing command-specific `--fields` or `--all-fields`, and pipe stdout to external `jq` for inspection or transformations.
+   Use `volumeleaders-agent fields trade list` to discover exact case-sensitive field names before passing command-specific `--fields` or `--all-fields`. The CLI intentionally keeps `jq` as an external pipeline step: built-in projection trims fields first, then external `jq` handles reshaping, filtering, sorting, and pretty-printing without changing stderr diagnostics.
 
 5. Treat empty rows and mutations carefully.
 Use global `--strict-empty` when an empty record array should fail automation with exit code 7. Avoid mutating alert and watchlist commands unless the user explicitly requested the mutation. When mutation is requested, run the command with `--dry-run` first; live delete commands require `--yes`.
 
 6. Recover by exit code.
-   Exit 2 means usage or argument validation failed. Exit 3 means browser auth failed. Exit 4 means HTTP transport failed. Exit 5 means the API returned an error. Exit 6 means JSON parsing or output transformation failed. Exit 7 means `--strict-empty` rejected an empty record array.
+Exit 2 means usage or argument validation failed, including unknown `--fields` names. Exit 3 means browser auth failed. Exit 4 means HTTP transport failed. Exit 5 means the API returned an error. Exit 6 means JSON parsing or output transformation failed. Exit 7 means `--strict-empty` rejected an empty record array.
 
 Copy-paste examples:
 
@@ -60,7 +60,7 @@ volumeleaders-agent help exit-codes
 volumeleaders-agent alert create --name BigTechSweeps --tickers AAPL,MSFT --dry-run
 volumeleaders-agent --strict-empty trades NVDA
 volumeleaders-agent trade list NVDA --start-date 2026-05-01 --end-date 2026-05-27 --fields Ticker,DateTime,Price,Dollars
-volumeleaders-agent volume institutional --date 2026-05-27 --tickers AAPL,NVDA --limit 50 | jq '.[] | {ticker: .Ticker, dollars: .Dollars}'
+volumeleaders-agent volume institutional --date 2026-05-27 --tickers AAPL,NVDA --limit 50 --fields Ticker,Dollars | jq '.[] | select(.Dollars > 1000000) | {ticker: .Ticker, dollars: .Dollars}'
 "#;
 
 const AUTH_HELP: &str = r#"auth
@@ -96,7 +96,7 @@ const EXIT_CODES_HELP: &str = r#"exit-codes
 Semantic exit codes are stable for automation:
 
 0  success
-2  usage error, invalid arguments, or clap validation failure
+2  usage error, invalid arguments, unknown --fields names, or clap validation failure
 3  auth error, browser cookies are missing, expired, or invalid
 4  HTTP transport error
 5  VolumeLeaders API error response
@@ -107,7 +107,7 @@ Runtime errors are written to stderr as one compact JSON object:
 {"ok":false,"error":{"kind":"auth_error","message":"browser cookies are missing or expired"}}
 
 Recovery guidance:
-- Exit 2: check `--help`, `commands`, `schema`, or this help topic.
+- Exit 2: check `--help`, `commands`, `schema`, `fields <command path>`, or this help topic.
 - Exit 3: run `doctor`, then log in to VolumeLeaders again if needed.
 - Exit 4 or 5: retry later or narrow the request.
 - Exit 6: check field names and JSON-processing pipeline assumptions.
@@ -122,7 +122,9 @@ Use `schema` and `commands` for binary-native CLI discovery.
 
 `volumeleaders-agent schema` emits compact JSON generated from the live clap tree. It includes the binary version, auth model, leaf command paths, explicit alias metadata, auth requirements, mutating and dry-run safety metadata, help text, argument metadata with stable names and semantic hints, boolean flag versus value-taking option shape, and structured command examples.
 
-`volumeleaders-agent fields <command path>` emits compact JSON with output fields accepted by `--fields`, including each exact field name, short description, and type hint. It does not need live API rows.
+`volumeleaders-agent fields <command path>` emits compact JSON with output fields accepted by `--fields`, including each exact case-sensitive field name, short description, and type hint. It does not need live API rows. Unknown projected fields are reported as structured usage errors with exit code 2 before output transformation.
+
+Built-in output shaping is intentionally limited to `--fields` and `--all-fields`. For jq-style filtering, sorting, object construction, or pretty-printing, pipe stdout to external `jq`; diagnostics and runtime error JSON remain on stderr.
 
 Common top-level aliases such as `trades`, `dashboard`, and `levels` are reported with their canonical `trade ...` preferred paths. Alias entries set `is_alias` and `alias_for`; canonical entries list their aliases so agents can normalize generated commands.
 
@@ -137,6 +139,7 @@ Useful discovery commands:
 - volumeleaders-agent commands --grouped
 - volumeleaders-agent fields trade list
 - volumeleaders-agent fields volume institutional
+- volumeleaders-agent trade list NVDA --fields Ticker,DateTime,Price,Dollars | jq '.[] | select(.Dollars > 1000000)'
 - volumeleaders-agent schema | jq '.commands[] | select(.preferred_path == "trade list")'
 "#;
 
@@ -158,6 +161,7 @@ volumeleaders-agent trades NVDA
 volumeleaders-agent trade list NVDA
 volumeleaders-agent -vv trade list NVDA
 volumeleaders-agent --strict-empty trade list NVDA --start-date 2026-05-01 --end-date 2026-05-27 --fields Ticker,DateTime,Price,Dollars
+volumeleaders-agent trade list NVDA --fields Ticker,Dollars | jq '.[] | select(.Dollars > 1000000)'
 volumeleaders-agent dashboard NVDA
 volumeleaders-agent trade dashboard NVDA
 volumeleaders-agent levels NVDA
@@ -185,15 +189,21 @@ mod tests {
         assert!(topic_text(HelpTopic::Agent).contains("non-interactive automation"));
         assert!(topic_text(HelpTopic::Agent).contains("commands --grouped"));
         assert!(topic_text(HelpTopic::Agent).contains("fields trade list"));
+        assert!(topic_text(HelpTopic::Agent).contains("external `jq` handles reshaping"));
         assert!(topic_text(HelpTopic::Agent).contains("--strict-empty trades NVDA"));
+        assert!(topic_text(HelpTopic::Agent).contains("--fields Ticker,Dollars | jq"));
         assert!(topic_text(HelpTopic::Environment).contains("browser profiles"));
         assert!(topic_text(HelpTopic::ExitCodes).contains("3  auth error"));
+        assert!(topic_text(HelpTopic::ExitCodes).contains("unknown --fields names"));
         assert!(topic_text(HelpTopic::ExitCodes).contains("-vvv"));
         assert!(topic_text(HelpTopic::Schema).contains("commands --grouped"));
         assert!(topic_text(HelpTopic::Schema).contains("fields volume institutional"));
+        assert!(topic_text(HelpTopic::Schema).contains("exact case-sensitive field name"));
+        assert!(topic_text(HelpTopic::Schema).contains("external `jq`"));
         assert!(topic_text(HelpTopic::Schema).contains("trades"));
         assert!(topic_text(HelpTopic::Examples).contains("trades NVDA"));
         assert!(topic_text(HelpTopic::Examples).contains("fields trade list"));
+        assert!(topic_text(HelpTopic::Examples).contains("--fields Ticker,Dollars | jq"));
         assert!(topic_text(HelpTopic::Examples).contains("--strict-empty trade list NVDA"));
         assert!(topic_text(HelpTopic::Examples).contains("-vv trade list NVDA"));
     }

@@ -18,7 +18,7 @@ use crate::cli::commands::watchlist::WatchlistCommand;
         Use it for trades, volume leaderboards, market data, alerts, and watchlists.\n\n\
         Auth: reads browser cookies automatically. If auth fails with exit code 3,\n\
         log in at https://www.volumeleaders.com in your browser, then retry.\n\n\
-        Output: compact JSON to stdout. Pipe through jq for pretty-printing.\n\
+        Output: compact JSON to stdout. Use command-specific --fields for built-in projection and pipe through external jq for transformations.\n\
         Runtime errors use one structured JSON line on stderr.",
     disable_help_subcommand = true,
     arg_required_else_help = true,
@@ -96,7 +96,7 @@ pub enum Commands {
     Commands(CommandsArgs),
     /// Show available output fields for a command path.
     #[command(
-        long_about = "Show available output fields accepted by --fields for a command path as compact JSON.\n\nExamples:\n  volumeleaders-agent fields trade list\n  volumeleaders-agent fields volume institutional"
+        long_about = "Show available output fields accepted by --fields for a command path as compact JSON. Field names are exact and case-sensitive. Use external jq for transformations after built-in projection.\n\nExamples:\n  volumeleaders-agent fields trade list\n  volumeleaders-agent fields volume institutional"
     )]
     Fields(FieldsArgs),
     /// Show built-in operational help topics.
@@ -223,6 +223,8 @@ pub struct CompletionsArgs {
 mod tests {
     use clap::{Command, CommandFactory, Parser};
 
+    use crate::cli::field_metadata::field_names;
+
     use super::{Cli, normalize_alias_args};
 
     #[test]
@@ -343,6 +345,95 @@ mod tests {
     }
 
     #[test]
+    fn root_help_describes_projection_and_external_jq() {
+        let root = Cli::command();
+        let long_about = root
+            .get_long_about()
+            .expect("root command has long_about")
+            .to_string();
+
+        assert!(long_about.contains("command-specific --fields"));
+        assert!(long_about.contains("external jq"));
+    }
+
+    #[test]
+    fn fields_command_help_describes_exact_names_and_external_jq() {
+        let root = Cli::command();
+        let fields = find_command(&root, &["fields"]).expect("fields command exists");
+        let long_about = fields
+            .get_long_about()
+            .expect("fields command has long_about")
+            .to_string();
+
+        assert!(long_about.contains("exact and case-sensitive"));
+        assert!(long_about.contains("external jq"));
+    }
+
+    #[test]
+    fn every_fields_option_documents_exact_case_sensitive_discovery() {
+        let missing = fields_options_missing_guidance(&Cli::command());
+
+        assert!(
+            missing.is_empty(),
+            "--fields options missing valid exact case-sensitive discovery guidance: {missing:?}"
+        );
+    }
+
+    #[test]
+    fn fields_option_guidance_check_reports_missing_wording() {
+        let command = Command::new("volumeleaders-agent").subcommand(
+            Command::new("trade").subcommand(
+                Command::new("list")
+                    .arg(clap::Arg::new("ticker").long("ticker").help("Ticker"))
+                    .arg(clap::Arg::new("fields").long("fields").help("Pick fields")),
+            ),
+        );
+        let missing = fields_options_missing_guidance(&command);
+
+        assert_eq!(missing, vec!["trade list --fields: Pick fields"]);
+    }
+
+    #[test]
+    fn fields_option_guidance_check_reports_unknown_discovery_paths() {
+        let command =
+            Command::new("volumeleaders-agent").subcommand(Command::new("trade").subcommand(
+                Command::new("list").arg(clap::Arg::new("fields").long("fields").help(
+                    "Exact, case-sensitive output fields; discover with `fields trade missing`.",
+                )),
+            ));
+        let missing = fields_options_missing_guidance(&command);
+
+        assert_eq!(
+            missing,
+            vec!["trade list --fields: unknown field discovery path `fields trade missing`"]
+        );
+    }
+
+    #[test]
+    fn field_discovery_reference_parser_extracts_backticked_paths() {
+        assert_eq!(
+            field_discovery_references(
+                "discover with `fields trade alerts` or `fields trade clusters`; then pipe to jq",
+            ),
+            vec!["trade alerts", "trade clusters"]
+        );
+        assert!(field_discovery_references("discover with fields trade alerts").is_empty());
+    }
+
+    #[test]
+    fn find_command_descends_nested_paths() {
+        let command = Command::new("volumeleaders-agent").subcommand(
+            Command::new("trade").subcommand(Command::new("list").about("List trades")),
+        );
+
+        let found = find_command(&command, &["trade", "list"]).expect("nested command exists");
+
+        assert_eq!(found.get_name(), "list");
+        assert!(find_command(&command, &["trade", "missing"]).is_none());
+        assert!(find_command(&command, &[]).is_none());
+    }
+
+    #[test]
     fn long_about_example_check_reports_missing_metadata() {
         let command = Command::new("volumeleaders-agent").subcommand(Command::new("broken"));
         let mut missing = Vec::new();
@@ -413,6 +504,52 @@ mod tests {
             collect_public_options(subcommand, path, visit);
             path.pop();
         }
+    }
+
+    fn find_command<'a>(command: &'a Command, path: &[&str]) -> Option<&'a Command> {
+        let (name, rest) = path.split_first()?;
+        let subcommand = command.find_subcommand(name)?;
+        if rest.is_empty() {
+            Some(subcommand)
+        } else {
+            find_command(subcommand, rest)
+        }
+    }
+
+    fn fields_options_missing_guidance(command: &Command) -> Vec<String> {
+        let mut missing = Vec::new();
+
+        collect_public_options(command, &mut Vec::new(), &mut |path, option| {
+            if option.get_long() == Some("fields") {
+                let help = option
+                    .get_help()
+                    .map(ToString::to_string)
+                    .unwrap_or_default();
+                let discovery_references = field_discovery_references(&help);
+                let command_path = path.join(" ");
+                if !help.contains("case-sensitive") || discovery_references.is_empty() {
+                    missing.push(format!("{command_path} --fields: {help}"));
+                }
+
+                for reference in discovery_references {
+                    if field_names(&reference).is_none() {
+                        missing.push(format!(
+                            "{command_path} --fields: unknown field discovery path `fields {reference}`"
+                        ));
+                    }
+                }
+            }
+        });
+
+        missing
+    }
+
+    fn field_discovery_references(help: &str) -> Vec<String> {
+        help.split('`')
+            .skip(1)
+            .step_by(2)
+            .filter_map(|quoted| quoted.strip_prefix("fields ").map(str::to_string))
+            .collect()
     }
 
     fn missing_public_option_help(command: &Command) -> Vec<String> {

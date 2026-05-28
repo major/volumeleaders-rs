@@ -166,6 +166,12 @@ pub(crate) fn print_transformed_record_values_with_allowed_fields<T: Serialize>(
     all_fields: bool,
     allowed_fields: Option<&[String]>,
 ) -> io::Result<()> {
+    if let (Some(fields), Some(allowed_fields)) =
+        (selected_fields(fields).as_deref(), allowed_fields)
+    {
+        validate_selected_fields(allowed_fields.to_vec(), fields)?;
+    }
+
     strict_empty_error_if_needed(records.is_empty())?;
     transformed_trade_values(records, kind)
         .map_err(|err| io::Error::new(io::ErrorKind::InvalidData, err))
@@ -189,10 +195,15 @@ pub(crate) fn write_record_values<W: Write>(
     all_fields: bool,
     allowed_fields: Option<&[String]>,
 ) -> io::Result<()> {
-    strict_empty_error_if_needed(records.is_empty())?;
     let custom_fields = selected_fields(fields);
     let raw_fields_requested =
         fields.is_some_and(|fields| fields.trim().eq_ignore_ascii_case("all"));
+
+    if let (Some(fields), Some(allowed_fields)) = (custom_fields.as_deref(), allowed_fields) {
+        validate_selected_fields(allowed_fields.to_vec(), fields)?;
+    }
+
+    strict_empty_error_if_needed(records.is_empty())?;
 
     if let Some(fields) = custom_fields.as_deref() {
         validate_value_fields(records, fields, allowed_fields)?;
@@ -236,10 +247,15 @@ pub(crate) fn print_records_with_allowed_fields<T: Serialize>(
     all_fields: bool,
     allowed_fields: Option<&[String]>,
 ) -> io::Result<()> {
-    strict_empty_error_if_needed(records.is_empty())?;
     let custom_fields = selected_fields(fields);
     let raw_fields_requested =
         fields.is_some_and(|fields| fields.trim().eq_ignore_ascii_case("all"));
+
+    if let (Some(fields), Some(allowed_fields)) = (custom_fields.as_deref(), allowed_fields) {
+        validate_selected_fields(allowed_fields.to_vec(), fields)?;
+    }
+
+    strict_empty_error_if_needed(records.is_empty())?;
 
     if let Some(fields) = custom_fields.as_deref() {
         if let Some(allowed_fields) = allowed_fields {
@@ -348,7 +364,13 @@ fn collect_unique_fields(map: Option<&serde_json::Map<String, Value>>, fields: &
 }
 
 fn retain_selected_fields(map: &mut serde_json::Map<String, Value>, fields: &[String]) {
-    map.retain(|key, _| fields.iter().any(|field| field == key));
+    let mut selected = serde_json::Map::new();
+    for field in fields {
+        if let Some(value) = map.remove(field) {
+            selected.insert(field.clone(), value);
+        }
+    }
+    *map = selected;
 }
 
 /// Prints `value` as compact JSON.
@@ -426,6 +448,8 @@ fn write_json<W: Write, T: Serialize>(writer: &mut W, value: &T) -> io::Result<(
 
 #[cfg(test)]
 mod tests {
+    use std::sync::{LazyLock, Mutex};
+
     use serde::Serialize;
 
     use crate::cli::common::trade_transforms::TradeRecordKind;
@@ -435,9 +459,11 @@ mod tests {
         configure_strict_empty, empty_result_suggestion, finish_output, print_record_values,
         print_record_values_with_allowed_fields, print_records, print_records_with_allowed_fields,
         print_transformed_record_values, print_transformed_record_values_with_allowed_fields,
-        records_to_values, selected_fields, set_strict_empty_context,
-        strict_empty_command_from_args, write_json, write_record_values,
+        records_to_values, selected_fields, strict_empty_command_from_args, write_json,
+        write_record_values,
     };
+
+    static STRICT_EMPTY_TEST_LOCK: LazyLock<Mutex<()>> = LazyLock::new(|| Mutex::new(()));
 
     #[derive(Debug, Serialize)]
     struct TestRecord {
@@ -459,6 +485,16 @@ mod tests {
                 volume: 500_000,
             },
         ]
+    }
+
+    fn with_strict_empty_test_lock<T>(test: impl FnOnce() -> T) -> T {
+        let _guard = STRICT_EMPTY_TEST_LOCK
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
+        configure_strict_empty(false, None);
+        let result = test();
+        configure_strict_empty(false, None);
+        result
     }
 
     #[test]
@@ -496,6 +532,18 @@ mod tests {
     }
 
     #[test]
+    fn selected_fields_preserves_exact_names_and_duplicates() {
+        assert_eq!(
+            selected_fields(Some(" Ticker,Dollars,Ticker ")),
+            Some(vec![
+                "Ticker".to_string(),
+                "Dollars".to_string(),
+                "Ticker".to_string()
+            ])
+        );
+    }
+
+    #[test]
     fn records_to_values_filters_to_selected_fields() {
         let records = sample_records();
         let values = records_to_values(&records, Some(&["symbol".to_string()]));
@@ -516,7 +564,6 @@ mod tests {
 
     #[test]
     fn print_records_rejects_unknown_custom_fields() {
-        set_strict_empty_context(None);
         let records = sample_records();
         let err = print_records(&records, &["symbol"], Some("ticker"), false).unwrap_err();
 
@@ -527,7 +574,6 @@ mod tests {
 
     #[test]
     fn write_record_values_outputs_custom_field() {
-        set_strict_empty_context(None);
         let records = sample_records();
         let values: Vec<serde_json::Value> = records
             .iter()
@@ -557,8 +603,33 @@ mod tests {
     }
 
     #[test]
+    fn write_record_values_preserves_requested_projection_order() {
+        let records = sample_records();
+        let values: Vec<serde_json::Value> = records
+            .iter()
+            .map(|r| serde_json::to_value(r).unwrap())
+            .collect();
+        let mut buf = Vec::new();
+
+        write_record_values(
+            &mut buf,
+            &values,
+            &["symbol", "price"],
+            Some("price,symbol"),
+            false,
+            None,
+        )
+        .unwrap();
+
+        let output = String::from_utf8(buf).unwrap();
+        assert!(
+            output.starts_with(r#"[{"price":150.5,"symbol":"AAPL"}"#),
+            "projection order should follow --fields order: {output}"
+        );
+    }
+
+    #[test]
     fn write_record_values_rejects_unknown_custom_fields() {
-        set_strict_empty_context(None);
         let records = sample_records();
         let values: Vec<serde_json::Value> = records
             .iter()
@@ -583,7 +654,6 @@ mod tests {
 
     #[test]
     fn write_record_values_accepts_metadata_field_absent_from_rows() {
-        set_strict_empty_context(None);
         let values = vec![serde_json::json!({"symbol": "AAPL"})];
         let allowed_fields = vec!["symbol".to_string(), "events".to_string()];
         let mut buf = Vec::new();
@@ -605,7 +675,6 @@ mod tests {
 
     #[test]
     fn write_record_values_rejects_field_missing_from_metadata() {
-        set_strict_empty_context(None);
         let values = vec![serde_json::json!({"symbol": "AAPL", "price": 150.5})];
         let allowed_fields = vec!["symbol".to_string()];
         let mut buf = Vec::new();
@@ -626,7 +695,6 @@ mod tests {
 
     #[test]
     fn print_record_values_with_allowed_fields_accepts_metadata_fields() {
-        set_strict_empty_context(None);
         let values = vec![serde_json::json!({"symbol": "AAPL"})];
         let allowed_fields = vec!["symbol".to_string(), "events".to_string()];
 
@@ -642,7 +710,6 @@ mod tests {
 
     #[test]
     fn print_records_with_allowed_fields_accepts_metadata_fields() {
-        set_strict_empty_context(None);
         let records = sample_records();
         let allowed_fields = vec!["symbol".to_string(), "events".to_string()];
 
@@ -658,7 +725,6 @@ mod tests {
 
     #[test]
     fn print_transformed_record_values_with_allowed_fields_accepts_metadata_fields() {
-        set_strict_empty_context(None);
         let records = vec![serde_json::json!({
             "Ticker": "AAPL",
             "Date": "/Date(1767312000000)/",
@@ -679,8 +745,72 @@ mod tests {
     }
 
     #[test]
+    fn write_record_values_validates_metadata_before_strict_empty() {
+        with_strict_empty_test_lock(|| {
+            configure_strict_empty(true, Some("watchlist configs".to_string()));
+            let allowed_fields = vec!["symbol".to_string()];
+            let mut buf = Vec::new();
+
+            let err = write_record_values(
+                &mut buf,
+                &[],
+                &["symbol"],
+                Some("price"),
+                false,
+                Some(&allowed_fields),
+            )
+            .unwrap_err();
+
+            assert_eq!(err.kind(), std::io::ErrorKind::InvalidInput);
+            assert!(err.to_string().contains("price"));
+        });
+    }
+
+    #[test]
+    fn print_records_validates_metadata_before_strict_empty() {
+        with_strict_empty_test_lock(|| {
+            configure_strict_empty(true, Some("alert configs".to_string()));
+            let records: Vec<TestRecord> = Vec::new();
+            let allowed_fields = vec!["symbol".to_string()];
+
+            let err = print_records_with_allowed_fields(
+                &records,
+                &["symbol"],
+                Some("price"),
+                false,
+                Some(&allowed_fields),
+            )
+            .unwrap_err();
+
+            assert_eq!(err.kind(), std::io::ErrorKind::InvalidInput);
+            assert!(err.to_string().contains("price"));
+        });
+    }
+
+    #[test]
+    fn transformed_records_validate_metadata_before_strict_empty() {
+        with_strict_empty_test_lock(|| {
+            configure_strict_empty(true, Some("report top-100-rank".to_string()));
+            let records: Vec<serde_json::Value> = Vec::new();
+            let allowed_fields = vec!["Ticker".to_string()];
+
+            let err = print_transformed_record_values_with_allowed_fields(
+                &records,
+                TradeRecordKind::Trade,
+                &["Ticker"],
+                Some("ticker"),
+                false,
+                Some(&allowed_fields),
+            )
+            .unwrap_err();
+
+            assert_eq!(err.kind(), std::io::ErrorKind::InvalidInput);
+            assert!(err.to_string().contains("ticker"));
+        });
+    }
+
+    #[test]
     fn write_record_values_outputs_raw_fields_for_all_sentinel() {
-        set_strict_empty_context(None);
         let records = sample_records();
         let values: Vec<serde_json::Value> = records
             .iter()
@@ -720,73 +850,85 @@ mod tests {
 
     #[test]
     fn print_records_maps_strict_empty_to_sentinel_error() {
-        let records: Vec<TestRecord> = Vec::new();
-        configure_strict_empty(true, Some("trade list".to_string()));
+        with_strict_empty_test_lock(|| {
+            let records: Vec<TestRecord> = Vec::new();
+            configure_strict_empty(true, Some("trade list".to_string()));
 
-        let err = print_records(&records, &["symbol"], None, false).unwrap_err();
+            let err = print_records(&records, &["symbol"], None, false).unwrap_err();
 
-        assert_eq!(err.kind(), std::io::ErrorKind::NotFound);
-        assert_eq!(
-            err.to_string(),
-            "trade list returned no rows; try checking the ticker or widening the date range"
-        );
+            assert_eq!(err.kind(), std::io::ErrorKind::NotFound);
+            assert_eq!(
+                err.to_string(),
+                "trade list returned no rows; try checking the ticker or widening the date range"
+            );
+        });
     }
 
     #[test]
     fn print_records_allows_empty_without_strict_flag() {
-        let records: Vec<TestRecord> = Vec::new();
-        configure_strict_empty(false, Some("trade list".to_string()));
+        with_strict_empty_test_lock(|| {
+            let records: Vec<TestRecord> = Vec::new();
+            configure_strict_empty(false, Some("trade list".to_string()));
 
-        assert!(print_records(&records, &["symbol"], None, false).is_ok());
+            assert!(print_records(&records, &["symbol"], None, false).is_ok());
+        });
     }
 
     #[test]
     fn print_records_writes_non_empty_records_with_strict_flag() {
-        let records = sample_records();
-        configure_strict_empty(true, Some("trade list".to_string()));
+        with_strict_empty_test_lock(|| {
+            let records = sample_records();
+            configure_strict_empty(true, Some("trade list".to_string()));
 
-        assert!(print_records(&records, &["symbol"], None, false).is_ok());
+            assert!(print_records(&records, &["symbol"], None, false).is_ok());
+        });
     }
 
     #[test]
     fn write_record_values_maps_strict_empty_to_sentinel_error() {
-        let records = Vec::new();
-        let mut buf = Vec::new();
-        configure_strict_empty(true, Some("watchlist configs".to_string()));
+        with_strict_empty_test_lock(|| {
+            let records = Vec::new();
+            let mut buf = Vec::new();
+            configure_strict_empty(true, Some("watchlist configs".to_string()));
 
-        let err = write_record_values(&mut buf, &records, &["Name"], Some("all"), false, None)
-            .unwrap_err();
+            let err = write_record_values(&mut buf, &records, &["Name"], Some("all"), false, None)
+                .unwrap_err();
 
-        assert_eq!(err.kind(), std::io::ErrorKind::NotFound);
-        assert!(err.to_string().contains("valid account state"));
+            assert_eq!(err.kind(), std::io::ErrorKind::NotFound);
+            assert!(err.to_string().contains("valid account state"));
+        });
     }
 
     #[test]
     fn print_record_values_maps_strict_empty_to_sentinel_error() {
-        configure_strict_empty(true, Some("alert configs".to_string()));
+        with_strict_empty_test_lock(|| {
+            configure_strict_empty(true, Some("alert configs".to_string()));
 
-        let err = print_record_values(&[], &["Name"], None, false).unwrap_err();
+            let err = print_record_values(&[], &["Name"], None, false).unwrap_err();
 
-        assert_eq!(err.kind(), std::io::ErrorKind::NotFound);
-        assert!(err.to_string().contains("valid account state"));
+            assert_eq!(err.kind(), std::io::ErrorKind::NotFound);
+            assert!(err.to_string().contains("valid account state"));
+        });
     }
 
     #[test]
     fn print_transformed_record_values_maps_strict_empty_to_sentinel_error() {
-        let records: Vec<TestRecord> = Vec::new();
-        configure_strict_empty(true, Some("report dark-pool-sweeps".to_string()));
+        with_strict_empty_test_lock(|| {
+            let records: Vec<TestRecord> = Vec::new();
+            configure_strict_empty(true, Some("report dark-pool-sweeps".to_string()));
 
-        let err = print_transformed_record_values(
-            &records,
-            TradeRecordKind::Trade,
-            &["Ticker"],
-            None,
-            false,
-        )
-        .unwrap_err();
+            let err = print_transformed_record_values(
+                &records,
+                TradeRecordKind::Trade,
+                &["Ticker"],
+                None,
+                false,
+            )
+            .unwrap_err();
 
-        assert_eq!(err.kind(), std::io::ErrorKind::NotFound);
-        assert!(err.to_string().contains("broader report"));
+            assert_eq!(err.kind(), std::io::ErrorKind::NotFound);
+            assert!(err.to_string().contains("broader report"));
+        });
     }
 
     #[test]

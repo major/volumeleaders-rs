@@ -44,7 +44,7 @@ GitHub releases also provide cargo-dist archives and shell or PowerShell install
 
 ## CLI usage
 
-The CLI reads browser cookies automatically. If auth fails, log in to VolumeLeaders in the browser and retry. Command output goes to stdout as compact JSON by default. Pipe through `jq` for pretty-printed output. Runtime errors are written to stderr as one compact JSON line such as `{"ok":false,"error":{"kind":"auth_error","message":"browser cookies are missing or expired"}}`.
+The CLI reads browser cookies automatically. If auth fails, log in to VolumeLeaders in the browser and retry. Command output goes to stdout as compact JSON by default. Use command-specific `--fields` for built-in projection and pipe through external `jq` for filtering, reshaping, sorting, or pretty-printing. Runtime errors are written to stderr as one compact JSON line such as `{"ok":false,"error":{"kind":"auth_error","message":"browser cookies are missing or expired"}}`.
 
 Semantic exit codes are stable for automation: `0` means success, `2` is clap usage or argument validation, `3` is browser auth failure, `4` is HTTP transport failure, `5` is a VolumeLeaders API error response, `6` is JSON parsing or output transformation failure, and `7` is strict empty-result handling.
 
@@ -56,7 +56,9 @@ Use `schema` for machine-readable CLI discovery. It emits compact JSON generated
 
 Mutating alert and watchlist commands support `--dry-run` so automation can inspect the planned request without sending it. Delete commands also require `--yes` for live deletion; use `--dry-run` first to inspect the delete request.
 
-Use `fields <command path>` for machine-readable output field discovery before using `--fields`. It emits compact JSON with the preferred command path, exact case-sensitive field names accepted by `--fields`, short descriptions, and type hints. It does not need a live API response or non-empty result rows.
+Use `fields <command path>` for machine-readable output field discovery before using `--fields`. It emits compact JSON with the preferred command path, exact case-sensitive field names accepted by `--fields`, short descriptions, and type hints. It does not need a live API response or non-empty result rows. Unknown projected fields fail with exit code `2` and structured `usage_error` JSON on stderr.
+
+The CLI intentionally does not embed a jq expression engine. Built-in output shaping stays focused on `--fields` and `--all-fields`; use external `jq` after projection when automation needs filters or derived objects. For example: `volumeleaders-agent trade list NVDA --fields Ticker,Dollars | jq '.[] | select(.Dollars > 1000000)'`.
 
 Top-level aliases are available for the highest-frequency trade commands: `trades` for `trade list`, `dashboard` for `trade dashboard`, and `levels` for `trade levels`. The schema keeps the canonical `trade ...` preferred paths, marks alias entries with `is_alias` and `alias_for`, and lists each alias on its canonical command so automation can normalize either form.
 
@@ -100,6 +102,7 @@ volumeleaders-agent doctor --live
 volumeleaders-agent commands
 volumeleaders-agent fields trade list
 volumeleaders-agent fields volume institutional | jq '.fields[].name'
+volumeleaders-agent trade list NVDA --fields Ticker,Dollars | jq '.[] | select(.Dollars > 1000000)'
 volumeleaders-agent help agent
 volumeleaders-agent help examples
 volumeleaders-agent alert create --name BigTechSweeps --tickers AAPL,MSFT --dry-run

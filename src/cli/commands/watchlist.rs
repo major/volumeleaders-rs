@@ -62,7 +62,7 @@ pub enum WatchlistCommand {
 /// Arguments for `watchlist configs`.
 #[derive(Debug, Args)]
 pub struct ConfigsArgs {
-    /// Comma-separated field list for output.
+    /// Exact, case-sensitive output fields to keep, comma-separated; discover with `fields watchlist configs`.
     #[arg(long, conflicts_with = "all_fields")]
     pub fields: Option<String>,
     /// Return every field from the VolumeLeaders API response.
@@ -77,7 +77,7 @@ pub struct TickersArgs {
     #[arg(long, default_value = "-1")]
     pub watchlist_key: i64,
 
-    /// Comma-separated field list for output.
+    /// Exact, case-sensitive output fields to keep, comma-separated; discover with `fields watchlist tickers`.
     #[arg(long, conflicts_with = "all_fields")]
     pub fields: Option<String>,
     /// Return every field from the VolumeLeaders API response.

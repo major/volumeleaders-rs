@@ -191,7 +191,7 @@ pub struct ListArgs {
     /// Maximum number of trades to return.
     #[arg(long, default_value_t = DEFAULT_TRADE_LIMIT)]
     pub limit: usize,
-    /// Comma-separated field list for output.
+    /// Exact, case-sensitive output fields to keep, comma-separated; discover with `fields trade list`.
     #[arg(long, conflicts_with = "all_fields")]
     pub fields: Option<String>,
     /// Return every field after semantic trade transforms.
@@ -214,7 +214,7 @@ pub struct DashboardArgs {
     /// Rows to return per dashboard section.
     #[arg(long, default_value_t = DEFAULT_DASHBOARD_COUNT)]
     pub count: usize,
-    /// Comma-separated field list for dashboard output.
+    /// Exact, case-sensitive output fields to keep, comma-separated; discover with `fields trade dashboard`.
     ///
     /// Use section-qualified fields like `trades.Date,clusters.Dollars`.
     /// Unqualified fields are applied to every row section.
@@ -264,7 +264,7 @@ pub struct ClustersArgs {
     pub trade_cluster_rank: i32,
     #[command(flatten)]
     pub page: FixedPageArgs,
-    /// Comma-separated field list for output.
+    /// Exact, case-sensitive output fields to keep, comma-separated; discover with `fields trade clusters`.
     #[arg(long, conflicts_with = "all_fields")]
     pub fields: Option<String>,
     /// Return every field after semantic trade transforms.
@@ -299,7 +299,7 @@ pub struct ClusterBombsArgs {
     pub trade_cluster_bomb_rank: i32,
     #[command(flatten)]
     pub page: FixedPageArgs,
-    /// Comma-separated field list for output.
+    /// Exact, case-sensitive output fields to keep, comma-separated; discover with `fields trade cluster-bombs`.
     #[arg(long, conflicts_with = "all_fields")]
     pub fields: Option<String>,
     /// Return every field after semantic trade transforms.
@@ -316,7 +316,7 @@ pub struct AlertsArgs {
     pub date: String,
     #[command(flatten)]
     pub page: PageArgs,
-    /// Comma-separated field list for output.
+    /// Exact, case-sensitive output fields to keep, comma-separated; discover with `fields trade alerts` or `fields trade clusters`.
     #[arg(long, conflicts_with = "all_fields")]
     pub fields: Option<String>,
     /// Return every field after semantic trade transforms.
@@ -335,7 +335,7 @@ pub struct LevelsArgs {
     /// Number of price levels to return.
     #[arg(long = "trade-level-count", default_value_t = DEFAULT_LEVEL_COUNT)]
     pub trade_level_count: usize,
-    /// Comma-separated field list for output.
+    /// Exact, case-sensitive output fields to keep, comma-separated; discover with `fields trade levels`.
     #[arg(long, conflicts_with = "all_fields")]
     pub fields: Option<String>,
     /// Return every field after semantic trade transforms.
@@ -367,7 +367,7 @@ pub struct LevelTouchesArgs {
     pub relative_size: Option<i32>,
     #[command(flatten)]
     pub page: PageArgs,
-    /// Comma-separated field list for output.
+    /// Exact, case-sensitive output fields to keep, comma-separated; discover with `fields trade levels`.
     #[arg(long, conflicts_with = "all_fields")]
     pub fields: Option<String>,
     /// Return every field after semantic trade transforms.
@@ -824,7 +824,7 @@ async fn execute_clusters(args: &ClustersArgs) -> i32 {
         &CLUSTER_HEADERS,
         args.fields.as_deref(),
         args.all_fields,
-        "trade cluster-bombs",
+        "trade clusters",
     )
 }
 
