@@ -1,6 +1,6 @@
 //! Report commands: preset trade scans and listing.
 
-use std::collections::HashMap;
+use std::{collections::HashMap, io};
 
 use clap::{Args, Subcommand};
 use rust_decimal::prelude::ToPrimitive;
@@ -16,7 +16,10 @@ use crate::cli::common::tickers::parse_tickers;
 use crate::cli::common::trade_transforms::TradeRecordKind;
 use crate::cli::common::types::SummaryGroup;
 use crate::cli::error::usage_error;
-use crate::cli::output::{finish_output, print_json, print_transformed_record_values};
+use crate::cli::field_metadata;
+use crate::cli::output::{
+    finish_output, print_json, print_transformed_record_values, selected_fields,
+};
 
 /// Default trade limit when none is specified on the command line.
 const DEFAULT_LIMIT: usize = 500;
@@ -503,7 +506,7 @@ pub struct ReportFlags {
     /// Group results into a summary by ticker, day, or both.
     #[arg(long, value_enum)]
     pub summary_group: Option<SummaryGroup>,
-    /// Comma-separated field list for output.
+    /// Exact, case-sensitive output fields to keep, comma-separated; discover with `fields report top-100-rank`, `fields report dark-pool-sweeps`, or the matching report path.
     #[arg(long, conflicts_with = "all_fields")]
     pub fields: Option<String>,
     /// Return every field after semantic trade transforms.
@@ -591,6 +594,10 @@ async fn execute_preset(args: &ReportArgs) -> i32 {
         return usage_error("--fields and --all-fields cannot be used with summary output");
     }
 
+    if let Err(err) = validate_report_fields(preset_name, flags.fields.as_deref()) {
+        return finish_output(Err(err));
+    }
+
     let preset = match REPORT_PRESETS.iter().find(|p| p.use_name == preset_name) {
         Some(p) => p,
         None => return usage_error(format!("unknown preset: {preset_name}")),
@@ -651,6 +658,38 @@ async fn execute_preset(args: &ReportArgs) -> i32 {
     };
 
     finish_output(result)
+}
+
+fn report_command_path(preset_name: &str) -> String {
+    format!("report {preset_name}")
+}
+
+fn validate_report_fields(preset_name: &str, fields: Option<&str>) -> io::Result<()> {
+    let Some(fields) = selected_fields(fields) else {
+        return Ok(());
+    };
+    let Some(available) = field_metadata::field_names(&report_command_path(preset_name)) else {
+        return Ok(());
+    };
+
+    let missing = fields
+        .iter()
+        .filter(|field| !available.iter().any(|available| available == *field))
+        .map(String::as_str)
+        .collect::<Vec<_>>();
+
+    if missing.is_empty() {
+        return Ok(());
+    }
+
+    Err(io::Error::new(
+        io::ErrorKind::InvalidInput,
+        format!(
+            "unknown output field(s): {}. Available fields: {}",
+            missing.join(", "),
+            available.join(", ")
+        ),
+    ))
 }
 
 /// Entry for the preset list output.
@@ -1107,5 +1146,45 @@ mod tests {
 
         // List has no preset name.
         assert_eq!(ReportCommand::List.preset_name(), None);
+    }
+
+    #[test]
+    fn validate_report_fields_uses_preset_metadata() {
+        validate_report_fields("top-100-rank", Some("Ticker,Dollars")).unwrap();
+
+        let err = validate_report_fields("top-100-rank", Some("ticker")).unwrap_err();
+
+        assert_eq!(err.kind(), io::ErrorKind::InvalidInput);
+        assert!(err.to_string().contains("ticker"));
+        assert!(err.to_string().contains("Ticker"));
+    }
+
+    #[test]
+    fn validate_report_fields_skips_empty_or_unknown_metadata_paths() {
+        validate_report_fields("top-100-rank", None).unwrap();
+        validate_report_fields("top-100-rank", Some("all")).unwrap();
+        validate_report_fields("unknown-report", Some("Ticker")).unwrap();
+    }
+
+    #[tokio::test]
+    async fn execute_preset_rejects_invalid_fields_before_auth() {
+        let flags = ReportFlags {
+            tickers: None,
+            start_date: None,
+            end_date: None,
+            days: None,
+            limit: None,
+            summary_group: None,
+            fields: Some("ticker".to_string()),
+            all_fields: false,
+        };
+        let args = ReportArgs {
+            command: ReportCommand::Top100Rank(flags),
+        };
+
+        assert_eq!(
+            execute_preset(&args).await,
+            crate::cli::error::EXIT_USAGE_ERROR
+        );
     }
 }

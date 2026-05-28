@@ -25,7 +25,7 @@ volumeleaders-agent trade list --help
 - `doctor` is local-only by default and reports browser-cookie readiness as compact JSON. Use `doctor --live` for a low-cost authenticated connectivity check.
 - `schema` is the authoritative machine-readable command contract generated from the live clap tree. Command entries include `path`, `preferred_path`, `is_alias`, optional `alias_for`, `aliases`, auth requirements, mutating and dry-run safety metadata, help text, argument metadata with stable `name` identifiers and semantic types, boolean flag versus value-taking option shape, and structured `examples` arrays.
 - `commands` is the lightweight plain-text leaf command list. Use `--grouped` for descriptions.
-- `fields <command path>` emits exact case-sensitive output field names, descriptions, and type hints for commands that support `--fields` without requiring live rows.
+- `fields <command path>` emits exact case-sensitive output field names, descriptions, and type hints for commands that support `--fields` without requiring live rows. Unknown projected fields fail with exit code `2` and structured `usage_error` JSON on stderr.
 - `help <topic>` gives operational guidance when README access is unavailable.
 - `help agent` summarizes the recommended non-interactive automation flow.
 - Command-specific `--help` includes descriptions for public options and an `Examples:` section for every visible leaf command; schema also exposes structured examples for machine-readable access.
@@ -65,7 +65,7 @@ Global flags:
 
 | Flag | Contract |
 |------|----------|
-| `--fields a,b,c` | Select compact JSON object fields for record-array outputs. |
+| `--fields a,b,c` | Select exact, case-sensitive compact JSON object fields for record-array outputs. Discover names with `fields <command path>`. |
 | `--all-fields` | Emit full available fields for record-array outputs. |
 | `--strict-empty` | Return exit `7` with `empty_result` stderr JSON when a record-array output would be empty. |
 | `-v`, `-vv`, `-vvv` | Enable info, debug, or trace diagnostics on stderr. |
@@ -78,7 +78,7 @@ Reusable shapes:
 | `DateRange` | `--start-date YYYY-MM-DD --end-date YYYY-MM-DD` | Used by many trade, market, and report commands. |
 | `TickerDateRange` | Ticker plus `--start-date` and `--end-date` | Common for trade list, dashboard, clusters, levels, and report filters. |
 | `Paged` | `--start N --length N`, or command-specific `--limit N` | DataTables-style commands use `start` and `length`; report and volume commands often use `limit`. |
-| `FieldsSelectable` | `--fields Ticker,Date,Price` or `--all-fields` | Discover exact field names with `fields <command path>` before filtering. |
+| `FieldsSelectable` | `--fields Ticker,Date,Price` or `--all-fields` | Discover exact case-sensitive field names with `fields <command path>` before filtering. Pipe stdout to external `jq` for jq-style filtering or object construction after built-in projection. |
 | `BooleanFilter` | Bare flags such as `--sweep`, or value-taking booleans such as `--normal-prints false` where help shows a value | Read command help or schema `kind` before passing `true` or `false`; bare flags do not take values. |
 | `DryRunMutation` | Mutating alert/watchlist create, edit, delete, and add-ticker commands accept `--dry-run` | Inspect the JSON plan before live mutation; delete commands require `--yes` when not using `--dry-run`. |
 
@@ -125,6 +125,7 @@ volumeleaders-agent fields volume institutional | jq '.fields[].name'
 volumeleaders-agent help agent
 volumeleaders-agent schema | jq '.commands[] | select(.preferred_path == "trade list")'
 volumeleaders-agent schema | jq '.commands[] | select(.mutating == true) | {path, supports_dry_run, requires_confirmation}'
+volumeleaders-agent trade list NVDA --fields Ticker,Dollars | jq '.[] | select(.Dollars > 1000000)'
 volumeleaders-agent alert create --name BigTechSweeps --tickers AAPL,MSFT --dry-run
 volumeleaders-agent help examples
 ```
@@ -143,6 +144,7 @@ Common data workflows:
 ```bash
 volumeleaders-agent trades NVDA
 volumeleaders-agent trade list NVDA --start-date 2026-05-01 --end-date 2026-05-27 --fields Ticker,DateTime,Price,Dollars
+volumeleaders-agent trade list NVDA --fields Ticker,Dollars | jq '.[] | select(.Dollars > 1000000)'
 volumeleaders-agent dashboard NVDA
 volumeleaders-agent levels NVDA
 volumeleaders-agent volume institutional --date 2026-05-27 --tickers AAPL

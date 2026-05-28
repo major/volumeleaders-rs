@@ -50,7 +50,7 @@ pub struct VolumeOptions {
     #[arg(long = "order-dir", value_enum, default_value = "asc")]
     pub order_dir: OrderDirection,
 
-    /// Comma-separated field list for output.
+    /// Exact, case-sensitive output fields to keep, comma-separated; discover with `fields volume institutional`, `fields volume ah-institutional`, or `fields volume total`.
     #[arg(long, conflicts_with = "all_fields")]
     pub fields: Option<String>,
 
