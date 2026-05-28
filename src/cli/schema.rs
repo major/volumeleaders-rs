@@ -243,8 +243,10 @@ fn multi_value(arg: &Arg) -> bool {
 
 #[cfg(test)]
 mod tests {
-    use clap::{Arg, ArgAction};
+    use clap::{Arg, ArgAction, Command, CommandFactory};
     use serde_json::Value;
+
+    use crate::cli::Cli;
 
     use super::{CommandSchema, add_alias_commands, build_schema, parser_name};
 
@@ -286,6 +288,45 @@ mod tests {
         assert!(paths.contains(&"market earnings"));
         assert!(paths.contains(&"watchlist configs"));
         assert!(paths.contains(&"alert configs"));
+    }
+
+    #[test]
+    fn schema_paths_match_live_clap_leaf_commands_and_aliases() {
+        let schema = schema_value();
+        let mut schema_paths = schema["commands"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|command| string_array(&command["path"]))
+            .collect::<Vec<_>>();
+        schema_paths.sort();
+
+        let mut expected_paths = live_leaf_paths();
+        expected_paths.extend([
+            vec!["dashboard".to_string()],
+            vec!["levels".to_string()],
+            vec!["trades".to_string()],
+        ]);
+        expected_paths.sort();
+
+        assert_eq!(schema_paths, expected_paths);
+    }
+
+    #[test]
+    fn schema_includes_global_flags_on_every_command() {
+        let schema = schema_value();
+        let commands = schema["commands"].as_array().unwrap();
+
+        for command in commands {
+            let args = command["args"].as_array().unwrap();
+            assert!(args.iter().any(|arg| arg["long"] == "strict-empty"
+                && arg["kind"] == "flag"
+                && arg["parser"] == "enum"));
+            assert!(args.iter().any(|arg| arg["long"] == "verbose"
+                && arg["short"] == "v"
+                && arg["kind"] == "flag"
+                && arg["parser"] == "count"));
+        }
     }
 
     #[test]
@@ -448,5 +489,38 @@ mod tests {
 
         assert_eq!(parser_name(&false_flag), "bool");
         assert_eq!(parser_name(&count_flag), "count");
+    }
+
+    fn live_leaf_paths() -> Vec<Vec<String>> {
+        let command = Cli::command();
+        let mut paths = Vec::new();
+
+        collect_leaf_paths(&command, &mut Vec::new(), &mut paths);
+
+        paths
+    }
+
+    fn collect_leaf_paths(command: &Command, path: &mut Vec<String>, paths: &mut Vec<Vec<String>>) {
+        for subcommand in command
+            .get_subcommands()
+            .filter(|command| !command.is_hide_set())
+        {
+            path.push(subcommand.get_name().to_string());
+            if subcommand.has_subcommands() {
+                collect_leaf_paths(subcommand, path, paths);
+            } else {
+                paths.push(path.clone());
+            }
+            path.pop();
+        }
+    }
+
+    fn string_array(value: &Value) -> Vec<String> {
+        value
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|value| value.as_str().unwrap().to_string())
+            .collect()
     }
 }
