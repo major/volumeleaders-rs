@@ -49,6 +49,8 @@ pub enum Commands {
     Alert(AlertArgs),
     /// Watchlist management and inspection.
     Watchlist(WatchlistArgs),
+    /// Check local auth and environment readiness as JSON.
+    Doctor,
     /// Emit machine-readable command metadata as JSON.
     Schema,
     /// Generate shell completions.
