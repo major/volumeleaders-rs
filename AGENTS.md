@@ -39,7 +39,7 @@ volumeleaders-rs/
 | API client work | `src/` | Library modules export client, session, request builders, response models, errors, and pagination |
 | CLI work | `src/cli/` | Clap args, command routing, output formatting, and CLI helper modules |
 | Fixtures | `tests/fixtures/` | JSON payload contracts used by tests |
-| Local commands | `Makefile` | `make check` runs fmt, clippy, test, doc; `make patch-coverage` checks changed-line coverage |
+| Local commands | `Makefile` | `make check` runs fmt, clippy, test, doc; `make patch-coverage` checks changed-line coverage; `make machete` checks unused dependencies |
 | CI behavior | `.github/workflows/ci.yml` | Linux, macOS, Windows test and clippy matrix |
 | Codecov policy | `codecov.yml` | Project coverage floor is 90 percent; patch coverage floor is 100 percent |
 | Release PR and tag behavior | `.github/workflows/release-plz.yml`, `release-plz.toml`, `cliff.toml` | Release PRs, changelog updates, and tags |
@@ -83,6 +83,7 @@ make check
 make coverage
 make patch-coverage
 make audit
+make machete
 cargo test --workspace
 cargo doc --workspace --no-deps
 ```

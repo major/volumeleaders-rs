@@ -1,4 +1,4 @@
-.PHONY: audit check clippy clean coverage doc fmt patch-coverage test
+.PHONY: audit check clippy clean coverage doc fmt machete patch-coverage test
 
 PATCH_COVERAGE_BASE ?= main
 PATCH_COVERAGE_FAIL_UNDER ?= 100
@@ -27,6 +27,9 @@ patch-coverage:
 
 audit:
 	@cargo audit
+
+machete:
+	@cargo machete
 
 clean:
 	@cargo clean

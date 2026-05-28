@@ -72,7 +72,7 @@ Other Rust projects can depend on `rusty-volumeleaders` as an API client without
 rusty-volumeleaders = { version = "0.4.0", default-features = false }
 ```
 
-This excludes `clap`, `clap_complete`, and `tracing-subscriber` and exposes `Client`, `Session`, request builders, response models, `ClientError`, and `Result`. The `cli` feature (enabled by default) adds the `Cli` parser and `run` entry point used by the `volumeleaders-agent` binary.
+This excludes `clap` and `clap_complete` and exposes `Client`, `Session`, request builders, response models, `ClientError`, and `Result`. The `cli` feature (enabled by default) adds the `Cli` parser and `run` entry point used by the `volumeleaders-agent` binary.
 
 ## Client example
 
