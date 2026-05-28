@@ -26,16 +26,34 @@ const DEFAULT_TICKERS_FIELDS: [&str; 5] = [
 #[derive(Debug, Subcommand)]
 pub enum WatchlistCommand {
     /// List all watchlist configurations.
+    #[command(
+        long_about = "List all saved watchlist configurations.\n\nExamples:\n  volumeleaders-agent watchlist configs\n  volumeleaders-agent watchlist configs --fields SearchTemplateKey,Name,Tickers"
+    )]
     Configs(ConfigsArgs),
     /// List tickers in a watchlist.
+    #[command(
+        long_about = "List tickers in one watchlist or across all watchlists.\n\nExamples:\n  volumeleaders-agent watchlist tickers\n  volumeleaders-agent watchlist tickers --watchlist-key 123 --fields Ticker,Price"
+    )]
     Tickers(TickersArgs),
     /// Create a new watchlist configuration.
+    #[command(
+        long_about = "Create a new watchlist configuration with optional filters.\n\nExamples:\n  volumeleaders-agent watchlist create --name BigTech --tickers AAPL,NVDA\n  volumeleaders-agent watchlist create --name LiquidLargeCaps --min-volume 1000000 --min-dollars 5000000"
+    )]
     Create(CreateArgs),
     /// Edit an existing watchlist configuration.
+    #[command(
+        long_about = "Edit an existing watchlist configuration by key.\n\nExamples:\n  volumeleaders-agent watchlist edit --key 123 --name BigTech\n  volumeleaders-agent watchlist edit --key 123 --tickers AAPL,NVDA,MSFT --min-volume 1000000"
+    )]
     Edit(EditArgs),
     /// Delete a watchlist configuration.
+    #[command(
+        long_about = "Delete a watchlist configuration by key.\n\nExamples:\n  volumeleaders-agent watchlist delete --key 123\n  volumeleaders-agent watchlist delete --key 456"
+    )]
     Delete(DeleteArgs),
     /// Add a ticker to an existing watchlist.
+    #[command(
+        long_about = "Add a ticker to an existing watchlist.\n\nExamples:\n  volumeleaders-agent watchlist add-ticker --watchlist-key 123 --ticker NVDA\n  volumeleaders-agent watchlist add-ticker --watchlist-key 123 --ticker AAPL"
+    )]
     AddTicker(AddTickerArgs),
 }
 

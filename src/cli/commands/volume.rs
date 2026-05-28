@@ -63,16 +63,25 @@ pub struct VolumeOptions {
 #[derive(Debug, Subcommand)]
 pub enum VolumeCommand {
     /// Query institutional volume.
+    #[command(
+        long_about = "Query the institutional volume leaderboard for a trading date.\n\nExamples:\n  volumeleaders-agent volume institutional --date 2026-05-27\n  volumeleaders-agent volume institutional --date 2026-05-27 --tickers AAPL,NVDA --limit 50"
+    )]
     Institutional {
         #[command(flatten)]
         args: VolumeOptions,
     },
     /// Query after-hours institutional volume.
+    #[command(
+        long_about = "Query the after-hours institutional volume leaderboard for a trading date.\n\nExamples:\n  volumeleaders-agent volume ah-institutional --date 2026-05-27\n  volumeleaders-agent volume ah-institutional --date 2026-05-27 --tickers AAPL,NVDA --limit 50"
+    )]
     AhInstitutional {
         #[command(flatten)]
         args: VolumeOptions,
     },
     /// Query total volume.
+    #[command(
+        long_about = "Query the total volume leaderboard for a trading date.\n\nExamples:\n  volumeleaders-agent volume total --date 2026-05-27\n  volumeleaders-agent volume total --date 2026-05-27 --tickers SPY,QQQ --order-dir desc --limit 50"
+    )]
     Total {
         #[command(flatten)]
         args: VolumeOptions,

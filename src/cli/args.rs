@@ -51,14 +51,29 @@ pub enum Commands {
     /// Watchlist management and inspection.
     Watchlist(WatchlistArgs),
     /// Check local auth and environment readiness as JSON.
+    #[command(
+        long_about = "Check local auth and environment readiness as compact JSON without using the network.\n\nExamples:\n  volumeleaders-agent doctor\n  volumeleaders-agent doctor | jq '.auth.status'"
+    )]
     Doctor,
     /// List available leaf command paths.
+    #[command(
+        long_about = "List available leaf command paths from the live clap command tree.\n\nExamples:\n  volumeleaders-agent commands\n  volumeleaders-agent commands --grouped"
+    )]
     Commands(CommandsArgs),
     /// Show built-in operational help topics.
+    #[command(
+        long_about = "Show built-in operational help topics when README access is unavailable.\n\nExamples:\n  volumeleaders-agent help auth\n  volumeleaders-agent help examples"
+    )]
     Help(HelpArgs),
     /// Emit machine-readable command metadata as JSON.
+    #[command(
+        long_about = "Emit machine-readable command metadata generated from the live clap command tree.\n\nExamples:\n  volumeleaders-agent schema\n  volumeleaders-agent schema | jq '.commands[] | select(.preferred_path == \"trade list\")'"
+    )]
     Schema,
     /// Generate shell completions.
+    #[command(
+        long_about = "Generate shell completion scripts for supported shells.\n\nExamples:\n  volumeleaders-agent completions bash\n  volumeleaders-agent completions zsh > _volumeleaders-agent"
+    )]
     Completions(CompletionsArgs),
 }
 
@@ -149,12 +164,91 @@ pub struct CompletionsArgs {
 
 #[cfg(test)]
 mod tests {
-    use clap::CommandFactory;
+    use clap::{Command, CommandFactory};
 
     use super::Cli;
 
     #[test]
     fn command_tree_is_valid() {
         Cli::command().debug_assert();
+    }
+
+    #[test]
+    fn every_leaf_command_has_long_about_examples() {
+        let command = Cli::command();
+        let mut missing = Vec::new();
+
+        collect_leaf_commands(&command, &mut Vec::new(), &mut |path, command| {
+            missing.extend(missing_long_about_examples(path, command));
+        });
+
+        assert!(
+            missing.is_empty(),
+            "leaf commands missing concise about and two long_about examples: {missing:?}"
+        );
+    }
+
+    #[test]
+    fn long_about_example_check_reports_missing_metadata() {
+        let command = Command::new("volumeleaders-agent").subcommand(Command::new("broken"));
+        let mut missing = Vec::new();
+
+        collect_leaf_commands(&command, &mut Vec::new(), &mut |path, command| {
+            missing.extend(missing_long_about_examples(path, command));
+        });
+
+        assert_eq!(missing, vec!["broken"]);
+    }
+
+    #[test]
+    fn long_about_example_check_accepts_complete_metadata() {
+        let command = Command::new("good").about("Good command").long_about(
+            "Good command.\n\nExamples:\n  volumeleaders-agent good\n  volumeleaders-agent good --flag",
+        );
+        let path = ["good".to_string()];
+
+        assert_eq!(missing_long_about_examples(&path, &command), None);
+    }
+
+    fn collect_leaf_commands(
+        command: &Command,
+        path: &mut Vec<String>,
+        visit: &mut impl FnMut(&[String], &Command),
+    ) {
+        for subcommand in command
+            .get_subcommands()
+            .filter(|command| !command.is_hide_set())
+        {
+            path.push(subcommand.get_name().to_string());
+            if subcommand.has_subcommands() {
+                collect_leaf_commands(subcommand, path, visit);
+            } else {
+                visit(path, subcommand);
+            }
+            path.pop();
+        }
+    }
+
+    fn example_line_count(long_about: &str) -> usize {
+        long_about
+            .lines()
+            .filter(|line| line.trim_start().starts_with("volumeleaders-agent "))
+            .count()
+    }
+
+    fn missing_long_about_examples(path: &[String], command: &Command) -> Option<String> {
+        let about = command.get_about().map(ToString::to_string);
+        let long_about = command.get_long_about().map(ToString::to_string);
+        let example_count = long_about
+            .as_deref()
+            .map(example_line_count)
+            .unwrap_or_default();
+
+        (about.as_deref().is_none_or(str::is_empty)
+            || long_about
+                .as_deref()
+                .is_none_or(|text| !text.contains("Examples:"))
+            || example_count < 2)
+            .then(|| path.join(" "))
     }
 }
