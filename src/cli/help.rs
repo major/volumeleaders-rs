@@ -48,7 +48,7 @@ Expected setup:
 - Rust users can run the CLI with `cargo run -- ...`; installed users run `volumeleaders-agent ...`.
 - Browser-cookie auth expects a logged-in Chrome or Firefox profile for https://www.volumeleaders.com.
 - stdout is reserved for command data, either compact JSON for data commands or plain text for discovery/help commands.
-- stderr is reserved for diagnostics and structured runtime errors.
+- stderr is reserved for diagnostics and structured runtime errors. Use `-v`, `-vv`, or `-vvv` to enable info, debug, or trace diagnostics without changing stdout.
 
 Use `volumeleaders-agent doctor` before live data commands when automation needs to confirm local auth readiness without spending API quota.
 "#;
@@ -74,6 +74,8 @@ Recovery guidance:
 - Exit 4 or 5: retry later or narrow the request.
 - Exit 6: check field names and JSON-processing pipeline assumptions.
 - Exit 7: check the ticker, widen the date range, relax filters, or accept that no configured rows may be valid account state.
+
+Verbosity: no `-v` logs warnings and errors, `-v` enables info diagnostics, `-vv` enables debug diagnostics, and `-vvv` enables trace diagnostics. Diagnostic logs always go to stderr.
 "#;
 
 const SCHEMA_HELP: &str = r#"schema
@@ -104,6 +106,7 @@ volumeleaders-agent schema | jq '.commands[] | select(.preferred_path == "trade 
 volumeleaders-agent report list
 volumeleaders-agent report dark-pool-sweeps
 volumeleaders-agent trade list NVDA
+volumeleaders-agent -vv trade list NVDA
 volumeleaders-agent --strict-empty trade list NVDA --start-date 2026-05-01 --end-date 2026-05-27 --fields ticker,date,price,volume,venue
 volumeleaders-agent trade dashboard NVDA
 
@@ -127,8 +130,10 @@ mod tests {
         assert!(topic_text(HelpTopic::Auth).contains("doctor"));
         assert!(topic_text(HelpTopic::Environment).contains("browser profiles"));
         assert!(topic_text(HelpTopic::ExitCodes).contains("3  auth error"));
+        assert!(topic_text(HelpTopic::ExitCodes).contains("-vvv"));
         assert!(topic_text(HelpTopic::Schema).contains("commands --grouped"));
         assert!(topic_text(HelpTopic::Examples).contains("--strict-empty trade list NVDA"));
+        assert!(topic_text(HelpTopic::Examples).contains("-vv trade list NVDA"));
     }
 
     #[test]

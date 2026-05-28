@@ -61,4 +61,10 @@ fn schema_command_emits_machine_readable_contract() {
     assert!(trade_list["args"].as_array().unwrap().iter().any(|arg| {
         arg["long"] == "strict-empty" && arg["kind"] == "flag" && arg["parser"] == "enum"
     }));
+    assert!(trade_list["args"].as_array().unwrap().iter().any(|arg| {
+        arg["long"] == "verbose"
+            && arg["short"] == "v"
+            && arg["kind"] == "flag"
+            && arg["parser"] == "count"
+    }));
 }
