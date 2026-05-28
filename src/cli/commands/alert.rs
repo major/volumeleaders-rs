@@ -66,119 +66,119 @@ pub struct CreateArgs {
     #[arg(long)]
     pub name: String,
 
-    /// Ticker group (defaults to AllTickers, auto-selects SelectedTickers when tickers are set).
+    /// Ticker group name; defaults to AllTickers and switches to SelectedTickers when tickers are set.
     #[arg(long)]
     pub ticker_group: Option<String>,
 
-    /// Comma-separated ticker symbols.
+    /// Comma-separated ticker symbols for SelectedTickers alerts.
     #[arg(long, default_value = "")]
     pub tickers: String,
 
-    /// Trade rank less than or equal to.
+    /// Maximum trade rank to alert on; lower ranks are more significant, and 0 disables this threshold.
     #[arg(long, default_value = "0")]
     pub trade_rank_lte: i64,
 
-    /// Trade VCD greater than or equal to.
+    /// Minimum trade volume-concentration delta score, or 0 to disable this threshold.
     #[arg(long, default_value = "0")]
     pub trade_vcd_gte: i64,
 
-    /// Trade multiplier greater than or equal to.
+    /// Minimum trade dollar multiplier, or 0 to disable this threshold.
     #[arg(long, default_value = "0")]
     pub trade_mult_gte: i64,
 
-    /// Trade volume greater than or equal to.
+    /// Minimum trade share volume, or 0 to disable this threshold.
     #[arg(long, default_value = "0")]
     pub trade_volume_gte: i64,
 
-    /// Trade dollars greater than or equal to.
+    /// Minimum trade dollar value, or 0 to disable this threshold.
     #[arg(long, default_value = "0")]
     pub trade_dollars_gte: i64,
 
-    /// Trade conditions filter.
+    /// Trade condition code filter accepted by the alert API; use 0 for no condition filter.
     #[arg(long, default_value = "0")]
     pub trade_conditions: String,
 
-    /// Include dark pool trades.
+    /// Require dark-pool trades when true; false leaves the alert unrestricted by dark-pool status.
     #[arg(long, default_value = "false")]
     pub dark_pool: bool,
 
-    /// Include sweep trades.
+    /// Require sweep trades when true; false leaves the alert unrestricted by sweep status.
     #[arg(long, default_value = "false")]
     pub sweep: bool,
 
-    /// Closing trade rank less than or equal to.
+    /// Maximum closing trade rank to alert on; lower ranks are more significant, and 0 disables this threshold.
     #[arg(long, default_value = "0")]
     pub closing_trade_rank_lte: i64,
 
-    /// Closing trade VCD greater than or equal to.
+    /// Minimum closing trade volume-concentration delta score, or 0 to disable this threshold.
     #[arg(long, default_value = "0")]
     pub closing_trade_vcd_gte: i64,
 
-    /// Closing trade multiplier greater than or equal to.
+    /// Minimum closing trade dollar multiplier, or 0 to disable this threshold.
     #[arg(long, default_value = "0")]
     pub closing_trade_mult_gte: i64,
 
-    /// Closing trade volume greater than or equal to.
+    /// Minimum closing trade share volume, or 0 to disable this threshold.
     #[arg(long, default_value = "0")]
     pub closing_trade_volume_gte: i64,
 
-    /// Closing trade dollars greater than or equal to.
+    /// Minimum closing trade dollar value, or 0 to disable this threshold.
     #[arg(long, default_value = "0")]
     pub closing_trade_dollars_gte: i64,
 
-    /// Closing trade conditions filter.
+    /// Closing trade condition code filter accepted by the alert API; use 0 for no condition filter.
     #[arg(long, default_value = "0")]
     pub closing_trade_conditions: String,
 
-    /// Cluster rank less than or equal to.
+    /// Maximum cluster rank to alert on; lower ranks are more significant, and 0 disables this threshold.
     #[arg(long, default_value = "0")]
     pub cluster_rank_lte: i64,
 
-    /// Cluster VCD greater than or equal to.
+    /// Minimum cluster volume-concentration delta score, or 0 to disable this threshold.
     #[arg(long, default_value = "0")]
     pub cluster_vcd_gte: i64,
 
-    /// Cluster multiplier greater than or equal to.
+    /// Minimum cluster dollar multiplier, or 0 to disable this threshold.
     #[arg(long, default_value = "0")]
     pub cluster_mult_gte: i64,
 
-    /// Cluster volume greater than or equal to.
+    /// Minimum cluster share volume, or 0 to disable this threshold.
     #[arg(long, default_value = "0")]
     pub cluster_volume_gte: i64,
 
-    /// Cluster dollars greater than or equal to.
+    /// Minimum cluster dollar value, or 0 to disable this threshold.
     #[arg(long, default_value = "0")]
     pub cluster_dollars_gte: i64,
 
-    /// Total rank less than or equal to.
+    /// Maximum total rank to alert on; lower ranks are more significant, and 0 disables this threshold.
     #[arg(long, default_value = "0")]
     pub total_rank_lte: i64,
 
-    /// Total volume greater than or equal to.
+    /// Minimum total share volume, or 0 to disable this threshold.
     #[arg(long, default_value = "0")]
     pub total_volume_gte: i64,
 
-    /// Total dollars greater than or equal to.
+    /// Minimum total dollar value, or 0 to disable this threshold.
     #[arg(long, default_value = "0")]
     pub total_dollars_gte: i64,
 
-    /// After-hours rank less than or equal to.
+    /// Maximum after-hours rank to alert on; lower ranks are more significant, and 0 disables this threshold.
     #[arg(long, default_value = "0")]
     pub ah_rank_lte: i64,
 
-    /// After-hours volume greater than or equal to.
+    /// Minimum after-hours share volume, or 0 to disable this threshold.
     #[arg(long, default_value = "0")]
     pub ah_volume_gte: i64,
 
-    /// After-hours dollars greater than or equal to.
+    /// Minimum after-hours dollar value, or 0 to disable this threshold.
     #[arg(long, default_value = "0")]
     pub ah_dollars_gte: i64,
 
-    /// Include offsetting prints.
+    /// Require offsetting prints when true; false leaves the alert unrestricted by offsetting status.
     #[arg(long, default_value = "false")]
     pub offsetting_print: bool,
 
-    /// Include phantom prints.
+    /// Require phantom prints when true; false leaves the alert unrestricted by phantom status.
     #[arg(long, default_value = "false")]
     pub phantom_print: bool,
 }
@@ -194,119 +194,119 @@ pub struct EditArgs {
     #[arg(long)]
     pub name: Option<String>,
 
-    /// Ticker group (defaults to AllTickers, auto-selects SelectedTickers when tickers are set).
+    /// Ticker group name; defaults to AllTickers and switches to SelectedTickers when tickers are set.
     #[arg(long)]
     pub ticker_group: Option<String>,
 
-    /// Comma-separated ticker symbols.
+    /// Comma-separated ticker symbols for SelectedTickers alerts.
     #[arg(long, default_value = "")]
     pub tickers: String,
 
-    /// Trade rank less than or equal to.
+    /// Maximum trade rank to alert on; lower ranks are more significant, and 0 disables this threshold.
     #[arg(long, default_value = "0")]
     pub trade_rank_lte: i64,
 
-    /// Trade VCD greater than or equal to.
+    /// Minimum trade volume-concentration delta score, or 0 to disable this threshold.
     #[arg(long, default_value = "0")]
     pub trade_vcd_gte: i64,
 
-    /// Trade multiplier greater than or equal to.
+    /// Minimum trade dollar multiplier, or 0 to disable this threshold.
     #[arg(long, default_value = "0")]
     pub trade_mult_gte: i64,
 
-    /// Trade volume greater than or equal to.
+    /// Minimum trade share volume, or 0 to disable this threshold.
     #[arg(long, default_value = "0")]
     pub trade_volume_gte: i64,
 
-    /// Trade dollars greater than or equal to.
+    /// Minimum trade dollar value, or 0 to disable this threshold.
     #[arg(long, default_value = "0")]
     pub trade_dollars_gte: i64,
 
-    /// Trade conditions filter.
+    /// Trade condition code filter accepted by the alert API; use 0 for no condition filter.
     #[arg(long, default_value = "0")]
     pub trade_conditions: String,
 
-    /// Include dark pool trades.
+    /// Require dark-pool trades when true; false leaves the alert unrestricted by dark-pool status.
     #[arg(long, default_value = "false")]
     pub dark_pool: bool,
 
-    /// Include sweep trades.
+    /// Require sweep trades when true; false leaves the alert unrestricted by sweep status.
     #[arg(long, default_value = "false")]
     pub sweep: bool,
 
-    /// Closing trade rank less than or equal to.
+    /// Maximum closing trade rank to alert on; lower ranks are more significant, and 0 disables this threshold.
     #[arg(long, default_value = "0")]
     pub closing_trade_rank_lte: i64,
 
-    /// Closing trade VCD greater than or equal to.
+    /// Minimum closing trade volume-concentration delta score, or 0 to disable this threshold.
     #[arg(long, default_value = "0")]
     pub closing_trade_vcd_gte: i64,
 
-    /// Closing trade multiplier greater than or equal to.
+    /// Minimum closing trade dollar multiplier, or 0 to disable this threshold.
     #[arg(long, default_value = "0")]
     pub closing_trade_mult_gte: i64,
 
-    /// Closing trade volume greater than or equal to.
+    /// Minimum closing trade share volume, or 0 to disable this threshold.
     #[arg(long, default_value = "0")]
     pub closing_trade_volume_gte: i64,
 
-    /// Closing trade dollars greater than or equal to.
+    /// Minimum closing trade dollar value, or 0 to disable this threshold.
     #[arg(long, default_value = "0")]
     pub closing_trade_dollars_gte: i64,
 
-    /// Closing trade conditions filter.
+    /// Closing trade condition code filter accepted by the alert API; use 0 for no condition filter.
     #[arg(long, default_value = "0")]
     pub closing_trade_conditions: String,
 
-    /// Cluster rank less than or equal to.
+    /// Maximum cluster rank to alert on; lower ranks are more significant, and 0 disables this threshold.
     #[arg(long, default_value = "0")]
     pub cluster_rank_lte: i64,
 
-    /// Cluster VCD greater than or equal to.
+    /// Minimum cluster volume-concentration delta score, or 0 to disable this threshold.
     #[arg(long, default_value = "0")]
     pub cluster_vcd_gte: i64,
 
-    /// Cluster multiplier greater than or equal to.
+    /// Minimum cluster dollar multiplier, or 0 to disable this threshold.
     #[arg(long, default_value = "0")]
     pub cluster_mult_gte: i64,
 
-    /// Cluster volume greater than or equal to.
+    /// Minimum cluster share volume, or 0 to disable this threshold.
     #[arg(long, default_value = "0")]
     pub cluster_volume_gte: i64,
 
-    /// Cluster dollars greater than or equal to.
+    /// Minimum cluster dollar value, or 0 to disable this threshold.
     #[arg(long, default_value = "0")]
     pub cluster_dollars_gte: i64,
 
-    /// Total rank less than or equal to.
+    /// Maximum total rank to alert on; lower ranks are more significant, and 0 disables this threshold.
     #[arg(long, default_value = "0")]
     pub total_rank_lte: i64,
 
-    /// Total volume greater than or equal to.
+    /// Minimum total share volume, or 0 to disable this threshold.
     #[arg(long, default_value = "0")]
     pub total_volume_gte: i64,
 
-    /// Total dollars greater than or equal to.
+    /// Minimum total dollar value, or 0 to disable this threshold.
     #[arg(long, default_value = "0")]
     pub total_dollars_gte: i64,
 
-    /// After-hours rank less than or equal to.
+    /// Maximum after-hours rank to alert on; lower ranks are more significant, and 0 disables this threshold.
     #[arg(long, default_value = "0")]
     pub ah_rank_lte: i64,
 
-    /// After-hours volume greater than or equal to.
+    /// Minimum after-hours share volume, or 0 to disable this threshold.
     #[arg(long, default_value = "0")]
     pub ah_volume_gte: i64,
 
-    /// After-hours dollars greater than or equal to.
+    /// Minimum after-hours dollar value, or 0 to disable this threshold.
     #[arg(long, default_value = "0")]
     pub ah_dollars_gte: i64,
 
-    /// Include offsetting prints.
+    /// Require offsetting prints when true; false leaves the alert unrestricted by offsetting status.
     #[arg(long, default_value = "false")]
     pub offsetting_print: bool,
 
-    /// Include phantom prints.
+    /// Require phantom prints when true; false leaves the alert unrestricted by phantom status.
     #[arg(long, default_value = "false")]
     pub phantom_print: bool,
 }

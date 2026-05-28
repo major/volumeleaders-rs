@@ -27,7 +27,7 @@ volumeleaders-agent trade list --help
 - `fields <command path>` emits exact case-sensitive output field names, descriptions, and type hints for commands that support `--fields` without requiring live rows.
 - `help <topic>` gives operational guidance when README access is unavailable.
 - `help agent` summarizes the recommended non-interactive automation flow.
-- Command-specific `--help` includes an `Examples:` section for every visible leaf command; schema also exposes structured examples for machine-readable access.
+- Command-specific `--help` includes descriptions for public options and an `Examples:` section for every visible leaf command; schema also exposes structured examples for machine-readable access.
 
 ## Invocation contract
 

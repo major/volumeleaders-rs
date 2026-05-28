@@ -325,6 +325,16 @@ mod tests {
     }
 
     #[test]
+    fn every_public_option_has_non_empty_help() {
+        let missing = missing_public_option_help(&Cli::command());
+
+        assert!(
+            missing.is_empty(),
+            "public options missing help text: {missing:?}"
+        );
+    }
+
+    #[test]
     fn long_about_example_check_reports_missing_metadata() {
         let command = Command::new("volumeleaders-agent").subcommand(Command::new("broken"));
         let mut missing = Vec::new();
@@ -334,6 +344,17 @@ mod tests {
         });
 
         assert_eq!(missing, vec!["broken"]);
+    }
+
+    #[test]
+    fn option_help_check_reports_root_and_nested_options() {
+        let command = Command::new("volumeleaders-agent")
+            .arg(clap::Arg::new("root").long("root"))
+            .subcommand(Command::new("child").arg(clap::Arg::new("short").short('s')));
+
+        let missing = missing_public_option_help(&command);
+
+        assert_eq!(missing, vec!["<root> --root", "child -s"]);
     }
 
     #[test]
@@ -363,6 +384,62 @@ mod tests {
             }
             path.pop();
         }
+    }
+
+    fn collect_public_options(
+        command: &Command,
+        path: &mut Vec<String>,
+        visit: &mut impl FnMut(&[String], &clap::Arg),
+    ) {
+        for option in command.get_arguments().filter(|arg| {
+            !arg.is_hide_set() && (arg.get_long().is_some() || arg.get_short().is_some())
+        }) {
+            visit(path, option);
+        }
+
+        for subcommand in command
+            .get_subcommands()
+            .filter(|command| !command.is_hide_set())
+        {
+            path.push(subcommand.get_name().to_string());
+            collect_public_options(subcommand, path, visit);
+            path.pop();
+        }
+    }
+
+    fn missing_public_option_help(command: &Command) -> Vec<String> {
+        let mut missing = Vec::new();
+
+        collect_public_options(command, &mut Vec::new(), &mut |path, option| {
+            if option_help_is_empty(option) {
+                let name = option
+                    .get_long()
+                    .map(|long| format!("--{long}"))
+                    .unwrap_or_else(|| {
+                        format!(
+                            "-{}",
+                            option
+                                .get_short()
+                                .expect("public option has a long or short flag")
+                        )
+                    });
+                let command_path = if path.is_empty() {
+                    "<root>".to_string()
+                } else {
+                    path.join(" ")
+                };
+                missing.push(format!("{command_path} {name}"));
+            }
+        });
+
+        missing
+    }
+
+    fn option_help_is_empty(option: &clap::Arg) -> bool {
+        option
+            .get_help()
+            .map(|help| help.to_string().trim().is_empty())
+            .unwrap_or(true)
     }
 
     fn example_line_count(long_about: &str) -> usize {

@@ -134,127 +134,127 @@ pub struct AddTickerArgs {
 /// Shared configuration flags for create and edit.
 #[derive(Debug, Args)]
 pub struct WatchlistConfigFlags {
-    /// Comma-separated ticker symbols.
+    /// Comma-separated ticker symbols to include; leave empty for the API default universe.
     #[arg(long, default_value = "")]
     pub tickers: String,
 
-    /// Minimum volume filter.
+    /// Minimum share volume threshold for trades in the watchlist.
     #[arg(long, default_value = "0")]
     pub min_volume: i64,
 
-    /// Maximum volume filter.
+    /// Maximum share volume threshold for trades in the watchlist.
     #[arg(long, default_value = "2000000000")]
     pub max_volume: i64,
 
-    /// Minimum dollars filter.
+    /// Minimum trade dollar value threshold.
     #[arg(long, default_value = "0.0")]
     pub min_dollars: f64,
 
-    /// Maximum dollars filter.
+    /// Maximum trade dollar value threshold.
     #[arg(long, default_value = "30000000000.0")]
     pub max_dollars: f64,
 
-    /// Minimum price filter.
+    /// Minimum trade price threshold.
     #[arg(long, default_value = "0.0")]
     pub min_price: f64,
 
-    /// Maximum price filter.
+    /// Maximum trade price threshold.
     #[arg(long, default_value = "100000.0")]
     pub max_price: f64,
 
-    /// Minimum VCD filter.
+    /// Minimum volume-concentration delta score threshold.
     #[arg(long, default_value = "0.0")]
     pub min_vcd: f64,
 
-    /// Sector/industry filter.
+    /// Sector or industry text filter; leave empty to include all sectors.
     #[arg(long, default_value = "")]
     pub sector_industry: String,
 
-    /// Security type (-1=all, 1=stocks, 26=ETFs, 4=REITs).
+    /// Security type code: -1 all, 1 stocks, 26 ETFs, 4 REITs.
     #[arg(long, default_value = "-1")]
     pub security_type: i64,
 
-    /// Minimum relative size (0/5/10/25/50/100).
+    /// Minimum relative-size bucket, such as 0, 5, 10, 25, 50, or 100.
     #[arg(long, default_value = "0")]
     pub min_relative_size: i64,
 
-    /// Maximum trade rank (-1/1/3/5/10/25/50/100).
+    /// Maximum trade-rank bucket; lower ranks are more significant and -1 disables the filter.
     #[arg(long, default_value = "-1")]
     pub max_trade_rank: i64,
 
-    /// Include normal prints.
+    /// Include normal prints; pass false to exclude them, omitted uses the default true.
     #[arg(long, default_value = "true")]
     pub normal_prints: bool,
 
-    /// Include signature prints.
+    /// Include signature prints; pass false to exclude them, omitted uses the default true.
     #[arg(long, default_value = "true")]
     pub signature_prints: bool,
 
-    /// Include late prints.
+    /// Include late prints; pass false to exclude them, omitted uses the default true.
     #[arg(long, default_value = "true")]
     pub late_prints: bool,
 
-    /// Include timely prints.
+    /// Include timely prints; pass false to exclude them, omitted uses the default true.
     #[arg(long, default_value = "true")]
     pub timely_prints: bool,
 
-    /// Include dark pool trades.
+    /// Include dark-pool trades; pass false to exclude them, omitted uses the default true.
     #[arg(long, default_value = "true")]
     pub dark_pools: bool,
 
-    /// Include lit exchange trades.
+    /// Include lit-exchange trades; pass false to exclude them, omitted uses the default true.
     #[arg(long, default_value = "true")]
     pub lit_exchanges: bool,
 
-    /// Include sweep trades.
+    /// Include sweep trades; pass false to exclude them, omitted uses the default true.
     #[arg(long, default_value = "true")]
     pub sweeps: bool,
 
-    /// Include block trades.
+    /// Include block trades; pass false to exclude them, omitted uses the default true.
     #[arg(long, default_value = "true")]
     pub blocks: bool,
 
-    /// Include premarket trades.
+    /// Include premarket trades; pass false to exclude them, omitted uses the default true.
     #[arg(long, default_value = "true")]
     pub premarket_trades: bool,
 
-    /// Include regular trading hours trades.
+    /// Include regular trading-hours trades; pass false to exclude them, omitted uses the default true.
     #[arg(long, default_value = "true")]
     pub rth_trades: bool,
 
-    /// Include after-hours trades.
+    /// Include after-hours trades; pass false to exclude them, omitted uses the default true.
     #[arg(long, default_value = "true")]
     pub ah_trades: bool,
 
-    /// Include opening trades.
+    /// Include opening trades; pass false to exclude them, omitted uses the default true.
     #[arg(long, default_value = "true")]
     pub opening_trades: bool,
 
-    /// Include closing trades.
+    /// Include closing trades; pass false to exclude them, omitted uses the default true.
     #[arg(long, default_value = "true")]
     pub closing_trades: bool,
 
-    /// Include phantom trades.
+    /// Include phantom trades; pass false to exclude them, omitted uses the default true.
     #[arg(long, default_value = "true")]
     pub phantom_trades: bool,
 
-    /// Include offsetting trades.
+    /// Include offsetting trades; pass false to exclude them, omitted uses the default true.
     #[arg(long, default_value = "true")]
     pub offsetting_trades: bool,
 
-    /// RSI overbought daily (-1=ignore, 0=no, 1=yes).
+    /// Daily RSI overbought filter: -1 ignore, 0 require no, 1 require yes.
     #[arg(long, default_value = "-1")]
     pub rsi_overbought_daily: i64,
 
-    /// RSI overbought hourly (-1=ignore, 0=no, 1=yes).
+    /// Hourly RSI overbought filter: -1 ignore, 0 require no, 1 require yes.
     #[arg(long, default_value = "-1")]
     pub rsi_overbought_hourly: i64,
 
-    /// RSI oversold daily (-1=ignore, 0=no, 1=yes).
+    /// Daily RSI oversold filter: -1 ignore, 0 require no, 1 require yes.
     #[arg(long, default_value = "-1")]
     pub rsi_oversold_daily: i64,
 
-    /// RSI oversold hourly (-1=ignore, 0=no, 1=yes).
+    /// Hourly RSI oversold filter: -1 ignore, 0 require no, 1 require yes.
     #[arg(long, default_value = "-1")]
     pub rsi_oversold_hourly: i64,
 }
