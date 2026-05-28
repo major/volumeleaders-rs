@@ -34,6 +34,19 @@ fn schema_command_emits_machine_readable_contract() {
                 command["preferred_path"] == "doctor" && command["auth_required"] == false
             })
     );
+    let doctor = schema["commands"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|command| command["preferred_path"] == "doctor")
+        .unwrap();
+    assert!(doctor["args"].as_array().unwrap().iter().any(|arg| {
+        arg["name"] == "live"
+            && arg["long"] == "live"
+            && arg["kind"] == "flag"
+            && arg["parser"] == "enum"
+            && arg["possible_values"] == serde_json::json!(["true", "false"])
+    }));
     assert!(
         schema["commands"]
             .as_array()

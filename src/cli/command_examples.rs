@@ -54,8 +54,8 @@ const DOCTOR_EXAMPLES: &[CommandExample] = &[
         "volumeleaders-agent doctor"
     ),
     example!(
-        "Inspect only the auth status field",
-        "volumeleaders-agent doctor | jq '.auth.status'"
+        "Run a live authenticated connectivity check",
+        "volumeleaders-agent doctor --live"
     ),
 ];
 

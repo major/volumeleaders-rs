@@ -30,8 +30,8 @@ pub mod schema;
 use clap::Parser;
 
 pub use args::{
-    AlertArgs, Cli, Commands, CommandsArgs, CompletionsArgs, FieldsArgs, HelpArgs, HelpTopic,
-    MarketArgs, ReportArgs, TradeArgs, VolumeArgs, WatchlistArgs,
+    AlertArgs, Cli, Commands, CommandsArgs, CompletionsArgs, DoctorArgs, FieldsArgs, HelpArgs,
+    HelpTopic, MarketArgs, ReportArgs, TradeArgs, VolumeArgs, WatchlistArgs,
 };
 
 /// Parses CLI arguments, routes to the appropriate command handler, and returns
@@ -51,7 +51,7 @@ pub async fn run() -> i32 {
         Commands::Market(args) => commands::market::handle(args).await,
         Commands::Alert(args) => commands::alert::handle(args).await,
         Commands::Watchlist(args) => commands::watchlist::handle(args).await,
-        Commands::Doctor => doctor::handle(),
+        Commands::Doctor(args) => doctor::handle(args).await,
         Commands::Commands(args) => command_list::handle(args),
         Commands::Fields(args) => commands::fields::handle(args),
         Commands::Help(args) => help::handle(args),

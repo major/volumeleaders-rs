@@ -43,7 +43,7 @@ volumeleaders-rs/
 | CLI command discovery | `src/cli/command_list.rs` | Plain-text leaf command listings generated from the live clap tree |
 | CLI field discovery | `src/cli/field_metadata.rs`, `src/cli/commands/fields.rs` | Static output field metadata for commands that support `--fields` |
 | CLI runtime errors | `src/cli/error.rs` | Structured JSON stderr envelope and semantic exit-code mapping |
-| CLI doctor | `src/cli/doctor.rs` | Local auth and environment readiness diagnostics without default network calls |
+| CLI doctor | `src/cli/doctor.rs` | Local auth and environment readiness diagnostics, plus explicit `--live` connectivity checks |
 | CLI help topics | `src/cli/help.rs` | Built-in operational help topics for auth, environment, exit codes, discovery, and examples |
 | CLI schema | `src/cli/schema.rs` | Machine-readable command metadata generated from the live clap tree, including mutating safety metadata, semantic arguments, and structured command examples |
 | CLI drift tests | `src/cli/args.rs`, `src/cli/command_list.rs`, `src/cli/schema.rs` | Tests that keep clap leaves, command discovery, schema metadata, aliases, global flags, option descriptions, and help examples aligned |
@@ -77,7 +77,7 @@ volumeleaders-rs/
 - Top-level aliases `trades`, `dashboard`, and `levels` execute canonical `trade list`, `trade dashboard`, and `trade levels`; schema metadata keeps canonical preferred paths, marks alias entries with `is_alias` and `alias_for`, and lists aliases on canonical entries.
 - `volumeleaders-agent commands` emits a plain-text leaf command list, with `--grouped` for grouped descriptions, generated from the live clap tree.
 - `volumeleaders-agent fields <command path>` emits compact JSON field metadata for commands that support `--fields`; it is local discovery and must not require live API rows.
-- `volumeleaders-agent doctor` emits local browser-cookie readiness diagnostics as compact JSON and skips live network checks by default.
+- `volumeleaders-agent doctor` emits local browser-cookie readiness diagnostics as compact JSON and skips live network checks by default; `volumeleaders-agent doctor --live` adds a low-cost authenticated connectivity check.
 - `volumeleaders-agent help <topic>` emits plain-text operational guidance for agent automation, auth, environment, exit codes, discovery, and examples. Root and command clap help remain available through `--help`.
 - Every visible leaf command includes a concise `about` and command-specific `long_about` with an `Examples:` section containing at least two `volumeleaders-agent` invocations.
 - `volumeleaders-agent schema` emits machine-readable discovery metadata from `Cli::command()` so command paths, help text, structured examples, aliases, auth requirements, mutating and dry-run safety metadata, stable argument names, semantic argument hints, and boolean flag versus option shape cannot drift from clap definitions.

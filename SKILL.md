@@ -8,6 +8,7 @@ Run these commands before guessing command shapes:
 
 ```bash
 volumeleaders-agent doctor
+volumeleaders-agent doctor --live
 volumeleaders-agent schema
 volumeleaders-agent commands
 volumeleaders-agent commands --grouped
@@ -21,7 +22,7 @@ volumeleaders-agent help examples
 volumeleaders-agent trade list --help
 ```
 
-- `doctor` is local-only by default and reports browser-cookie readiness as compact JSON.
+- `doctor` is local-only by default and reports browser-cookie readiness as compact JSON. Use `doctor --live` for a low-cost authenticated connectivity check.
 - `schema` is the authoritative machine-readable command contract generated from the live clap tree. Command entries include `path`, `preferred_path`, `is_alias`, optional `alias_for`, `aliases`, auth requirements, mutating and dry-run safety metadata, help text, argument metadata with stable `name` identifiers and semantic types, boolean flag versus value-taking option shape, and structured `examples` arrays.
 - `commands` is the lightweight plain-text leaf command list. Use `--grouped` for descriptions.
 - `fields <command path>` emits exact case-sensitive output field names, descriptions, and type hints for commands that support `--fields` without requiring live rows.
@@ -36,7 +37,7 @@ volumeleaders-agent trade list --help
 - Runtime errors write one compact JSON object to stderr: `{"ok":false,"error":{"kind":"...","message":"..."}}`.
 - Diagnostic logs from `-v`, `-vv`, and `-vvv` go to stderr only. stdout must remain parseable command output.
 - Exit codes: `0` success, `2` usage error, `3` auth error, `4` HTTP transport error, `5` API error, `6` JSON parse or output transformation error, `7` strict empty result.
-- Commands that need live data require browser cookies. Local discovery commands (`doctor`, `schema`, `commands`, `fields`, `help`, `completions`) do not require live API access.
+- Commands that need live data require browser cookies. Local discovery commands (`doctor`, `schema`, `commands`, `fields`, `help`, `completions`) do not require live API access. `doctor --live` is the explicit exception for checking authenticated connectivity.
 
 ## Auth model
 
@@ -46,6 +47,7 @@ Use this recovery flow:
 
 ```bash
 volumeleaders-agent doctor
+volumeleaders-agent doctor --live
 volumeleaders-agent -vv doctor
 volumeleaders-agent help auth
 ```
@@ -95,7 +97,7 @@ Local discovery and setup:
 | Path | Description |
 |------|-------------|
 | `commands` | List available leaf command paths. |
-| `doctor` | Check local auth and environment readiness as JSON. |
+| `doctor` | Check local auth and environment readiness as JSON; add `--live` for authenticated connectivity. |
 | `fields` | Show output field metadata for commands that support `--fields`. |
 | `help` | Show built-in operational help topics. |
 | `schema` | Emit machine-readable command metadata as JSON. |
@@ -131,6 +133,7 @@ Auth recovery:
 
 ```bash
 volumeleaders-agent doctor
+volumeleaders-agent doctor --live
 volumeleaders-agent -vv doctor
 volumeleaders-agent help auth
 ```
