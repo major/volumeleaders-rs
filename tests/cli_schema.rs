@@ -196,6 +196,27 @@ fn schema_emits_semantic_argument_metadata() {
         None,
         None,
     );
+    assert_bool_arg(
+        commands,
+        &["alert", "create"],
+        "sweep",
+        "flag",
+        Some(serde_json::json!(["false"])),
+    );
+    assert_bool_arg(
+        commands,
+        &["watchlist", "create"],
+        "normal-prints",
+        "option",
+        Some(serde_json::json!(["true"])),
+    );
+    assert_bool_arg(
+        commands,
+        &["watchlist", "create"],
+        "offsetting-trades",
+        "option",
+        Some(serde_json::json!(["true"])),
+    );
     assert_semantic(commands, &["completions"], "shell", "enum", None, None);
 }
 
@@ -278,5 +299,32 @@ fn assert_semantic(
     }
     if let Some(separators) = separators {
         assert_eq!(arg["separators"], separators);
+    }
+}
+
+fn assert_bool_arg(
+    commands: &[Value],
+    path: &[&str],
+    name: &str,
+    kind: &str,
+    default: Option<Value>,
+) {
+    let command_path = path.iter().map(|part| part.to_string()).collect::<Vec<_>>();
+    let command = commands
+        .iter()
+        .find(|command| command["path"] == serde_json::json!(command_path))
+        .unwrap_or_else(|| panic!("missing command path {path:?}"));
+    let arg = command["args"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|arg| arg["name"] == name)
+        .unwrap_or_else(|| panic!("missing arg {name} for {path:?}"));
+
+    assert_eq!(arg["kind"], kind);
+    assert_eq!(arg["parser"], "bool");
+    assert_eq!(arg["semantic_type"], "boolean-filter");
+    if let Some(default) = default {
+        assert_eq!(arg["default"], default);
     }
 }

@@ -33,12 +33,12 @@ pub enum AlertCommand {
     Configs(ConfigsArgs),
     /// Create a new alert configuration.
     #[command(
-        long_about = "Create a new alert configuration with threshold filters.\n\nExamples:\n  volumeleaders-agent alert create --name LargeNVDA --tickers NVDA\n  volumeleaders-agent alert create --name BigTechSweeps --tickers AAPL,MSFT --trade-dollars-gte 1000000 --sweep true"
+        long_about = "Create a new alert configuration with threshold filters.\n\nExamples:\n  volumeleaders-agent alert create --name LargeNVDA --tickers NVDA\n  volumeleaders-agent alert create --name BigTechSweeps --tickers AAPL,MSFT --trade-dollars-gte 1000000 --sweep"
     )]
     Create(CreateArgs),
     /// Edit an existing alert configuration.
     #[command(
-        long_about = "Edit an existing alert configuration by key.\n\nExamples:\n  volumeleaders-agent alert edit --key 123 --name LargeNVDA\n  volumeleaders-agent alert edit --key 123 --tickers NVDA,AAPL --trade-dollars-gte 2000000 --dark-pool true"
+        long_about = "Edit an existing alert configuration by key.\n\nExamples:\n  volumeleaders-agent alert edit --key 123 --name LargeNVDA\n  volumeleaders-agent alert edit --key 123 --tickers NVDA,AAPL --trade-dollars-gte 2000000 --dark-pool"
     )]
     Edit(EditArgs),
     /// Delete an alert configuration.
@@ -577,6 +577,56 @@ mod tests {
 
         let result = Cli::try_parse_from(["volumeleaders-agent", "alert", "edit", "--key", "42"]);
         assert!(result.is_ok(), "edit with --key should succeed");
+    }
+
+    #[test]
+    fn create_accepts_bare_sweep_flag() {
+        let cli = Cli::try_parse_from([
+            "volumeleaders-agent",
+            "alert",
+            "create",
+            "--name",
+            "SweepAlert",
+            "--sweep",
+        ])
+        .expect("bare --sweep flag should parse");
+
+        assert!(matches!(
+            cli.command,
+            crate::cli::Commands::Alert(AlertArgs {
+                command: AlertCommand::Create(CreateArgs { sweep: true, .. }),
+            })
+        ));
+    }
+
+    #[test]
+    fn documented_big_tech_sweeps_example_parses() {
+        let cli = Cli::try_parse_from([
+            "volumeleaders-agent",
+            "alert",
+            "create",
+            "--name",
+            "BigTechSweeps",
+            "--tickers",
+            "AAPL,MSFT",
+            "--trade-dollars-gte",
+            "1000000",
+            "--sweep",
+        ])
+        .expect("documented BigTechSweeps example should parse");
+
+        assert!(matches!(
+            cli.command,
+            crate::cli::Commands::Alert(AlertArgs {
+                command: AlertCommand::Create(CreateArgs {
+                    name,
+                    tickers,
+                    trade_dollars_gte: 1_000_000,
+                    sweep: true,
+                    ..
+                }),
+            }) if name == "BigTechSweeps" && tickers == "AAPL,MSFT"
+        ));
     }
 
     #[test]

@@ -200,6 +200,7 @@ fn auth_required(path: &[String]) -> bool {
 
 fn arg_schema(arg: &Arg) -> ArgSchema {
     let name = arg_name(arg);
+    let parser = parser_name(&name, arg);
 
     ArgSchema {
         semantic_type: semantic_type(&name, arg),
@@ -212,7 +213,7 @@ fn arg_schema(arg: &Arg) -> ArgSchema {
         kind: arg_kind(arg),
         required: arg.is_required_set(),
         default: default_values(arg),
-        parser: parser_name(arg),
+        parser,
         possible_values: possible_values(arg),
         multi_value: multi_value(arg),
     }
@@ -271,6 +272,8 @@ fn is_boolean_filter_arg(name: &str, _arg: &Arg) -> bool {
     matches!(
         name,
         "dark-pools"
+            | "dark-pool"
+            | "sweep"
             | "sweeps"
             | "late-prints"
             | "sig-prints"
@@ -290,8 +293,11 @@ fn is_boolean_filter_arg(name: &str, _arg: &Arg) -> bool {
             | "closing"
             | "closing-trades"
             | "phantom"
+            | "phantom-print"
             | "phantom-trades"
             | "offsetting"
+            | "offsetting-print"
+            | "offsetting-trades"
             | "even-shared"
     )
 }
@@ -353,7 +359,13 @@ fn default_values(arg: &Arg) -> Option<Vec<String>> {
     (!values.is_empty()).then_some(values)
 }
 
-fn parser_name(arg: &Arg) -> String {
+fn parser_name(name: &str, arg: &Arg) -> String {
+    if (is_bool_value_parser(arg) && is_boolean_filter_arg(name, arg))
+        || is_bool_filter_flag(name, arg)
+    {
+        return "bool".to_string();
+    }
+
     if !possible_values(arg).is_empty() {
         return "enum".to_string();
     }
@@ -364,6 +376,19 @@ fn parser_name(arg: &Arg) -> String {
         _ => "string",
     }
     .to_string()
+}
+
+fn is_bool_value_parser(arg: &Arg) -> bool {
+    let values = possible_values(arg);
+    matches!(arg.get_action(), ArgAction::Set)
+        && values.len() == 2
+        && values.iter().any(|value| value == "true")
+        && values.iter().any(|value| value == "false")
+}
+
+fn is_bool_filter_flag(name: &str, arg: &Arg) -> bool {
+    matches!(arg.get_action(), ArgAction::SetTrue | ArgAction::SetFalse)
+        && is_boolean_filter_arg(name, arg)
 }
 
 fn possible_values(arg: &Arg) -> Vec<String> {
@@ -875,8 +900,8 @@ mod tests {
             .action(ArgAction::SetFalse);
         let count_flag = Arg::new("verbose").short('v').action(ArgAction::Count);
 
-        assert_eq!(parser_name(&false_flag), "bool");
-        assert_eq!(parser_name(&count_flag), "count");
+        assert_eq!(parser_name("dark-pool", &false_flag), "bool");
+        assert_eq!(parser_name("verbose", &count_flag), "count");
     }
 
     fn assert_arg_semantics(
