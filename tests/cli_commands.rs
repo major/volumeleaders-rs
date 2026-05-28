@@ -18,6 +18,7 @@ fn commands_outputs_flat_sorted_leaf_paths() {
     assert_eq!(lines, sorted);
     assert!(lines.contains(&"commands"));
     assert!(lines.contains(&"doctor"));
+    assert!(lines.contains(&"help"));
     assert!(lines.contains(&"schema"));
     assert!(lines.contains(&"trade list"));
     assert!(lines.contains(&"volume institutional"));
@@ -46,5 +47,11 @@ fn commands_grouped_outputs_groups_and_descriptions() {
         stdout
             .lines()
             .any(|line| line.starts_with("  institutional  ") && line.contains("volume"))
+    );
+    assert!(stdout.contains("help\n"));
+    assert!(
+        stdout
+            .lines()
+            .any(|line| line.starts_with("  help  ") && line.contains("operational help topics"))
     );
 }

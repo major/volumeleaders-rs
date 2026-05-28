@@ -53,11 +53,15 @@ Use `commands` for lightweight CLI discovery. It emits a sorted plain-text list 
 
 Use `doctor` for a safe local readiness check before running live data commands. It emits compact JSON with the CLI version, browser-cookie auth status, and live-connectivity status without making a network request by default.
 
+Use `help <topic>` for built-in operational guidance when README access is unavailable. Topics are `auth`, `environment`, `exit-codes`, `schema`, and `examples`; regular clap help remains available with `--help` on the root or any subcommand.
+
 ```bash
 cargo run -- --help
 cargo run -- commands
 cargo run -- commands --grouped
 cargo run -- doctor
+cargo run -- help auth
+cargo run -- help exit-codes
 cargo run -- schema
 cargo run -- report list
 cargo run -- trade list
@@ -69,6 +73,7 @@ After building or installing, run the binary as `volumeleaders-agent`:
 ```bash
 volumeleaders-agent doctor
 volumeleaders-agent commands
+volumeleaders-agent help examples
 volumeleaders-agent report list
 volumeleaders-agent schema | jq '.commands[] | select(.preferred_path == "trade list")'
 volumeleaders-agent trade list
