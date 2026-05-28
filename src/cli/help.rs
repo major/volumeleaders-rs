@@ -63,7 +63,7 @@ Semantic exit codes are stable for automation:
 4  HTTP transport error
 5  VolumeLeaders API error response
 6  JSON parse or output transformation error
-7  reserved for strict empty-result handling
+7  strict empty-result handling requested with --strict-empty
 
 Runtime errors are written to stderr as one compact JSON object:
 {"ok":false,"error":{"kind":"auth_error","message":"browser cookies are missing or expired"}}
@@ -73,6 +73,7 @@ Recovery guidance:
 - Exit 3: run `doctor`, then log in to VolumeLeaders again if needed.
 - Exit 4 or 5: retry later or narrow the request.
 - Exit 6: check field names and JSON-processing pipeline assumptions.
+- Exit 7: check the ticker, widen the date range, relax filters, or accept that no configured rows may be valid account state.
 "#;
 
 const SCHEMA_HELP: &str = r#"schema
@@ -102,13 +103,13 @@ volumeleaders-agent schema | jq '.commands[] | select(.preferred_path == "trade 
 
 volumeleaders-agent report list
 volumeleaders-agent report dark-pool-sweeps
-volumeleaders-agent trade list --ticker NVDA
-volumeleaders-agent trade list --ticker NVDA --from 2026-05-01 --to 2026-05-27 --fields ticker,date,price,volume,venue
-volumeleaders-agent trade dashboard --ticker NVDA
+volumeleaders-agent trade list NVDA
+volumeleaders-agent --strict-empty trade list NVDA --start-date 2026-05-01 --end-date 2026-05-27 --fields ticker,date,price,volume,venue
+volumeleaders-agent trade dashboard NVDA
 
-volumeleaders-agent volume institutional --ticker AAPL
-volumeleaders-agent volume institutional --from 2026-05-01 --to 2026-05-27 --limit 50
-volumeleaders-agent market earnings --ticker AAPL
+volumeleaders-agent volume institutional --date 2026-05-27 --tickers AAPL
+volumeleaders-agent volume institutional --date 2026-05-27 --limit 50
+volumeleaders-agent market earnings --start-date 2026-05-01 --end-date 2026-05-27
 volumeleaders-agent watchlist tickers --watchlist-key 123
 "#;
 
@@ -127,7 +128,7 @@ mod tests {
         assert!(topic_text(HelpTopic::Environment).contains("browser profiles"));
         assert!(topic_text(HelpTopic::ExitCodes).contains("3  auth error"));
         assert!(topic_text(HelpTopic::Schema).contains("commands --grouped"));
-        assert!(topic_text(HelpTopic::Examples).contains("trade list --ticker NVDA"));
+        assert!(topic_text(HelpTopic::Examples).contains("--strict-empty trade list NVDA"));
     }
 
     #[test]

@@ -105,6 +105,11 @@ pub fn json_error(message: impl AsRef<str>) -> i32 {
     render_error(CliErrorKind::JsonError, message)
 }
 
+/// Writes a structured empty-result error and returns exit code 7.
+pub fn empty_result(message: impl AsRef<str>) -> i32 {
+    render_error(CliErrorKind::EmptyResult, message)
+}
+
 /// Writes a structured client error and returns its semantic exit code.
 pub fn client_error(err: &ClientError) -> i32 {
     render_error(client_error_kind(err), err.to_string())

@@ -52,4 +52,13 @@ fn schema_command_emits_machine_readable_contract() {
                 command["preferred_path"] == "help" && command["auth_required"] == false
             })
     );
+    let trade_list = schema["commands"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|command| command["preferred_path"] == "trade list")
+        .unwrap();
+    assert!(trade_list["args"].as_array().unwrap().iter().any(|arg| {
+        arg["long"] == "strict-empty" && arg["kind"] == "flag" && arg["parser"] == "enum"
+    }));
 }

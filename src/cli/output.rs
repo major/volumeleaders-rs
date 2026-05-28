@@ -1,10 +1,68 @@
 use std::io::{self, Write};
+use std::sync::{LazyLock, Mutex};
 
 use serde::Serialize;
 use serde_json::Value;
 
 use crate::cli::common::trade_transforms::{TradeRecordKind, transformed_trade_values};
-use crate::cli::error::{json_error, usage_error};
+use crate::cli::error::{empty_result, json_error, usage_error};
+
+static STRICT_EMPTY_CONTEXT: LazyLock<Mutex<Option<EmptyResultContext>>> =
+    LazyLock::new(|| Mutex::new(None));
+
+/// Describes how to explain an empty array for a specific command.
+#[derive(Clone, Debug)]
+pub struct EmptyResultContext {
+    command: String,
+    suggestion: &'static str,
+}
+
+impl EmptyResultContext {
+    /// Creates command-aware empty-result guidance.
+    #[must_use]
+    pub fn new(command: impl Into<String>, suggestion: &'static str) -> Self {
+        Self {
+            command: command.into(),
+            suggestion,
+        }
+    }
+
+    fn for_command(command: impl Into<String>) -> Self {
+        let command = command.into();
+        let suggestion = empty_result_suggestion(&command);
+        Self::new(command, suggestion)
+    }
+
+    fn message(&self) -> String {
+        format!("{} returned no rows; {}", self.command, self.suggestion)
+    }
+}
+
+/// Configures strict empty-result handling for record-array output.
+pub fn configure_strict_empty(enabled: bool, command: Option<String>) {
+    let context = enabled
+        .then(|| EmptyResultContext::for_command(command.unwrap_or_else(|| "command".to_string())));
+    set_strict_empty_context(context);
+}
+
+/// Infers the command path from raw CLI arguments.
+pub fn strict_empty_command_from_args(args: impl IntoIterator<Item = String>) -> Option<String> {
+    let mut words = args
+        .into_iter()
+        .filter(|arg| !arg.starts_with('-'))
+        .take(2)
+        .collect::<Vec<_>>();
+
+    if words.is_empty() {
+        return None;
+    }
+
+    if !is_group_command(&words[0]) || words.len() == 1 {
+        words.truncate(1);
+    }
+
+    Some(words.join(" "))
+}
 
 /// Writes `value` as compact JSON to stdout, newline-terminated.
 pub fn print_json<T: Serialize>(value: &T) -> io::Result<()> {
@@ -59,6 +117,7 @@ pub fn print_record_values(
     fields: Option<&str>,
     all_fields: bool,
 ) -> io::Result<()> {
+    strict_empty_error_if_needed(records.is_empty())?;
     write_record_values(
         io::stdout().lock(),
         records,
@@ -76,6 +135,7 @@ pub fn print_transformed_record_values<T: Serialize>(
     fields: Option<&str>,
     all_fields: bool,
 ) -> io::Result<()> {
+    strict_empty_error_if_needed(records.is_empty())?;
     transformed_trade_values(records, kind)
         .map_err(|err| io::Error::new(io::ErrorKind::InvalidData, err))
         .and_then(|values| print_record_values(&values, compact_headers, fields, all_fields))
@@ -89,6 +149,7 @@ pub(crate) fn write_record_values<W: Write>(
     fields: Option<&str>,
     all_fields: bool,
 ) -> io::Result<()> {
+    strict_empty_error_if_needed(records.is_empty())?;
     let custom_fields = selected_fields(fields);
     let raw_fields_requested =
         fields.is_some_and(|fields| fields.trim().eq_ignore_ascii_case("all"));
@@ -124,6 +185,7 @@ pub fn print_records<T: Serialize>(
     fields: Option<&str>,
     all_fields: bool,
 ) -> io::Result<()> {
+    strict_empty_error_if_needed(records.is_empty())?;
     let custom_fields = selected_fields(fields);
     let raw_fields_requested =
         fields.is_some_and(|fields| fields.trim().eq_ignore_ascii_case("all"));
@@ -236,10 +298,60 @@ pub fn print_result<T: Serialize>(value: &T) -> io::Result<()> {
 pub fn finish_output(result: io::Result<()>) -> i32 {
     match result {
         Ok(()) => 0,
+        Err(err) if err.kind() == io::ErrorKind::NotFound => empty_result(err.to_string()),
         Err(err) if err.kind() == io::ErrorKind::InvalidInput => {
             usage_error(format!("output error: {err}"))
         }
         Err(err) => json_error(format!("output error: {err}")),
+    }
+}
+
+fn strict_empty_error_if_needed(records_empty: bool) -> io::Result<()> {
+    if !records_empty {
+        return Ok(());
+    }
+
+    let context = strict_empty_context();
+    if let Some(context) = context {
+        return Err(io::Error::new(io::ErrorKind::NotFound, context.message()));
+    }
+
+    Ok(())
+}
+
+fn set_strict_empty_context(context: Option<EmptyResultContext>) {
+    *STRICT_EMPTY_CONTEXT
+        .lock()
+        .expect("strict empty context lock poisoned") = context;
+}
+
+fn strict_empty_context() -> Option<EmptyResultContext> {
+    STRICT_EMPTY_CONTEXT
+        .lock()
+        .expect("strict empty context lock poisoned")
+        .clone()
+}
+
+fn is_group_command(command: &str) -> bool {
+    matches!(
+        command,
+        "alert" | "market" | "report" | "trade" | "volume" | "watchlist"
+    )
+}
+
+fn empty_result_suggestion(command: &str) -> &'static str {
+    if command.starts_with("trade ") {
+        "try checking the ticker or widening the date range"
+    } else if command.starts_with("report ") {
+        "try a broader report, longer lookback, or fewer filters"
+    } else if command.starts_with("volume ") || command == "market earnings" {
+        "try a different date range or fewer ticker filters"
+    } else if command == "alert configs" {
+        "no alert configurations may be valid account state"
+    } else if command.starts_with("watchlist ") {
+        "no watchlist rows may be valid account state"
+    } else {
+        "try widening filters or removing optional constraints"
     }
 }
 
@@ -254,11 +366,13 @@ fn write_json<W: Write, T: Serialize>(writer: &mut W, value: &T) -> io::Result<(
 mod tests {
     use serde::Serialize;
 
-    use crate::cli::error::{EXIT_JSON_ERROR, EXIT_USAGE_ERROR};
+    use crate::cli::common::trade_transforms::TradeRecordKind;
+    use crate::cli::error::{EXIT_EMPTY_RESULT, EXIT_JSON_ERROR, EXIT_USAGE_ERROR};
 
     use super::{
-        finish_output, print_records, records_to_values, selected_fields, write_json,
-        write_record_values,
+        configure_strict_empty, empty_result_suggestion, finish_output, print_record_values,
+        print_records, print_transformed_record_values, records_to_values, selected_fields,
+        set_strict_empty_context, strict_empty_command_from_args, write_json, write_record_values,
     };
 
     #[derive(Debug, Serialize)]
@@ -338,6 +452,7 @@ mod tests {
 
     #[test]
     fn print_records_rejects_unknown_custom_fields() {
+        set_strict_empty_context(None);
         let records = sample_records();
         let err = print_records(&records, &["symbol"], Some("ticker"), false).unwrap_err();
 
@@ -348,6 +463,7 @@ mod tests {
 
     #[test]
     fn write_record_values_outputs_custom_field() {
+        set_strict_empty_context(None);
         let records = sample_records();
         let values: Vec<serde_json::Value> = records
             .iter()
@@ -377,6 +493,7 @@ mod tests {
 
     #[test]
     fn write_record_values_rejects_unknown_custom_fields() {
+        set_strict_empty_context(None);
         let records = sample_records();
         let values: Vec<serde_json::Value> = records
             .iter()
@@ -400,6 +517,7 @@ mod tests {
 
     #[test]
     fn write_record_values_outputs_raw_fields_for_all_sentinel() {
+        set_strict_empty_context(None);
         let records = sample_records();
         let values: Vec<serde_json::Value> = records
             .iter()
@@ -419,6 +537,13 @@ mod tests {
         assert_eq!(finish_output(Ok(())), 0);
         assert_eq!(
             finish_output(Err(std::io::Error::new(
+                std::io::ErrorKind::NotFound,
+                "trade list returned no rows; try widening filters"
+            ))),
+            EXIT_EMPTY_RESULT
+        );
+        assert_eq!(
+            finish_output(Err(std::io::Error::new(
                 std::io::ErrorKind::InvalidInput,
                 "unknown output field"
             ))),
@@ -428,5 +553,116 @@ mod tests {
             finish_output(Err(std::io::Error::other("broken pipe"))),
             EXIT_JSON_ERROR
         );
+    }
+
+    #[test]
+    fn print_records_maps_strict_empty_to_sentinel_error() {
+        let records: Vec<TestRecord> = Vec::new();
+        configure_strict_empty(true, Some("trade list".to_string()));
+
+        let err = print_records(&records, &["symbol"], None, false).unwrap_err();
+
+        assert_eq!(err.kind(), std::io::ErrorKind::NotFound);
+        assert_eq!(
+            err.to_string(),
+            "trade list returned no rows; try checking the ticker or widening the date range"
+        );
+    }
+
+    #[test]
+    fn print_records_allows_empty_without_strict_flag() {
+        let records: Vec<TestRecord> = Vec::new();
+        configure_strict_empty(false, Some("trade list".to_string()));
+
+        assert!(print_records(&records, &["symbol"], None, false).is_ok());
+    }
+
+    #[test]
+    fn print_records_writes_non_empty_records_with_strict_flag() {
+        let records = sample_records();
+        configure_strict_empty(true, Some("trade list".to_string()));
+
+        assert!(print_records(&records, &["symbol"], None, false).is_ok());
+    }
+
+    #[test]
+    fn write_record_values_maps_strict_empty_to_sentinel_error() {
+        let records = Vec::new();
+        let mut buf = Vec::new();
+        configure_strict_empty(true, Some("watchlist configs".to_string()));
+
+        let err =
+            write_record_values(&mut buf, &records, &["Name"], Some("all"), false).unwrap_err();
+
+        assert_eq!(err.kind(), std::io::ErrorKind::NotFound);
+        assert!(err.to_string().contains("valid account state"));
+    }
+
+    #[test]
+    fn print_record_values_maps_strict_empty_to_sentinel_error() {
+        configure_strict_empty(true, Some("alert configs".to_string()));
+
+        let err = print_record_values(&[], &["Name"], None, false).unwrap_err();
+
+        assert_eq!(err.kind(), std::io::ErrorKind::NotFound);
+        assert!(err.to_string().contains("valid account state"));
+    }
+
+    #[test]
+    fn print_transformed_record_values_maps_strict_empty_to_sentinel_error() {
+        let records: Vec<TestRecord> = Vec::new();
+        configure_strict_empty(true, Some("report dark-pool-sweeps".to_string()));
+
+        let err = print_transformed_record_values(
+            &records,
+            TradeRecordKind::Trade,
+            &["Ticker"],
+            None,
+            false,
+        )
+        .unwrap_err();
+
+        assert_eq!(err.kind(), std::io::ErrorKind::NotFound);
+        assert!(err.to_string().contains("broader report"));
+    }
+
+    #[test]
+    fn strict_empty_command_from_args_uses_leaf_path_when_available() {
+        let command = strict_empty_command_from_args([
+            "--strict-empty".to_string(),
+            "trade".to_string(),
+            "list".to_string(),
+            "NVDA".to_string(),
+        ]);
+
+        assert_eq!(command.as_deref(), Some("trade list"));
+    }
+
+    #[test]
+    fn strict_empty_command_from_args_uses_single_local_command() {
+        let command = strict_empty_command_from_args([
+            "commands".to_string(),
+            "--strict-empty".to_string(),
+            "--grouped".to_string(),
+        ]);
+
+        assert_eq!(command.as_deref(), Some("commands"));
+    }
+
+    #[test]
+    fn strict_empty_command_from_args_returns_none_without_command_words() {
+        let command = strict_empty_command_from_args(["--strict-empty".to_string()]);
+
+        assert_eq!(command, None);
+    }
+
+    #[test]
+    fn empty_result_suggestions_are_command_aware() {
+        assert!(empty_result_suggestion("report top-100-rank").contains("broader report"));
+        assert!(empty_result_suggestion("volume institutional").contains("different date"));
+        assert!(empty_result_suggestion("market earnings").contains("different date"));
+        assert!(empty_result_suggestion("alert configs").contains("valid account state"));
+        assert!(empty_result_suggestion("watchlist tickers").contains("valid account state"));
+        assert!(empty_result_suggestion("command").contains("widening filters"));
     }
 }

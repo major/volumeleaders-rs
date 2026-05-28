@@ -45,7 +45,9 @@ GitHub releases also provide cargo-dist archives and shell or PowerShell install
 
 The CLI reads browser cookies automatically. If auth fails, log in to VolumeLeaders in the browser and retry. Command output goes to stdout as compact JSON by default. Pipe through `jq` for pretty-printed output. Runtime errors are written to stderr as one compact JSON line such as `{"ok":false,"error":{"kind":"auth_error","message":"browser cookies are missing or expired"}}`.
 
-Semantic exit codes are stable for automation: `0` means success, `2` is clap usage or argument validation, `3` is browser auth failure, `4` is HTTP transport failure, `5` is a VolumeLeaders API error response, `6` is JSON parsing or output transformation failure, and `7` is reserved for strict empty-result handling.
+Semantic exit codes are stable for automation: `0` means success, `2` is clap usage or argument validation, `3` is browser auth failure, `4` is HTTP transport failure, `5` is a VolumeLeaders API error response, `6` is JSON parsing or output transformation failure, and `7` is strict empty-result handling.
+
+Use global `--strict-empty` when an empty record array should fail automation instead of returning `[]` on stdout. Data commands that would emit an empty array return exit code `7` and write a structured `empty_result` error to stderr with command-specific recovery guidance. Object outputs, discovery commands, help topics, completions, and local diagnostics are not treated as empty arrays.
 
 Use `schema` for machine-readable CLI discovery. It emits compact JSON generated from the live clap command tree with the binary version, browser-cookie auth model, leaf command paths, help text, aliases, auth requirements, and argument metadata.
 
@@ -65,6 +67,7 @@ cargo run -- doctor
 cargo run -- help auth
 cargo run -- help exit-codes
 cargo run -- schema
+cargo run -- --strict-empty trade list NVDA
 cargo run -- report list
 cargo run -- trade list
 cargo run -- trade list --help
