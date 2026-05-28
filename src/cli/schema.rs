@@ -476,7 +476,14 @@ mod tests {
         assert_eq!(topic_arg["parser"], "enum");
         assert_eq!(
             topic_arg["possible_values"],
-            serde_json::json!(["auth", "environment", "exit-codes", "schema", "examples"])
+            serde_json::json!([
+                "agent",
+                "auth",
+                "environment",
+                "exit-codes",
+                "schema",
+                "examples"
+            ])
         );
     }
 

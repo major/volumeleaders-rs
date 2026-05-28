@@ -12,6 +12,7 @@ pub fn handle(args: &HelpArgs) -> i32 {
 
 fn topic_text(topic: HelpTopic) -> &'static str {
     match topic {
+        HelpTopic::Agent => AGENT_HELP,
         HelpTopic::Auth => AUTH_HELP,
         HelpTopic::Environment => ENVIRONMENT_HELP,
         HelpTopic::ExitCodes => EXIT_CODES_HELP,
@@ -24,6 +25,39 @@ fn write_text(output: &str) -> io::Result<()> {
     let mut stdout = io::stdout().lock();
     stdout.write_all(output.as_bytes())
 }
+
+const AGENT_HELP: &str = r#"agent
+
+Guidance for non-interactive automation and coding agents:
+
+1. Check local readiness first.
+   Run `volumeleaders-agent doctor` before authenticated data commands when automation needs to confirm browser-cookie readiness. `doctor` is local-only by default and does not make a network request.
+
+2. Discover commands before guessing.
+   Use `volumeleaders-agent commands` for a quick leaf-command list, `volumeleaders-agent commands --grouped` for grouped descriptions, and `volumeleaders-agent schema` for machine-readable command, alias, auth, help, and argument metadata.
+
+3. Keep streams separate.
+   Successful data commands write compact JSON to stdout. Discovery and help commands write plain text to stdout. Diagnostics, verbosity logs from `-v`/`-vv`/`-vvv`, and structured runtime errors go to stderr.
+
+4. Shape output deliberately.
+   Use command-specific `--fields` or `--all-fields` when available, and pipe stdout to external `jq` for inspection or transformations.
+
+5. Treat empty rows and mutations carefully.
+   Use global `--strict-empty` when an empty record array should fail automation with exit code 7. Avoid mutating alert and watchlist commands unless the user explicitly requested the mutation.
+
+6. Recover by exit code.
+   Exit 2 means usage or argument validation failed. Exit 3 means browser auth failed. Exit 4 means HTTP transport failed. Exit 5 means the API returned an error. Exit 6 means JSON parsing or output transformation failed. Exit 7 means `--strict-empty` rejected an empty record array.
+
+Copy-paste examples:
+
+volumeleaders-agent doctor
+volumeleaders-agent commands --grouped
+volumeleaders-agent schema | jq '.commands[] | select(.preferred_path == "trade list")'
+volumeleaders-agent help exit-codes
+volumeleaders-agent --strict-empty trades NVDA
+volumeleaders-agent trade list NVDA --start-date 2026-05-01 --end-date 2026-05-27 --fields Ticker,DateTime,Price,Dollars
+volumeleaders-agent volume institutional --date 2026-05-27 --tickers AAPL,NVDA --limit 50 | jq '.[] | {ticker: .Ticker, dollars: .Dollars}'
+"#;
 
 const AUTH_HELP: &str = r#"auth
 
@@ -133,6 +167,9 @@ mod tests {
     #[test]
     fn topics_include_expected_operational_content() {
         assert!(topic_text(HelpTopic::Auth).contains("doctor"));
+        assert!(topic_text(HelpTopic::Agent).contains("non-interactive automation"));
+        assert!(topic_text(HelpTopic::Agent).contains("commands --grouped"));
+        assert!(topic_text(HelpTopic::Agent).contains("--strict-empty trades NVDA"));
         assert!(topic_text(HelpTopic::Environment).contains("browser profiles"));
         assert!(topic_text(HelpTopic::ExitCodes).contains("3  auth error"));
         assert!(topic_text(HelpTopic::ExitCodes).contains("-vvv"));
@@ -146,6 +183,7 @@ mod tests {
     #[test]
     fn every_topic_has_trailing_newline() {
         for topic in [
+            HelpTopic::Agent,
             HelpTopic::Auth,
             HelpTopic::Environment,
             HelpTopic::ExitCodes,

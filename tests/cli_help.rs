@@ -16,6 +16,42 @@ fn help_with_valid_topic_succeeds() {
 }
 
 #[test]
+fn help_agent_topic_guides_automation() {
+    let output = Command::new(env!("CARGO_BIN_EXE_volumeleaders-agent"))
+        .args(["help", "agent"])
+        .output()
+        .unwrap();
+
+    assert!(output.status.success());
+    assert!(output.stderr.is_empty());
+
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    assert!(stdout.contains("non-interactive automation"));
+    assert!(stdout.contains("volumeleaders-agent doctor"));
+    assert!(stdout.contains("volumeleaders-agent commands --grouped"));
+    assert!(stdout.contains("volumeleaders-agent schema | jq"));
+    assert!(stdout.contains("stdout"));
+    assert!(stdout.contains("stderr"));
+    assert!(stdout.contains("--strict-empty"));
+    assert!(stdout.contains("mutating alert and watchlist commands"));
+}
+
+#[test]
+fn help_help_lists_agent_topic() {
+    let output = Command::new(env!("CARGO_BIN_EXE_volumeleaders-agent"))
+        .args(["help", "--help"])
+        .output()
+        .unwrap();
+
+    assert!(output.status.success());
+    assert!(output.stderr.is_empty());
+
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    assert!(stdout.contains("agent"));
+    assert!(stdout.contains("Automation guidance for non-interactive agents"));
+}
+
+#[test]
 fn help_exit_codes_topic_lists_semantic_codes() {
     let output = Command::new(env!("CARGO_BIN_EXE_volumeleaders-agent"))
         .args(["help", "exit-codes"])
@@ -36,7 +72,14 @@ fn help_exit_codes_topic_lists_semantic_codes() {
 
 #[test]
 fn all_help_topics_succeed() {
-    for topic in ["auth", "environment", "exit-codes", "schema", "examples"] {
+    for topic in [
+        "agent",
+        "auth",
+        "environment",
+        "exit-codes",
+        "schema",
+        "examples",
+    ] {
         let output = Command::new(env!("CARGO_BIN_EXE_volumeleaders-agent"))
             .args(["help", topic])
             .output()
