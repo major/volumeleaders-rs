@@ -13,7 +13,11 @@ fn doctor_command_emits_machine_readable_readiness_report() {
 
     let report: Value = serde_json::from_slice(&output.stdout).unwrap();
 
-    let expected_code = if report["ok"] == true { 0 } else { 3 };
+    let ok = report
+        .get("ok")
+        .and_then(Value::as_bool)
+        .expect("doctor report must include a boolean ok field");
+    let expected_code = if ok { 0 } else { 3 };
     assert_eq!(output.status.code(), Some(expected_code));
 
     assert_eq!(report["version"], env!("CARGO_PKG_VERSION"));
