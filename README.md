@@ -52,7 +52,9 @@ Use global `--strict-empty` when an empty record array should fail automation in
 
 Use global `-v`, `-vv`, or `-vvv` to enable info, debug, or trace diagnostics on stderr. Without `-v`, the CLI logs warnings and errors only. stdout remains reserved for command output so JSON pipelines stay clean, and sensitive browser-cookie material is never logged.
 
-Use `schema` for machine-readable CLI discovery. It emits compact JSON generated from the live clap command tree with the binary version, browser-cookie auth model, leaf command paths, help text, explicit alias metadata, auth requirements, argument metadata with stable names and semantic types, boolean flag versus value-taking option shape, and structured command examples.
+Use `schema` for machine-readable CLI discovery. It emits compact JSON generated from the live clap command tree with the binary version, browser-cookie auth model, leaf command paths, help text, explicit alias metadata, auth requirements, mutating and dry-run safety metadata, argument metadata with stable names and semantic types, boolean flag versus value-taking option shape, and structured command examples.
+
+Mutating alert and watchlist commands support `--dry-run` so automation can inspect the planned request without sending it. Delete commands also require `--yes` for live deletion; use `--dry-run` first to inspect the delete request.
 
 Use `fields <command path>` for machine-readable output field discovery before using `--fields`. It emits compact JSON with the preferred command path, exact case-sensitive field names accepted by `--fields`, short descriptions, and type hints. It does not need a live API response or non-empty result rows.
 
@@ -98,6 +100,8 @@ volumeleaders-agent fields trade list
 volumeleaders-agent fields volume institutional | jq '.fields[].name'
 volumeleaders-agent help agent
 volumeleaders-agent help examples
+volumeleaders-agent alert create --name BigTechSweeps --tickers AAPL,MSFT --dry-run
+volumeleaders-agent watchlist delete --key 123 --dry-run
 volumeleaders-agent -vv trade list NVDA
 volumeleaders-agent trades NVDA
 volumeleaders-agent dashboard NVDA

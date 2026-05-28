@@ -12,6 +12,8 @@ pub mod commands;
 pub mod common;
 /// Local environment and auth readiness diagnostics.
 pub mod doctor;
+/// Dry-run planning helpers for mutating commands.
+pub mod dry_run;
 /// Structured runtime error rendering and semantic exit-code mapping.
 pub mod error;
 /// Static output field metadata for commands that support field projection.

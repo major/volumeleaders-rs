@@ -11,6 +11,8 @@ use tracing::instrument;
 use crate::cli::WatchlistArgs;
 use crate::cli::commands::scaffold::run_client_command;
 use crate::cli::common::auth::{handle_api_error, make_client};
+use crate::cli::dry_run::print_dry_run_plan;
+use crate::cli::error::usage_error;
 use crate::cli::output::{finish_output, print_json, print_records};
 
 const DEFAULT_CONFIGS_FIELDS: [&str; 4] = ["SearchTemplateKey", "Name", "Tickers", "Criteria"];
@@ -37,22 +39,22 @@ pub enum WatchlistCommand {
     Tickers(TickersArgs),
     /// Create a new watchlist configuration.
     #[command(
-        long_about = "Create a new watchlist configuration with optional filters.\n\nExamples:\n  volumeleaders-agent watchlist create --name BigTech --tickers AAPL,NVDA\n  volumeleaders-agent watchlist create --name LiquidLargeCaps --min-volume 1000000 --min-dollars 5000000"
+        long_about = "Create a new watchlist configuration with optional filters.\n\nExamples:\n  volumeleaders-agent watchlist create --name BigTech --tickers AAPL,NVDA\n  volumeleaders-agent watchlist create --name LiquidLargeCaps --min-volume 1000000 --min-dollars 5000000\n  volumeleaders-agent watchlist create --name BigTech --tickers AAPL,NVDA --dry-run"
     )]
     Create(CreateArgs),
     /// Edit an existing watchlist configuration.
     #[command(
-        long_about = "Edit an existing watchlist configuration by key.\n\nExamples:\n  volumeleaders-agent watchlist edit --key 123 --name BigTech\n  volumeleaders-agent watchlist edit --key 123 --tickers AAPL,NVDA,MSFT --min-volume 1000000"
+        long_about = "Edit an existing watchlist configuration by key.\n\nExamples:\n  volumeleaders-agent watchlist edit --key 123 --name BigTech\n  volumeleaders-agent watchlist edit --key 123 --tickers AAPL,NVDA,MSFT --min-volume 1000000\n  volumeleaders-agent watchlist edit --key 123 --name BigTech --dry-run"
     )]
     Edit(EditArgs),
     /// Delete a watchlist configuration.
     #[command(
-        long_about = "Delete a watchlist configuration by key.\n\nExamples:\n  volumeleaders-agent watchlist delete --key 123\n  volumeleaders-agent watchlist delete --key 456"
+        long_about = "Delete a watchlist configuration by key. Live deletion requires --yes.\n\nExamples:\n  volumeleaders-agent watchlist delete --key 123 --dry-run\n  volumeleaders-agent watchlist delete --key 456 --yes"
     )]
     Delete(DeleteArgs),
     /// Add a ticker to an existing watchlist.
     #[command(
-        long_about = "Add a ticker to an existing watchlist.\n\nExamples:\n  volumeleaders-agent watchlist add-ticker --watchlist-key 123 --ticker NVDA\n  volumeleaders-agent watchlist add-ticker --watchlist-key 123 --ticker AAPL"
+        long_about = "Add a ticker to an existing watchlist.\n\nExamples:\n  volumeleaders-agent watchlist add-ticker --watchlist-key 123 --ticker NVDA\n  volumeleaders-agent watchlist add-ticker --watchlist-key 123 --ticker AAPL\n  volumeleaders-agent watchlist add-ticker --watchlist-key 123 --ticker NVDA --dry-run"
     )]
     AddTicker(AddTickerArgs),
 }
@@ -87,6 +89,10 @@ pub struct TickersArgs {
 #[allow(missing_docs)]
 #[derive(Debug, Args)]
 pub struct CreateArgs {
+    /// Print the watchlist create request as JSON without sending it.
+    #[arg(long)]
+    pub dry_run: bool,
+
     /// Watchlist name.
     #[arg(long)]
     pub name: String,
@@ -99,6 +105,10 @@ pub struct CreateArgs {
 #[allow(missing_docs)]
 #[derive(Debug, Args)]
 pub struct EditArgs {
+    /// Print the watchlist edit request as JSON without sending it.
+    #[arg(long)]
+    pub dry_run: bool,
+
     /// Watchlist key to edit.
     #[arg(long)]
     pub key: i64,
@@ -114,6 +124,14 @@ pub struct EditArgs {
 /// Arguments for `watchlist delete`.
 #[derive(Debug, Args)]
 pub struct DeleteArgs {
+    /// Print the watchlist delete request as JSON without sending it.
+    #[arg(long)]
+    pub dry_run: bool,
+
+    /// Confirm the live delete operation. Not required with --dry-run.
+    #[arg(long)]
+    pub yes: bool,
+
     /// Watchlist key to delete.
     #[arg(long)]
     pub key: i64,
@@ -122,6 +140,10 @@ pub struct DeleteArgs {
 /// Arguments for `watchlist add-ticker`.
 #[derive(Debug, Args)]
 pub struct AddTickerArgs {
+    /// Print the add-ticker request as JSON without sending it.
+    #[arg(long)]
+    pub dry_run: bool,
+
     /// Watchlist key to add the ticker to.
     #[arg(long)]
     pub watchlist_key: i64,
@@ -427,6 +449,10 @@ async fn execute_tickers(args: &TickersArgs) -> i32 {
 #[instrument(skip_all)]
 async fn execute_create(args: &CreateArgs) -> i32 {
     let request = build_config_request(0, &args.name, &args.config);
+    if args.dry_run {
+        return print_dry_run_plan("watchlist create", "create", request.fields());
+    }
+
     run_client_command(
         move |client| {
             Box::pin(async move {
@@ -444,6 +470,10 @@ async fn execute_edit(args: &EditArgs) -> i32 {
     let key = args.key;
     let name = args.name.as_deref().unwrap_or("");
     let request = build_config_request(key, name, &args.config);
+    if args.dry_run {
+        return print_dry_run_plan("watchlist edit", "edit", request.fields());
+    }
+
     run_client_command(
         move |client| {
             Box::pin(async move {
@@ -462,6 +492,15 @@ async fn execute_delete(args: &DeleteArgs) -> i32 {
     let request = DeleteWatchListRequest {
         watch_list_key: key,
     };
+    if args.dry_run {
+        return print_dry_run_plan("watchlist delete", "delete", &request);
+    }
+    if !args.yes {
+        return usage_error(
+            "watchlist delete requires --yes to confirm live deletion; use --dry-run to inspect the request",
+        );
+    }
+
     run_client_command(
         move |client| {
             Box::pin(async move {
@@ -480,6 +519,10 @@ async fn execute_add_ticker(args: &AddTickerArgs) -> i32 {
         watch_list_key: args.watchlist_key,
         ticker: args.ticker.clone(),
     };
+    if args.dry_run {
+        return print_dry_run_plan("watchlist add-ticker", "add-ticker", &request);
+    }
+
     run_client_command(
         move |client| Box::pin(async move { client.add_ticker_to_watchlist(&request).await }),
         move |response| {
@@ -658,6 +701,7 @@ mod tests {
                         normal_prints: false,
                         ..
                     },
+                    ..
                 }),
             }) if name == "NoNormalPrints"
         ));
@@ -684,9 +728,69 @@ mod tests {
                         normal_prints: true,
                         ..
                     },
+                    ..
                 }),
             }) if name == "NormalPrints"
         ));
+    }
+
+    #[tokio::test]
+    async fn create_dry_run_finishes_without_auth() {
+        let args = CreateArgs {
+            dry_run: true,
+            name: "DryRunWatchlist".to_string(),
+            config: test_config_flags(),
+        };
+
+        assert_eq!(execute_create(&args).await, 0);
+    }
+
+    #[tokio::test]
+    async fn edit_dry_run_finishes_without_auth() {
+        let args = EditArgs {
+            dry_run: true,
+            key: 42,
+            name: Some("DryRunWatchlist".to_string()),
+            config: test_config_flags(),
+        };
+
+        assert_eq!(execute_edit(&args).await, 0);
+    }
+
+    #[tokio::test]
+    async fn delete_dry_run_finishes_without_confirmation_or_auth() {
+        let args = DeleteArgs {
+            dry_run: true,
+            yes: false,
+            key: 42,
+        };
+
+        assert_eq!(execute_delete(&args).await, 0);
+    }
+
+    #[tokio::test]
+    async fn delete_without_confirmation_fails_before_auth() {
+        let args = DeleteArgs {
+            dry_run: false,
+            yes: false,
+            key: 42,
+        };
+
+        assert_eq!(
+            execute_delete(&args).await,
+            crate::cli::error::EXIT_USAGE_ERROR
+        );
+    }
+
+    #[tokio::test]
+    async fn add_ticker_dry_run_finishes_without_auth() {
+        let args = AddTickerArgs {
+            dry_run: true,
+            watchlist_key: 42,
+            ticker: "NVDA".to_string(),
+        };
+
+        assert_eq!(execute_add_ticker(&args).await, 0);
     }
 
     #[test]
@@ -861,5 +965,41 @@ mod tests {
             "AAPL",
         ]);
         assert!(result.is_ok(), "add-ticker with both flags should succeed");
+    }
+
+    fn test_config_flags() -> WatchlistConfigFlags {
+        WatchlistConfigFlags {
+            tickers: "SPY,AAPL".to_string(),
+            min_volume: 100,
+            max_volume: 2_000_000_000,
+            min_dollars: 0.0,
+            max_dollars: 30_000_000_000.0,
+            min_price: 0.0,
+            max_price: 100_000.0,
+            min_vcd: 0.0,
+            sector_industry: String::new(),
+            security_type: -1,
+            min_relative_size: 0,
+            max_trade_rank: -1,
+            normal_prints: true,
+            signature_prints: false,
+            late_prints: true,
+            timely_prints: true,
+            dark_pools: true,
+            lit_exchanges: true,
+            sweeps: true,
+            blocks: true,
+            premarket_trades: true,
+            rth_trades: true,
+            ah_trades: true,
+            opening_trades: true,
+            closing_trades: true,
+            phantom_trades: true,
+            offsetting_trades: true,
+            rsi_overbought_daily: -1,
+            rsi_overbought_hourly: -1,
+            rsi_oversold_daily: -1,
+            rsi_oversold_hourly: -1,
+        }
     }
 }

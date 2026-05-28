@@ -273,6 +273,63 @@ fn schema_emits_structured_command_examples() {
     );
 }
 
+#[test]
+fn schema_marks_mutating_commands_and_safety_metadata() {
+    let output = Command::new(env!("CARGO_BIN_EXE_volumeleaders-agent"))
+        .arg("schema")
+        .output()
+        .unwrap();
+
+    assert!(output.status.success());
+    assert!(output.stderr.is_empty());
+
+    let schema: Value = serde_json::from_slice(&output.stdout).unwrap();
+    let commands = schema["commands"].as_array().unwrap();
+
+    for path in [
+        ["alert", "create"],
+        ["alert", "edit"],
+        ["alert", "delete"],
+        ["watchlist", "create"],
+        ["watchlist", "edit"],
+        ["watchlist", "delete"],
+        ["watchlist", "add-ticker"],
+    ] {
+        let command = command_by_path(commands, &path);
+        assert_eq!(command["mutating"], true, "{path:?} mutating");
+        assert_eq!(
+            command["supports_dry_run"], true,
+            "{path:?} supports dry-run"
+        );
+    }
+
+    assert_eq!(
+        command_by_path(commands, &["alert", "delete"])["requires_confirmation"],
+        true
+    );
+    assert_eq!(
+        command_by_path(commands, &["watchlist", "delete"])["requires_confirmation"],
+        true
+    );
+
+    for path in [
+        ["alert", "configs"],
+        ["watchlist", "configs"],
+        ["trade", "list"],
+    ] {
+        let command = command_by_path(commands, &path);
+        assert_eq!(command["mutating"], false, "{path:?} mutating");
+        assert_eq!(
+            command["supports_dry_run"], false,
+            "{path:?} supports dry-run"
+        );
+        assert_eq!(
+            command["requires_confirmation"], false,
+            "{path:?} confirmation"
+        );
+    }
+}
+
 fn assert_semantic(
     commands: &[Value],
     path: &[&str],
@@ -300,6 +357,14 @@ fn assert_semantic(
     if let Some(separators) = separators {
         assert_eq!(arg["separators"], separators);
     }
+}
+
+fn command_by_path<'a>(commands: &'a [Value], path: &[&str]) -> &'a Value {
+    let command_path = path.iter().map(|part| part.to_string()).collect::<Vec<_>>();
+    commands
+        .iter()
+        .find(|command| command["path"] == serde_json::json!(command_path))
+        .unwrap_or_else(|| panic!("missing command path {path:?}"))
 }
 
 fn assert_bool_arg(

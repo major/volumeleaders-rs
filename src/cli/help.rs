@@ -34,7 +34,7 @@ Guidance for non-interactive automation and coding agents:
    Run `volumeleaders-agent doctor` before authenticated data commands when automation needs to confirm browser-cookie readiness. `doctor` is local-only by default and does not make a network request.
 
 2. Discover commands before guessing.
-Use `volumeleaders-agent commands` for a quick leaf-command list, `volumeleaders-agent commands --grouped` for grouped descriptions, `volumeleaders-agent schema` for machine-readable command, alias, auth, help, stable argument, semantic argument, and boolean option metadata, and `volumeleaders-agent fields <command path>` for field projection metadata.
+Use `volumeleaders-agent commands` for a quick leaf-command list, `volumeleaders-agent commands --grouped` for grouped descriptions, `volumeleaders-agent schema` for machine-readable command, alias, auth, mutation safety, help, stable argument, semantic argument, and boolean option metadata, and `volumeleaders-agent fields <command path>` for field projection metadata.
 
 3. Keep streams separate.
    Successful data commands write compact JSON to stdout. Discovery and help commands write plain text to stdout. Diagnostics, verbosity logs from `-v`/`-vv`/`-vvv`, and structured runtime errors go to stderr.
@@ -43,7 +43,7 @@ Use `volumeleaders-agent commands` for a quick leaf-command list, `volumeleaders
    Use `volumeleaders-agent fields trade list` to discover exact case-sensitive field names before passing command-specific `--fields` or `--all-fields`, and pipe stdout to external `jq` for inspection or transformations.
 
 5. Treat empty rows and mutations carefully.
-   Use global `--strict-empty` when an empty record array should fail automation with exit code 7. Avoid mutating alert and watchlist commands unless the user explicitly requested the mutation.
+Use global `--strict-empty` when an empty record array should fail automation with exit code 7. Avoid mutating alert and watchlist commands unless the user explicitly requested the mutation. When mutation is requested, run the command with `--dry-run` first; live delete commands require `--yes`.
 
 6. Recover by exit code.
    Exit 2 means usage or argument validation failed. Exit 3 means browser auth failed. Exit 4 means HTTP transport failed. Exit 5 means the API returned an error. Exit 6 means JSON parsing or output transformation failed. Exit 7 means `--strict-empty` rejected an empty record array.
@@ -54,7 +54,9 @@ volumeleaders-agent doctor
 volumeleaders-agent commands --grouped
 volumeleaders-agent fields trade list
 volumeleaders-agent schema | jq '.commands[] | select(.preferred_path == "trade list")'
+volumeleaders-agent schema | jq '.commands[] | select(.mutating == true) | {path, supports_dry_run, requires_confirmation}'
 volumeleaders-agent help exit-codes
+volumeleaders-agent alert create --name BigTechSweeps --tickers AAPL,MSFT --dry-run
 volumeleaders-agent --strict-empty trades NVDA
 volumeleaders-agent trade list NVDA --start-date 2026-05-01 --end-date 2026-05-27 --fields Ticker,DateTime,Price,Dollars
 volumeleaders-agent volume institutional --date 2026-05-27 --tickers AAPL,NVDA --limit 50 | jq '.[] | {ticker: .Ticker, dollars: .Dollars}'
@@ -117,7 +119,7 @@ const SCHEMA_HELP: &str = r#"schema
 
 Use `schema` and `commands` for binary-native CLI discovery.
 
-`volumeleaders-agent schema` emits compact JSON generated from the live clap tree. It includes the binary version, auth model, leaf command paths, explicit alias metadata, auth requirements, help text, argument metadata with stable names and semantic hints, boolean flag versus value-taking option shape, and structured command examples.
+`volumeleaders-agent schema` emits compact JSON generated from the live clap tree. It includes the binary version, auth model, leaf command paths, explicit alias metadata, auth requirements, mutating and dry-run safety metadata, help text, argument metadata with stable names and semantic hints, boolean flag versus value-taking option shape, and structured command examples.
 
 `volumeleaders-agent fields <command path>` emits compact JSON with output fields accepted by `--fields`, including each exact field name, short description, and type hint. It does not need live API rows.
 

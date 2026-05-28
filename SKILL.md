@@ -22,7 +22,7 @@ volumeleaders-agent trade list --help
 ```
 
 - `doctor` is local-only by default and reports browser-cookie readiness as compact JSON.
-- `schema` is the authoritative machine-readable command contract generated from the live clap tree. Command entries include `path`, `preferred_path`, `is_alias`, optional `alias_for`, `aliases`, auth requirements, help text, argument metadata with stable `name` identifiers and semantic types, boolean flag versus value-taking option shape, and structured `examples` arrays.
+- `schema` is the authoritative machine-readable command contract generated from the live clap tree. Command entries include `path`, `preferred_path`, `is_alias`, optional `alias_for`, `aliases`, auth requirements, mutating and dry-run safety metadata, help text, argument metadata with stable `name` identifiers and semantic types, boolean flag versus value-taking option shape, and structured `examples` arrays.
 - `commands` is the lightweight plain-text leaf command list. Use `--grouped` for descriptions.
 - `fields <command path>` emits exact case-sensitive output field names, descriptions, and type hints for commands that support `--fields` without requiring live rows.
 - `help <topic>` gives operational guidance when README access is unavailable.
@@ -78,6 +78,7 @@ Reusable shapes:
 | `Paged` | `--start N --length N`, or command-specific `--limit N` | DataTables-style commands use `start` and `length`; report and volume commands often use `limit`. |
 | `FieldsSelectable` | `--fields Ticker,Date,Price` or `--all-fields` | Discover exact field names with `fields <command path>` before filtering. |
 | `BooleanFilter` | Bare flags such as `--sweep`, or value-taking booleans such as `--normal-prints false` where help shows a value | Read command help or schema `kind` before passing `true` or `false`; bare flags do not take values. |
+| `DryRunMutation` | Mutating alert/watchlist create, edit, delete, and add-ticker commands accept `--dry-run` | Inspect the JSON plan before live mutation; delete commands require `--yes` when not using `--dry-run`. |
 
 ## Command catalog
 
@@ -121,6 +122,8 @@ volumeleaders-agent fields trade list
 volumeleaders-agent fields volume institutional | jq '.fields[].name'
 volumeleaders-agent help agent
 volumeleaders-agent schema | jq '.commands[] | select(.preferred_path == "trade list")'
+volumeleaders-agent schema | jq '.commands[] | select(.mutating == true) | {path, supports_dry_run, requires_confirmation}'
+volumeleaders-agent alert create --name BigTechSweeps --tickers AAPL,MSFT --dry-run
 volumeleaders-agent help examples
 ```
 

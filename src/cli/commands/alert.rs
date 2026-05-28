@@ -9,6 +9,8 @@ use tracing::instrument;
 use crate::cli::AlertArgs;
 use crate::cli::commands::scaffold::run_client_command;
 use crate::cli::common::auth::{handle_api_error, make_client};
+use crate::cli::dry_run::print_dry_run_plan;
+use crate::cli::error::usage_error;
 use crate::cli::output::{finish_output, print_json, print_records};
 
 const DEFAULT_CONFIGS_FIELDS: [&str; 9] = [
@@ -33,17 +35,17 @@ pub enum AlertCommand {
     Configs(ConfigsArgs),
     /// Create a new alert configuration.
     #[command(
-        long_about = "Create a new alert configuration with threshold filters.\n\nExamples:\n  volumeleaders-agent alert create --name LargeNVDA --tickers NVDA\n  volumeleaders-agent alert create --name BigTechSweeps --tickers AAPL,MSFT --trade-dollars-gte 1000000 --sweep"
+        long_about = "Create a new alert configuration with threshold filters.\n\nExamples:\n  volumeleaders-agent alert create --name LargeNVDA --tickers NVDA\n  volumeleaders-agent alert create --name BigTechSweeps --tickers AAPL,MSFT --trade-dollars-gte 1000000 --sweep\n  volumeleaders-agent alert create --name BigTechSweeps --tickers AAPL,MSFT --dry-run"
     )]
     Create(CreateArgs),
     /// Edit an existing alert configuration.
     #[command(
-        long_about = "Edit an existing alert configuration by key.\n\nExamples:\n  volumeleaders-agent alert edit --key 123 --name LargeNVDA\n  volumeleaders-agent alert edit --key 123 --tickers NVDA,AAPL --trade-dollars-gte 2000000 --dark-pool"
+        long_about = "Edit an existing alert configuration by key.\n\nExamples:\n  volumeleaders-agent alert edit --key 123 --name LargeNVDA\n  volumeleaders-agent alert edit --key 123 --tickers NVDA,AAPL --trade-dollars-gte 2000000 --dark-pool\n  volumeleaders-agent alert edit --key 123 --name LargeNVDA --dry-run"
     )]
     Edit(EditArgs),
     /// Delete an alert configuration.
     #[command(
-        long_about = "Delete an alert configuration by key.\n\nExamples:\n  volumeleaders-agent alert delete --key 123\n  volumeleaders-agent alert delete --key 456"
+        long_about = "Delete an alert configuration by key. Live deletion requires --yes.\n\nExamples:\n  volumeleaders-agent alert delete --key 123 --dry-run\n  volumeleaders-agent alert delete --key 456 --yes"
     )]
     Delete(DeleteArgs),
 }
@@ -62,6 +64,10 @@ pub struct ConfigsArgs {
 /// Arguments for `alert create`.
 #[derive(Debug, Args)]
 pub struct CreateArgs {
+    /// Print the alert create request as JSON without sending it.
+    #[arg(long)]
+    pub dry_run: bool,
+
     /// Alert configuration name.
     #[arg(long)]
     pub name: String,
@@ -214,6 +220,10 @@ pub struct CreateArgs {
 /// Arguments for `alert edit`.
 #[derive(Debug, Args)]
 pub struct EditArgs {
+    /// Print the alert edit request as JSON without sending it.
+    #[arg(long)]
+    pub dry_run: bool,
+
     /// Alert configuration key to edit.
     #[arg(long)]
     pub key: i64,
@@ -370,6 +380,14 @@ pub struct EditArgs {
 /// Arguments for `alert delete`.
 #[derive(Debug, Args)]
 pub struct DeleteArgs {
+    /// Print the alert delete request as JSON without sending it.
+    #[arg(long)]
+    pub dry_run: bool,
+
+    /// Confirm the live delete operation. Not required with --dry-run.
+    #[arg(long)]
+    pub yes: bool,
+
     /// Alert configuration key to delete.
     #[arg(long)]
     pub key: i64,
@@ -409,6 +427,10 @@ async fn execute_configs(args: &ConfigsArgs) -> i32 {
 #[instrument(skip_all)]
 async fn execute_create(args: &CreateArgs) -> i32 {
     let request = build_create_request(args);
+    if args.dry_run {
+        return print_dry_run_plan("alert create", "create", request.fields());
+    }
+
     run_client_command(
         move |client| {
             Box::pin(async move {
@@ -425,6 +447,10 @@ async fn execute_create(args: &CreateArgs) -> i32 {
 async fn execute_edit(args: &EditArgs) -> i32 {
     let request = build_edit_request(args);
     let key = args.key;
+    if args.dry_run {
+        return print_dry_run_plan("alert edit", "edit", request.fields());
+    }
+
     run_client_command(
         move |client| {
             Box::pin(async move {
@@ -443,6 +469,15 @@ async fn execute_delete(args: &DeleteArgs) -> i32 {
     let request = DeleteAlertConfigRequest {
         alert_config_key: key,
     };
+    if args.dry_run {
+        return print_dry_run_plan("alert delete", "delete", &request);
+    }
+    if !args.yes {
+        return usage_error(
+            "alert delete requires --yes to confirm live deletion; use --dry-run to inspect the request",
+        );
+    }
+
     run_client_command(
         move |client| {
             Box::pin(async move {
@@ -706,6 +741,45 @@ mod tests {
         ));
     }
 
+    #[tokio::test]
+    async fn create_dry_run_finishes_without_auth() {
+        let args = test_create_args(true);
+
+        assert_eq!(execute_create(&args).await, 0);
+    }
+
+    #[tokio::test]
+    async fn edit_dry_run_finishes_without_auth() {
+        let args = test_edit_args(true);
+
+        assert_eq!(execute_edit(&args).await, 0);
+    }
+
+    #[tokio::test]
+    async fn delete_dry_run_finishes_without_confirmation_or_auth() {
+        let args = DeleteArgs {
+            dry_run: true,
+            yes: false,
+            key: 42,
+        };
+
+        assert_eq!(execute_delete(&args).await, 0);
+    }
+
+    #[tokio::test]
+    async fn delete_without_confirmation_fails_before_auth() {
+        let args = DeleteArgs {
+            dry_run: false,
+            yes: false,
+            key: 42,
+        };
+
+        assert_eq!(
+            execute_delete(&args).await,
+            crate::cli::error::EXIT_USAGE_ERROR
+        );
+    }
+
     #[test]
     fn resolve_ticker_group_uses_explicit_group() {
         let ticker_group = resolve_ticker_group(Some("MyWatchlist"), "AAPL,MSFT");
@@ -729,39 +803,7 @@ mod tests {
 
     #[test]
     fn build_edit_request_uses_key_and_name() {
-        let args = EditArgs {
-            key: 42,
-            name: Some("Edited Alert".to_string()),
-            ticker_group: None,
-            tickers: "AAPL,MSFT".to_string(),
-            trade_rank_lte: 0,
-            trade_vcd_gte: 0,
-            trade_mult_gte: 0,
-            trade_volume_gte: 0,
-            trade_dollars_gte: 0,
-            trade_conditions: "0".to_string(),
-            dark_pool: true,
-            sweep: false,
-            closing_trade_rank_lte: 0,
-            closing_trade_vcd_gte: 0,
-            closing_trade_mult_gte: 0,
-            closing_trade_volume_gte: 0,
-            closing_trade_dollars_gte: 0,
-            closing_trade_conditions: "0".to_string(),
-            cluster_rank_lte: 0,
-            cluster_vcd_gte: 0,
-            cluster_mult_gte: 0,
-            cluster_volume_gte: 0,
-            cluster_dollars_gte: 0,
-            total_rank_lte: 0,
-            total_volume_gte: 0,
-            total_dollars_gte: 0,
-            ah_rank_lte: 0,
-            ah_volume_gte: 0,
-            ah_dollars_gte: 0,
-            offsetting_print: true,
-            phantom_print: false,
-        };
+        let args = test_edit_args(false);
 
         let request = build_edit_request(&args);
         let fields = request.fields();
@@ -780,6 +822,7 @@ mod tests {
     fn build_edit_request_defaults_missing_name_to_empty() {
         let args = EditArgs {
             key: 42,
+            dry_run: false,
             name: None,
             ticker_group: None,
             tickers: "AAPL".to_string(),
@@ -823,38 +866,7 @@ mod tests {
 
     #[test]
     fn build_create_request_auto_selects_ticker_group() {
-        let args = CreateArgs {
-            name: "Test Alert".to_string(),
-            ticker_group: None,
-            tickers: "AAPL,MSFT".to_string(),
-            trade_rank_lte: 0,
-            trade_vcd_gte: 0,
-            trade_mult_gte: 0,
-            trade_volume_gte: 0,
-            trade_dollars_gte: 0,
-            trade_conditions: "0".to_string(),
-            dark_pool: true,
-            sweep: false,
-            closing_trade_rank_lte: 0,
-            closing_trade_vcd_gte: 0,
-            closing_trade_mult_gte: 0,
-            closing_trade_volume_gte: 0,
-            closing_trade_dollars_gte: 0,
-            closing_trade_conditions: "0".to_string(),
-            cluster_rank_lte: 0,
-            cluster_vcd_gte: 0,
-            cluster_mult_gte: 0,
-            cluster_volume_gte: 0,
-            cluster_dollars_gte: 0,
-            total_rank_lte: 0,
-            total_volume_gte: 0,
-            total_dollars_gte: 0,
-            ah_rank_lte: 0,
-            ah_volume_gte: 0,
-            ah_dollars_gte: 0,
-            offsetting_print: true,
-            phantom_print: false,
-        };
+        let args = test_create_args(false);
 
         let request = build_create_request(&args);
         let fields = request.fields();
@@ -892,5 +904,78 @@ mod tests {
         let pp_entries: Vec<_> = fields.iter().filter(|(k, _)| k == "PhantomPrint").collect();
         assert_eq!(pp_entries.len(), 1);
         assert_eq!(pp_entries[0].1, "false");
+    }
+
+    fn test_create_args(dry_run: bool) -> CreateArgs {
+        CreateArgs {
+            dry_run,
+            name: "Test Alert".to_string(),
+            ticker_group: None,
+            tickers: "AAPL,MSFT".to_string(),
+            trade_rank_lte: 0,
+            trade_vcd_gte: 0,
+            trade_mult_gte: 0,
+            trade_volume_gte: 0,
+            trade_dollars_gte: 0,
+            trade_conditions: "0".to_string(),
+            dark_pool: true,
+            sweep: false,
+            closing_trade_rank_lte: 0,
+            closing_trade_vcd_gte: 0,
+            closing_trade_mult_gte: 0,
+            closing_trade_volume_gte: 0,
+            closing_trade_dollars_gte: 0,
+            closing_trade_conditions: "0".to_string(),
+            cluster_rank_lte: 0,
+            cluster_vcd_gte: 0,
+            cluster_mult_gte: 0,
+            cluster_volume_gte: 0,
+            cluster_dollars_gte: 0,
+            total_rank_lte: 0,
+            total_volume_gte: 0,
+            total_dollars_gte: 0,
+            ah_rank_lte: 0,
+            ah_volume_gte: 0,
+            ah_dollars_gte: 0,
+            offsetting_print: true,
+            phantom_print: false,
+        }
+    }
+
+    fn test_edit_args(dry_run: bool) -> EditArgs {
+        EditArgs {
+            dry_run,
+            key: 42,
+            name: Some("Edited Alert".to_string()),
+            ticker_group: None,
+            tickers: "AAPL,MSFT".to_string(),
+            trade_rank_lte: 0,
+            trade_vcd_gte: 0,
+            trade_mult_gte: 0,
+            trade_volume_gte: 0,
+            trade_dollars_gte: 0,
+            trade_conditions: "0".to_string(),
+            dark_pool: true,
+            sweep: false,
+            closing_trade_rank_lte: 0,
+            closing_trade_vcd_gte: 0,
+            closing_trade_mult_gte: 0,
+            closing_trade_volume_gte: 0,
+            closing_trade_dollars_gte: 0,
+            closing_trade_conditions: "0".to_string(),
+            cluster_rank_lte: 0,
+            cluster_vcd_gte: 0,
+            cluster_mult_gte: 0,
+            cluster_volume_gte: 0,
+            cluster_dollars_gte: 0,
+            total_rank_lte: 0,
+            total_volume_gte: 0,
+            total_dollars_gte: 0,
+            ah_rank_lte: 0,
+            ah_volume_gte: 0,
+            ah_dollars_gte: 0,
+            offsetting_print: true,
+            phantom_print: false,
+        }
     }
 }
