@@ -49,6 +49,8 @@ pub enum Commands {
     Alert(AlertArgs),
     /// Watchlist management and inspection.
     Watchlist(WatchlistArgs),
+    /// Emit machine-readable command metadata as JSON.
+    Schema,
     /// Generate shell completions.
     Completions(CompletionsArgs),
 }
