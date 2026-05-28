@@ -14,6 +14,8 @@ pub mod doctor;
 pub mod error;
 /// Built-in operational help topics.
 pub mod help;
+/// Stderr-only tracing initialization for CLI diagnostics.
+pub mod logging;
 /// JSON output formatting and field selection.
 pub mod output;
 /// Machine-readable CLI schema generation.
@@ -30,6 +32,7 @@ pub use args::{
 /// the process exit code.
 pub async fn run() -> i32 {
     let cli = Cli::parse();
+    logging::init(cli.verbose);
     output::configure_strict_empty(
         cli.strict_empty,
         output::strict_empty_command_from_args(std::env::args().skip(1)),

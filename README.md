@@ -49,6 +49,8 @@ Semantic exit codes are stable for automation: `0` means success, `2` is clap us
 
 Use global `--strict-empty` when an empty record array should fail automation instead of returning `[]` on stdout. Data commands that would emit an empty array return exit code `7` and write a structured `empty_result` error to stderr with command-specific recovery guidance. Object outputs, discovery commands, help topics, completions, and local diagnostics are not treated as empty arrays.
 
+Use global `-v`, `-vv`, or `-vvv` to enable info, debug, or trace diagnostics on stderr. Without `-v`, the CLI logs warnings and errors only. stdout remains reserved for command output so JSON pipelines stay clean, and sensitive browser-cookie material is never logged.
+
 Use `schema` for machine-readable CLI discovery. It emits compact JSON generated from the live clap command tree with the binary version, browser-cookie auth model, leaf command paths, help text, aliases, auth requirements, and argument metadata.
 
 Use `commands` for lightweight CLI discovery. It emits a sorted plain-text list of leaf command paths, or grouped command names with short descriptions when run with `--grouped`.
@@ -67,6 +69,7 @@ cargo run -- doctor
 cargo run -- help auth
 cargo run -- help exit-codes
 cargo run -- schema
+cargo run -- -vv doctor
 cargo run -- --strict-empty trade list NVDA
 cargo run -- report list
 cargo run -- trade list
@@ -80,6 +83,7 @@ After building or installing, run the binary as `volumeleaders-agent`:
 volumeleaders-agent doctor
 volumeleaders-agent commands
 volumeleaders-agent help examples
+volumeleaders-agent -vv trade list NVDA
 volumeleaders-agent report list
 volumeleaders-agent schema | jq '.commands[] | select(.preferred_path == "trade list")'
 volumeleaders-agent trade list

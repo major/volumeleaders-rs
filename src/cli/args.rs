@@ -1,4 +1,4 @@
-use clap::{Args, Parser, Subcommand, ValueEnum};
+use clap::{ArgAction, Args, Parser, Subcommand, ValueEnum};
 use clap_complete::Shell;
 
 use crate::cli::commands::alert::AlertCommand;
@@ -32,6 +32,10 @@ pub struct Cli {
     /// Exit with code 7 and a structured error when record-array output is empty.
     #[arg(long, global = true)]
     pub strict_empty: bool,
+
+    /// Increase diagnostic logging on stderr (-v info, -vv debug, -vvv trace).
+    #[arg(short = 'v', long = "verbose", global = true, action = ArgAction::Count)]
+    pub verbose: u8,
 
     /// Subcommand to run.
     #[command(subcommand)]
@@ -198,6 +202,15 @@ mod tests {
 
         assert!(before_command.strict_empty);
         assert!(after_command.strict_empty);
+    }
+
+    #[test]
+    fn verbose_is_global_count_flag() {
+        let before_command = Cli::try_parse_from(["volumeleaders-agent", "-vv", "doctor"]).unwrap();
+        let after_command = Cli::try_parse_from(["volumeleaders-agent", "doctor", "-vvv"]).unwrap();
+
+        assert_eq!(before_command.verbose, 2);
+        assert_eq!(after_command.verbose, 3);
     }
 
     #[test]

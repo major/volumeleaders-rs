@@ -311,6 +311,13 @@ mod tests {
         assert!(args.iter().any(|arg| {
             arg["long"] == "strict-empty" && arg["kind"] == "flag" && arg["parser"] == "enum"
         }));
+        assert!(args.iter().any(|arg| {
+            arg["long"] == "verbose"
+                && arg["short"] == "v"
+                && arg["kind"] == "flag"
+                && arg["parser"] == "count"
+                && arg["multi_value"] == true
+        }));
     }
 
     #[test]
