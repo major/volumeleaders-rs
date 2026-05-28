@@ -41,7 +41,7 @@ struct CommandSchema {
     args: Vec<ArgSchema>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Clone, Debug, Serialize)]
 struct ArgSchema {
     long: Option<String>,
     short: Option<char>,
@@ -54,7 +54,7 @@ struct ArgSchema {
     multi_value: bool,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Clone, Debug, Serialize)]
 #[serde(rename_all = "snake_case")]
 enum ArgKind {
     Flag,
@@ -64,9 +64,14 @@ enum ArgKind {
 
 fn build_schema() -> CliSchema {
     let command = Cli::command();
+    let global_args: Vec<ArgSchema> = command
+        .get_arguments()
+        .filter(|arg| !arg.is_hide_set())
+        .map(arg_schema)
+        .collect();
     let mut commands = Vec::new();
 
-    collect_leaf_commands(&command, &mut Vec::new(), &mut commands);
+    collect_leaf_commands(&command, &mut Vec::new(), &global_args, &mut commands);
     commands.sort_by(|left, right| left.preferred_path.cmp(&right.preferred_path));
 
     CliSchema {
@@ -85,6 +90,7 @@ fn build_schema() -> CliSchema {
 fn collect_leaf_commands(
     command: &Command,
     path: &mut Vec<String>,
+    global_args: &[ArgSchema],
     commands: &mut Vec<CommandSchema>,
 ) {
     for subcommand in command
@@ -93,15 +99,23 @@ fn collect_leaf_commands(
     {
         path.push(subcommand.get_name().to_string());
         if subcommand.has_subcommands() {
-            collect_leaf_commands(subcommand, path, commands);
+            collect_leaf_commands(subcommand, path, global_args, commands);
         } else {
-            commands.push(command_schema(subcommand, path));
+            commands.push(command_schema(subcommand, path, global_args));
         }
         path.pop();
     }
 }
 
-fn command_schema(command: &Command, path: &[String]) -> CommandSchema {
+fn command_schema(command: &Command, path: &[String], global_args: &[ArgSchema]) -> CommandSchema {
+    let mut args = global_args.to_vec();
+    args.extend(
+        command
+            .get_arguments()
+            .filter(|arg| !arg.is_hide_set())
+            .map(arg_schema),
+    );
+
     CommandSchema {
         path: path.to_vec(),
         preferred_path: path.join(" "),
@@ -112,11 +126,7 @@ fn command_schema(command: &Command, path: &[String]) -> CommandSchema {
         auth_required: auth_required(path),
         about: command.get_about().map(ToString::to_string),
         long_about: command.get_long_about().map(ToString::to_string),
-        args: command
-            .get_arguments()
-            .filter(|arg| !arg.is_hide_set())
-            .map(arg_schema)
-            .collect(),
+        args,
     }
 }
 
@@ -298,6 +308,9 @@ mod tests {
             args.iter()
                 .any(|arg| arg["kind"] == "positional" && arg["multi_value"] == true)
         );
+        assert!(args.iter().any(|arg| {
+            arg["long"] == "strict-empty" && arg["kind"] == "flag" && arg["parser"] == "enum"
+        }));
     }
 
     #[test]

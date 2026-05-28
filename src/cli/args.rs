@@ -29,6 +29,10 @@ pub struct Cli {
     #[arg(short, long, global = true, hide = true)]
     pub json: bool,
 
+    /// Exit with code 7 and a structured error when record-array output is empty.
+    #[arg(long, global = true)]
+    pub strict_empty: bool,
+
     /// Subcommand to run.
     #[command(subcommand)]
     pub command: Commands,
@@ -164,13 +168,36 @@ pub struct CompletionsArgs {
 
 #[cfg(test)]
 mod tests {
-    use clap::{Command, CommandFactory};
+    use clap::{Command, CommandFactory, Parser};
 
     use super::Cli;
 
     #[test]
     fn command_tree_is_valid() {
         Cli::command().debug_assert();
+    }
+
+    #[test]
+    fn strict_empty_is_global_flag() {
+        let before_command = Cli::try_parse_from([
+            "volumeleaders-agent",
+            "--strict-empty",
+            "trade",
+            "list",
+            "NVDA",
+        ])
+        .unwrap();
+        let after_command = Cli::try_parse_from([
+            "volumeleaders-agent",
+            "trade",
+            "list",
+            "NVDA",
+            "--strict-empty",
+        ])
+        .unwrap();
+
+        assert!(before_command.strict_empty);
+        assert!(after_command.strict_empty);
     }
 
     #[test]

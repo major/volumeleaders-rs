@@ -30,6 +30,10 @@ pub use args::{
 /// the process exit code.
 pub async fn run() -> i32 {
     let cli = Cli::parse();
+    output::configure_strict_empty(
+        cli.strict_empty,
+        output::strict_empty_command_from_args(std::env::args().skip(1)),
+    );
 
     match &cli.command {
         Commands::Report(args) => commands::report::handle(args).await,
