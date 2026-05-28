@@ -39,7 +39,9 @@ jobs:
           components: clippy
           rustflags: ""
       - name: Run clippy
-        run: cargo clippy --workspace --all-targets -- -D warnings
+        run: |
+          cargo clippy --all-targets --all-features -- -D warnings
+          cargo clippy --lib --no-default-features -- -D warnings
 
   test:
     name: Test (${{ matrix.os }})
@@ -54,7 +56,9 @@ jobs:
           toolchain: stable
           rustflags: ""
       - name: Run tests
-        run: cargo test --workspace
+        run: |
+          cargo test --all-features
+          cargo test --lib --no-default-features
 
   msrv:
     name: MSRV
@@ -65,7 +69,7 @@ jobs:
         with:
           toolchain: "1.95"
           rustflags: ""
-      - run: cargo test --workspace --locked
+      - run: cargo test --locked --all-features
 
   coverage:
     name: Coverage
@@ -83,7 +87,7 @@ jobs:
         with:
           tool: cargo-llvm-cov
       - name: Enforce 90% line coverage
-        run: cargo llvm-cov --workspace --fail-under-lines 90 --lcov --output-path lcov.info
+        run: cargo llvm-cov --workspace --all-features --fail-under-lines 90 --lcov --output-path lcov.info
       - name: Upload to Codecov
         if: ${{ !cancelled() && env.CODECOV_TOKEN != '' }}
         uses: codecov/codecov-action@e79a6962e0d4c0c17b229090214935d2e33f8354 # v6.0.1
@@ -115,6 +119,8 @@ jobs:
           toolchain: stable
           rustflags: ""
       - name: Build docs
-        run: cargo doc --workspace --no-deps
+        run: |
+          cargo doc --all-features --no-deps
+          cargo doc --no-default-features --no-deps
         env:
           RUSTDOCFLAGS: -D rustdoc::broken-intra-doc-links -D rustdoc::private-intra-doc-links

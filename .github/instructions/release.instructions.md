@@ -1,3 +1,7 @@
+---
+applyTo: ".github/workflows/release.yml"
+---
+
 # Release review instructions
 
 - Releases are triggered when release-plz pushes a `v<version>` tag after the release PR is merged into `main`. There is no manual tagging step.

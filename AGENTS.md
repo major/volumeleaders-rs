@@ -16,6 +16,7 @@ Rust 2024 single-crate project for VolumeLeaders access. The package is `rusty-v
 volumeleaders-rs/
 ├── Cargo.toml                 # Single package: rusty-volumeleaders
 ├── Makefile                   # Local fmt, clippy, test, doc, coverage, audit
+├── rust-toolchain.toml         # Local Rust toolchain pin matching CI MSRV
 ├── codecov.yml                # Codecov project and patch coverage gates
 ├── README.md                  # Human project overview and commands
 ├── AGENTS.md                  # Project rules for agents
@@ -58,12 +59,14 @@ volumeleaders-rs/
 ## CONVENTIONS
 
 - Rust edition `2024`, MSRV `1.95.0`.
+- `rust-toolchain.toml` pins Rust 1.95 locally for consistency with the MSRV workflow.
 - The package is publishable as `rusty-volumeleaders`; keep crate metadata valid for crates.io.
 - The CLI binary remains `volumeleaders-agent` and is built only when the `cli` feature is enabled. `cli` is enabled by default.
 - Library consumers that do not need the CLI should use `rusty-volumeleaders = { version = "0.4.0", default-features = false }` to avoid clap and CLI-only dependencies.
 - Formatting follows `cargo fmt --all` and `.editorconfig`: UTF-8, 4-space indent, final newline, trim trailing whitespace except Markdown.
-- Local clippy command remains `cargo clippy --workspace -- -D clippy::all`.
-- CI clippy uses `cargo clippy --workspace --all-targets -- -D warnings` on Linux, macOS, and Windows.
+- Local and CI checks cover both supported feature shapes: the default CLI build with `--all-features` and the library-only build with `--no-default-features`.
+- Clippy uses `cargo clippy --all-targets --all-features -- -D warnings` and `cargo clippy --lib --no-default-features -- -D warnings` on Linux, macOS, and Windows.
+- `Cargo.toml` denies Rust `unused` lints so unused code and imports fail outside clippy-only workflows too.
 - Conventional commits feed `cliff.toml` changelog groups and release-plz release PRs.
 
 ## ANTI-PATTERNS
@@ -71,6 +74,7 @@ volumeleaders-rs/
 - Do not recreate `client/` or `agent/` crates. This repository is now a single package.
 - Do not add generated or historical `.sisyphus/` claims to docs unless current source files still prove them.
 - Do not move CLI-only dependencies back into unconditional dependencies. Keep them behind the additive `cli` feature.
+- Do not add broad `#[allow(...)]` suppressions without a rationale in this file or next to the item.
 
 ## COMMANDS
 
@@ -84,16 +88,19 @@ make coverage
 make patch-coverage
 make audit
 make machete
-cargo test --workspace
-cargo doc --workspace --no-deps
+cargo test --all-features
+cargo test --lib --no-default-features
+cargo doc --all-features --no-deps
+cargo doc --no-default-features --no-deps
 ```
 
 ## NOTES
 
 - No dedicated build or benchmark target is codified. Use Cargo defaults only when needed, and document any new command if it becomes canonical.
-- Coverage target requires `cargo llvm-cov` and enforces 90 percent line coverage locally (`make coverage`) and in CI (`ci.yml` coverage job). Codecov status checks use `codecov.yml` for a 90 percent project floor and 100 percent patch floor. Run `make patch-coverage` before opening a PR to approximate the Codecov patch gate locally with `diff-cover` against `main`; override with `PATCH_COVERAGE_BASE=<branch>` or `DIFF_COVER='uvx diff-cover'` when needed.
-- The crate root sets `#![deny(missing_docs)]`. Wire-type models use a module-level allow; clap arg structs and request builders use item-level `#[allow(missing_docs)]`. New public items need doc comments or an explicit allow with rationale.
+- Coverage target requires `cargo llvm-cov` and enforces 90 percent line coverage with `--all-features` locally (`make coverage`) and in CI (`ci.yml` coverage job). Codecov status checks use `codecov.yml` for a 90 percent project floor and 100 percent patch floor. Run `make patch-coverage` before opening a PR to approximate the Codecov patch gate locally with `diff-cover` against `main`; override with `PATCH_COVERAGE_BASE=<branch>` or `DIFF_COVER='uvx diff-cover'` when needed.
+- The crate root sets `#![deny(missing_docs)]`. Wire-type models use a module-level allow, clap arg structs and request builders use item-level `#[allow(missing_docs)]`, `Commands` allows `clippy::large_enum_variant` for generated parser shape, and alert construction allows `clippy::too_many_arguments` for request fidelity. New public items need doc comments or an explicit allow with rationale.
 - Audit is a separate workflow and also runs on manifest changes plus a daily schedule.
+- CodeRabbit uses `.coderabbit.yaml`; keep its path instructions aligned with the single-crate `src/**` layout, library-only feature support, machine-readable CLI output, and release automation policy.
 - `release-plz.yml` uses `RELEASE_PLZ_TOKEN`; the token is needed so release PR branch updates and pushed release tags trigger normal workflows.
 - `release-plz.toml` creates `v{{ version }}` tags but does not publish crates.io packages or GitHub Releases.
 - `dist-workspace.toml` configures cargo-dist for the `volumeleaders-agent` binary installers. Regenerate `.github/workflows/release.yml` after changing dist settings, then reapply the Rust toolchain update and OIDC publish job if cargo-dist drops them.
