@@ -44,32 +44,30 @@ reviews:
   path_filters:
     - "!**/target/**"
     - "!.sisyphus/**"
+    - "!lcov.info"
 
   path_instructions:
-    - path: "client/**/*.rs"
+    - path: "src/**/*.rs"
       instructions: |
-        Client crate review:
+        Rust CLI and library review:
+        - This single crate exposes both the `volumeleaders-agent` JSON CLI and a library API for VolumeLeaders browser-session data.
+        - Preserve the default `cli` feature and the library-only `default-features = false` build.
         - Preserve exact VolumeLeaders wire contracts, form field names, cookie names, and DataTables bracketed encoding.
         - Currency fields use rust_decimal::Decimal; ratios and indicators stay f64.
         - Never expose cookie values, auth cookies, or XSRF tokens in logs, errors, tests, docs, Debug, or Display output.
-        - Prefer focused API-boundary feedback over broad architecture rewrites.
-        - Don't nitpick style because rustfmt and clippy handle formatting and lint.
-
-    - path: "agent/**/*.rs"
-      instructions: |
-        CLI crate review:
         - stdout is machine-readable output only; diagnostics and logs belong on stderr.
         - Dashboard output should be token-efficient with compact fields unless `--all-fields` is requested.
         - Dashboard transforms (type collapsing, venue, events, sentinel omission, rounding) apply universally before field filtering.
         - Keep compact JSON defaults stable unless tests and README examples are updated.
         - Ensure new commands wire clap, command dispatch, tests, and README notes together.
-        - Don't duplicate client wire-contract rules in the CLI layer.
+        - Prefer focused API-boundary feedback over broad architecture rewrites.
+        - Don't nitpick style because rustfmt and clippy handle formatting and lint.
 
     - path: "**/*.{rs,toml,yml,yaml}"
       instructions: |
-        Rust workspace review:
-        - Respect the one-way dependency direction: agent depends on client, client never depends on agent.
+        Rust crate review:
         - Keep publishable crate metadata valid for crates.io.
+        - The `cli` feature must remain additive; library-only builds with `--no-default-features` must stay clean.
         - Release automation should preserve release-plz for crates.io publishing and cargo-dist for CLI artifacts.
 
     - path: ".github/workflows/**"
@@ -79,8 +77,8 @@ reviews:
       instructions: |
         Makefile validation:
         - .PHONY declarations for all non-file targets.
-        - Build targets should run cargo clippy and cargo test.
-        - Avoid flags that are already defaults.
+        - Check targets should run cargo fmt, clippy, tests, and docs.
+        - Avoid flags that are already defaults unless the flag documents an important supported build shape.
 
 chat:
   auto_reply: true

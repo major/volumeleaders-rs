@@ -1,3 +1,7 @@
+---
+applyTo: ".github/workflows/release-plz.yml"
+---
+
 # release-plz review instructions
 
 - This workflow is the only entry point for releases. It runs on every push to `main` and has two jobs:

@@ -36,6 +36,7 @@ GitHub releases also provide cargo-dist archives and shell or PowerShell install
 ## Requirements
 
 - Rust 1.95.0 or newer
+- `rust-toolchain.toml` pins local builds to the CI MSRV by default
 - Browser login at `https://www.volumeleaders.com` for commands that need live authenticated data
 - Optional tools for local maintenance: `cargo llvm-cov`, `cargo audit`
 - Optional tool for local patch coverage checks: `diff-cover` or `uvx diff-cover`
@@ -93,20 +94,26 @@ make check
 make coverage
 make patch-coverage
 make audit
+make machete
 ```
 
 Equivalent core Cargo commands:
 
 ```bash
-cargo fmt --all
-cargo clippy --workspace -- -D clippy::all
-cargo test --workspace
-cargo doc --workspace --no-deps
+cargo fmt --all --check
+cargo clippy --all-targets --all-features -- -D warnings
+cargo clippy --lib --no-default-features -- -D warnings
+cargo test --all-features
+cargo test --lib --no-default-features
+cargo doc --all-features --no-deps
+cargo doc --no-default-features --no-deps
 ```
+
+`make check` runs formatting, clippy, tests, and docs for both supported feature shapes: the default CLI build and the library-only `--no-default-features` build. The GitHub CI workflow mirrors those checks across Linux, macOS, and Windows, with an MSRV job pinned to Rust 1.95.
 
 Most tests are inline `#[cfg(test)]` modules in `src/**`. Fixtures live in `tests/fixtures/*.json` and represent server payload contracts. HTTP tests use `mockito`.
 
-`make coverage` and CI enforce 90 percent line coverage with `cargo llvm-cov`; Codecov also requires 90 percent project coverage and 100 percent patch coverage for changed lines. Run `make patch-coverage` before opening a PR to generate `lcov.info` and check changed-line coverage against `main`. Override the base branch with `PATCH_COVERAGE_BASE=<branch>` or use `DIFF_COVER='uvx diff-cover'` if `diff-cover` is not installed as a standalone command.
+`make coverage` and CI enforce 90 percent line coverage with `cargo llvm-cov --all-features`; Codecov also requires 90 percent project coverage and 100 percent patch coverage for changed lines. Run `make patch-coverage` before opening a PR to generate `lcov.info` and check changed-line coverage against `main`. Override the base branch with `PATCH_COVERAGE_BASE=<branch>` or use `DIFF_COVER='uvx diff-cover'` if `diff-cover` is not installed as a standalone command.
 
 ## Release automation
 
