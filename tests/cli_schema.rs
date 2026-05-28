@@ -77,7 +77,11 @@ fn schema_command_emits_machine_readable_contract() {
         trades_alias["alias_for"],
         serde_json::json!(["trade", "list"])
     );
+    assert_eq!(trades_alias["is_alias"], true);
     assert_eq!(trades_alias["preferred_path"], "trade list");
+    assert_eq!(trade_list["is_alias"], false);
+    assert_eq!(trade_list["aliases"], serde_json::json!(["trades"]));
+    assert!(trade_list["alias_for"].is_null());
     assert!(trade_list["args"].as_array().unwrap().iter().any(|arg| {
         arg["long"] == "strict-empty" && arg["kind"] == "flag" && arg["parser"] == "enum"
     }));

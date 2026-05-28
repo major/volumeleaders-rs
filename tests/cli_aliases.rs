@@ -49,5 +49,16 @@ fn schema_reports_aliases_with_canonical_preferred_paths() {
         assert_eq!(command["alias_for"], serde_json::json!(canonical));
         assert_eq!(command["preferred_path"], canonical.join(" "));
         assert_eq!(command["auth_required"], true);
+        assert_eq!(command["is_alias"], true);
+        assert_eq!(command["aliases"], serde_json::json!([]));
+
+        let canonical_command = commands
+            .iter()
+            .find(|command| command["path"] == serde_json::json!(canonical))
+            .unwrap();
+
+        assert_eq!(canonical_command["is_alias"], false);
+        assert_eq!(canonical_command["aliases"], serde_json::json!([alias]));
+        assert!(canonical_command["alias_for"].is_null());
     }
 }

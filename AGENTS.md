@@ -74,14 +74,14 @@ volumeleaders-rs/
 - Runtime CLI errors are emitted to stderr as `{"ok":false,"error":{"kind":"...","message":"..."}}`; stdout remains compact JSON for successful commands.
 - Global `-v`/`-vv`/`-vvv` enables info/debug/trace diagnostics on stderr only; default logging is warn, stdout must remain parseable command output, and sensitive cookie/XSRF values must stay redacted.
 - Global `--strict-empty` converts empty record-array outputs into `empty_result` stderr JSON with exit code `7`; object, discovery, help, completion, and diagnostic outputs are not strict-empty candidates.
-- Top-level aliases `trades`, `dashboard`, and `levels` execute canonical `trade list`, `trade dashboard`, and `trade levels`; schema metadata keeps canonical preferred paths with alias metadata.
+- Top-level aliases `trades`, `dashboard`, and `levels` execute canonical `trade list`, `trade dashboard`, and `trade levels`; schema metadata keeps canonical preferred paths, marks alias entries with `is_alias` and `alias_for`, and lists aliases on canonical entries.
 - `volumeleaders-agent commands` emits a plain-text leaf command list, with `--grouped` for grouped descriptions, generated from the live clap tree.
 - `volumeleaders-agent fields <command path>` emits compact JSON field metadata for commands that support `--fields`; it is local discovery and must not require live API rows.
 - `volumeleaders-agent doctor` emits local browser-cookie readiness diagnostics as compact JSON and skips live network checks by default.
 - `volumeleaders-agent help <topic>` emits plain-text operational guidance for agent automation, auth, environment, exit codes, discovery, and examples. Root and command clap help remain available through `--help`.
 - Every visible leaf command includes a concise `about` and command-specific `long_about` with an `Examples:` section containing at least two `volumeleaders-agent` invocations.
 - `volumeleaders-agent schema` emits machine-readable discovery metadata from `Cli::command()` so command paths, help text, aliases, auth requirements, and arguments cannot drift from clap definitions.
-- CLI drift tests assert every visible clap leaf appears in `commands` and `schema`, every leaf has examples, aliases retain canonical preferred paths, and global flags appear in schema metadata.
+- CLI drift tests assert every visible clap leaf appears in `commands` and `schema`, every leaf has examples, aliases retain canonical preferred paths with explicit alias metadata, and global flags appear in schema metadata.
 - `SKILL.md` is the concise LLM-facing CLI contract; keep it aligned with discovery commands, field metadata, stdout/stderr behavior, auth, global flags, command catalog, examples, and CLI development checks.
 - Semantic CLI exit codes are `0` success, `2` usage error, `3` auth error, `4` HTTP transport error, `5` API error, `6` JSON parse or output transformation error, and `7` strict empty result.
 - Library consumers that do not need the CLI should use `rusty-volumeleaders = { version = "0.4.0", default-features = false }` to avoid clap and CLI-only dependencies.
