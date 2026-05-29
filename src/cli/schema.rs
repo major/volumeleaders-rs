@@ -232,6 +232,7 @@ fn requires_confirmation(path: &[String]) -> bool {
 fn arg_schema(arg: &Arg) -> ArgSchema {
     let name = arg_name(arg);
     let parser = parser_name(&name, arg);
+    let possible_values = discoverable_possible_values(&name, arg);
 
     ArgSchema {
         semantic_type: semantic_type(&name, arg),
@@ -245,7 +246,7 @@ fn arg_schema(arg: &Arg) -> ArgSchema {
         required: arg.is_required_set(),
         default: default_values(arg),
         parser,
-        possible_values: possible_values(arg),
+        possible_values,
         multi_value: multi_value(arg),
     }
 }
@@ -427,6 +428,25 @@ fn possible_values(arg: &Arg) -> Vec<String> {
         .possible_values()
         .map(|values| values.map(|value| value.get_name().to_string()).collect())
         .unwrap_or_default()
+}
+
+fn discoverable_possible_values(name: &str, arg: &Arg) -> Vec<String> {
+    let values = possible_values(arg);
+    if !values.is_empty() {
+        return values;
+    }
+
+    custom_validation_possible_values(name)
+}
+
+fn custom_validation_possible_values(name: &str) -> Vec<String> {
+    match name {
+        "trade-level-count" => ["5", "10", "20", "50"]
+            .into_iter()
+            .map(str::to_string)
+            .collect(),
+        _ => Vec::new(),
+    }
 }
 
 fn multi_value(arg: &Arg) -> bool {
@@ -894,6 +914,35 @@ mod tests {
             None,
         );
         assert_arg_semantics(commands, &["completions"], "shell", "enum", None, None);
+    }
+
+    #[test]
+    fn schema_exposes_custom_validation_possible_values() {
+        let schema = schema_value();
+        let commands = schema["commands"].as_array().unwrap();
+
+        for path in [
+            serde_json::json!(["trade", "levels"]),
+            serde_json::json!(["trade", "level-touches"]),
+        ] {
+            let command = commands
+                .iter()
+                .find(|command| command["path"] == path)
+                .unwrap();
+            let arg = command["args"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .find(|arg| arg["name"] == "trade-level-count")
+                .unwrap();
+
+            assert_eq!(arg["semantic_type"], "integer");
+            assert_eq!(arg["parser"], "string");
+            assert_eq!(
+                arg["possible_values"],
+                serde_json::json!(["5", "10", "20", "50"])
+            );
+        }
     }
 
     #[test]

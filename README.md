@@ -54,6 +54,8 @@ Use global `-v`, `-vv`, or `-vvv` to enable info, debug, or trace diagnostics on
 
 Use `schema` for machine-readable CLI discovery. It emits compact JSON generated from the live clap command tree with the binary version, browser-cookie auth model, leaf command paths, help text, explicit alias metadata, auth requirements, mutating and dry-run safety metadata, argument metadata with stable names and semantic types, boolean flag versus value-taking option shape, and structured command examples.
 
+Schema argument metadata includes known custom validation constraints, such as `trade levels --trade-level-count` accepting only `5`, `10`, `20`, or `50`. Invalid values still fail with structured `usage_error` JSON on stderr and exit code `2`.
+
 Mutating alert and watchlist commands support `--dry-run` so automation can inspect the planned request without sending it. Delete commands also require `--yes` for live deletion; use `--dry-run` first to inspect the delete request.
 
 Use `fields <command path>` for machine-readable output field discovery before using `--fields`. It emits compact JSON with the preferred command path, exact case-sensitive field names accepted by `--fields`, short descriptions, and type hints. It does not need a live API response or non-empty result rows. Unknown projected fields fail with exit code `2` and structured `usage_error` JSON on stderr.

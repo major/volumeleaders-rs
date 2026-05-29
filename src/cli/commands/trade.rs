@@ -332,7 +332,7 @@ pub struct LevelsArgs {
     pub ticker: String,
     #[command(flatten)]
     pub dates: OptionalDateRangeArgs,
-    /// Number of price levels to return.
+    /// Number of price levels to return. Accepted values: 5, 10, 20, or 50.
     #[arg(long = "trade-level-count", default_value_t = DEFAULT_LEVEL_COUNT)]
     pub trade_level_count: usize,
     /// Exact, case-sensitive output fields to keep, comma-separated; discover with `fields trade levels`.
@@ -356,7 +356,7 @@ pub struct LevelTouchesArgs {
     /// Maximum trade-level rank to include; lower ranks are more significant.
     #[arg(long = "trade-level-rank", default_value_t = 5)]
     pub trade_level_rank: i32,
-    /// Number of levels to include.
+    /// Number of levels to include. Accepted values: 5, 10, 20, or 50.
     #[arg(long = "trade-level-count", default_value_t = DEFAULT_LEVEL_TOUCH_COUNT)]
     pub trade_level_count: usize,
     /// Minimum volume-concentration delta score to include.

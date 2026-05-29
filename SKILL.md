@@ -23,7 +23,7 @@ volumeleaders-agent trade list --help
 ```
 
 - `doctor` is local-only by default and reports browser-cookie readiness as compact JSON. Use `doctor --live` for a low-cost authenticated connectivity check.
-- `schema` is the authoritative machine-readable command contract generated from the live clap tree. Command entries include `path`, `preferred_path`, `is_alias`, optional `alias_for`, `aliases`, auth requirements, mutating and dry-run safety metadata, help text, argument metadata with stable `name` identifiers and semantic types, boolean flag versus value-taking option shape, and structured `examples` arrays.
+- `schema` is the authoritative machine-readable command contract generated from the live clap tree. Command entries include `path`, `preferred_path`, `is_alias`, optional `alias_for`, `aliases`, auth requirements, mutating and dry-run safety metadata, help text, argument metadata with stable `name` identifiers and semantic types, known `possible_values` validation constraints, boolean flag versus value-taking option shape, and structured `examples` arrays.
 - `commands` is the lightweight plain-text leaf command list. Use `--grouped` for descriptions.
 - `fields <command path>` emits exact case-sensitive output field names, descriptions, and type hints for commands that support `--fields` without requiring live rows. Unknown projected fields fail with exit code `2` and structured `usage_error` JSON on stderr.
 - `help <topic>` gives operational guidance when README access is unavailable.
@@ -79,6 +79,7 @@ Reusable shapes:
 | `TickerDateRange` | Ticker plus `--start-date` and `--end-date` | Common for trade list, dashboard, clusters, levels, and report filters. |
 | `Paged` | `--start N --length N`, or command-specific `--limit N` | DataTables-style commands use `start` and `length`; report and volume commands often use `limit`. |
 | `FieldsSelectable` | `--fields Ticker,Date,Price` or `--all-fields` | Discover exact case-sensitive field names with `fields <command path>` before filtering. Pipe stdout to external `jq` for jq-style filtering or object construction after built-in projection. |
+| `ConstrainedInteger` | Example: `trade levels --trade-level-count 10` | Check schema `possible_values` before choosing values. `trade-level-count` accepts only `5`, `10`, `20`, or `50` and invalid values fail with structured `usage_error` JSON. |
 | `BooleanFilter` | Bare flags such as `--sweep`, or value-taking booleans such as `--normal-prints false` where help shows a value | Read command help or schema `kind` before passing `true` or `false`; bare flags do not take values. |
 | `DryRunMutation` | Mutating alert/watchlist create, edit, delete, and add-ticker commands accept `--dry-run` | Inspect the JSON plan before live mutation; delete commands require `--yes` when not using `--dry-run`. |
 
