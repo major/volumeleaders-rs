@@ -137,27 +137,390 @@ const TRADE_FIELDS: &[FieldMetadata] = &[
 ];
 
 const DASHBOARD_FIELDS: &[FieldMetadata] = &[
+    field!("trades.Date", "Dashboard trade date.", FieldType::Date),
+    field!(
+        "trades.StartDate",
+        "Dashboard trade start date.",
+        FieldType::Date
+    ),
+    field!(
+        "trades.EndDate",
+        "Dashboard trade end date.",
+        FieldType::Date
+    ),
+    field!("trades.TD30", "Prior 30-trading-day date.", FieldType::Date),
+    field!("trades.TD90", "Prior 90-trading-day date.", FieldType::Date),
+    field!(
+        "trades.TD1CY",
+        "Prior one-calendar-year date.",
+        FieldType::Date
+    ),
+    field!(
+        "trades.DateKey",
+        "Dashboard trade date key.",
+        FieldType::Number
+    ),
+    field!(
+        "trades.TimeKey",
+        "Dashboard trade time key.",
+        FieldType::Number
+    ),
+    field!(
+        "trades.SecurityKey",
+        "Dashboard trade security key.",
+        FieldType::Number
+    ),
+    field!(
+        "trades.TradeID",
+        "Dashboard trade identifier.",
+        FieldType::Number
+    ),
+    field!(
+        "trades.SequenceNumber",
+        "Dashboard trade sequence number.",
+        FieldType::Number
+    ),
     field!(
         "trades.Ticker",
         "Dashboard trade ticker symbol.",
         FieldType::String
     ),
-    field!("trades.Date", "Dashboard trade date.", FieldType::Date),
+    field!(
+        "trades.Sector",
+        "Dashboard trade issuer sector.",
+        FieldType::String
+    ),
+    field!(
+        "trades.Industry",
+        "Dashboard trade issuer industry.",
+        FieldType::String
+    ),
+    field!(
+        "trades.Name",
+        "Dashboard trade issuer name.",
+        FieldType::String
+    ),
+    field!(
+        "trades.DateTime",
+        "Dashboard trade timestamp.",
+        FieldType::Datetime
+    ),
+    field!("trades.Time", "Dashboard trade time.", FieldType::String),
     field!("trades.Price", "Dashboard trade price.", FieldType::Number),
+    field!(
+        "trades.Bid",
+        "Dashboard trade bid price.",
+        FieldType::Number
+    ),
+    field!(
+        "trades.Ask",
+        "Dashboard trade ask price.",
+        FieldType::Number
+    ),
     field!(
         "trades.Dollars",
         "Dashboard trade notional value.",
         FieldType::Number
     ),
     field!(
+        "trades.AverageBlockSizeDollars",
+        "Dashboard trade average block size in dollars.",
+        FieldType::Number
+    ),
+    field!(
+        "trades.AverageBlockSizeShares",
+        "Dashboard trade average block size in shares.",
+        FieldType::Number
+    ),
+    field!(
+        "trades.DollarsMultiplier",
+        "Dashboard trade relative dollar-size multiplier.",
+        FieldType::Number
+    ),
+    field!(
+        "trades.Volume",
+        "Dashboard trade share volume.",
+        FieldType::Number
+    ),
+    field!(
+        "trades.AverageDailyVolume",
+        "Dashboard trade average daily volume.",
+        FieldType::Number
+    ),
+    field!(
+        "trades.PercentDailyVolume",
+        "Dashboard trade percent of daily volume.",
+        FieldType::Number
+    ),
+    field!(
+        "trades.RelativeSize",
+        "Dashboard trade relative size score.",
+        FieldType::Number
+    ),
+    field!(
+        "trades.LastComparibleTradeDate",
+        "Dashboard trade last comparable trade date.",
+        FieldType::Date
+    ),
+    field!(
+        "trades.IPODate",
+        "Dashboard trade issuer IPO date.",
+        FieldType::Date
+    ),
+    field!(
+        "trades.OffsettingTradeDate",
+        "Dashboard trade offsetting trade date.",
+        FieldType::Date
+    ),
+    field!(
+        "trades.PhantomPrintFulfillmentDate",
+        "Dashboard trade phantom-print fulfillment date.",
+        FieldType::Date
+    ),
+    field!(
+        "trades.PhantomPrintFulfillmentDays",
+        "Dashboard trade phantom-print fulfillment days.",
+        FieldType::Number
+    ),
+    field!(
+        "trades.TradeCount",
+        "Dashboard trade count.",
+        FieldType::Number
+    ),
+    field!(
+        "trades.CumulativeDistribution",
+        "Dashboard trade cumulative distribution score.",
+        FieldType::Number
+    ),
+    field!(
+        "trades.TradeRank",
+        "Dashboard trade rank.",
+        FieldType::Number
+    ),
+    field!(
+        "trades.TradeRankSnapshot",
+        "Dashboard trade rank snapshot.",
+        FieldType::Number
+    ),
+    field!(
+        "trades.LatePrint",
+        "Whether the dashboard trade is a late print.",
+        FieldType::Boolean
+    ),
+    field!(
+        "trades.PhantomPrint",
+        "Whether the dashboard trade is a phantom print.",
+        FieldType::Boolean
+    ),
+    field!(
+        "trades.InsideBar",
+        "Whether the dashboard trade is inside bar activity.",
+        FieldType::Boolean
+    ),
+    field!(
+        "trades.DoubleInsideBar",
+        "Whether the dashboard trade is double inside bar activity.",
+        FieldType::Boolean
+    ),
+    field!(
+        "trades.SignaturePrint",
+        "Whether the dashboard trade is a signature print.",
+        FieldType::Boolean
+    ),
+    field!(
+        "trades.NewPosition",
+        "Whether the dashboard trade is a new position.",
+        FieldType::Boolean
+    ),
+    field!(
+        "trades.AHInstitutionalDollars",
+        "After-hours institutional dollars.",
+        FieldType::Number
+    ),
+    field!(
+        "trades.AHInstitutionalDollarsRank",
+        "After-hours institutional dollars rank.",
+        FieldType::Number
+    ),
+    field!(
+        "trades.AHInstitutionalVolume",
+        "After-hours institutional volume.",
+        FieldType::Number
+    ),
+    field!(
+        "trades.TotalInstitutionalDollars",
+        "Total institutional dollars.",
+        FieldType::Number
+    ),
+    field!(
+        "trades.TotalInstitutionalDollarsRank",
+        "Total institutional dollars rank.",
+        FieldType::Number
+    ),
+    field!(
+        "trades.TotalInstitutionalVolume",
+        "Total institutional volume.",
+        FieldType::Number
+    ),
+    field!(
+        "trades.ClosingTradeDollars",
+        "Closing trade dollars.",
+        FieldType::Number
+    ),
+    field!(
+        "trades.ClosingTradeDollarsRank",
+        "Closing trade dollars rank.",
+        FieldType::Number
+    ),
+    field!(
+        "trades.ClosingTradeVolume",
+        "Closing trade volume.",
+        FieldType::Number
+    ),
+    field!(
+        "trades.TotalDollars",
+        "Total trade dollars.",
+        FieldType::Number
+    ),
+    field!(
+        "trades.TotalDollarsRank",
+        "Total trade dollars rank.",
+        FieldType::Number
+    ),
+    field!(
+        "trades.TotalVolume",
+        "Total trade volume.",
+        FieldType::Number
+    ),
+    field!(
+        "trades.ClosePrice",
+        "Dashboard trade close price.",
+        FieldType::Number
+    ),
+    field!(
+        "trades.RSI",
+        "Dashboard trade daily RSI value.",
+        FieldType::Number
+    ),
+    field!(
+        "trades.TotalRows",
+        "Dashboard trade total row count.",
+        FieldType::Number
+    ),
+    field!(
+        "trades.TradeConditions",
+        "Dashboard trade condition text.",
+        FieldType::String
+    ),
+    field!(
+        "trades.FrequencyLast30TD",
+        "Dashboard trade frequency over the last 30 trading days.",
+        FieldType::Number
+    ),
+    field!(
+        "trades.FrequencyLast90TD",
+        "Dashboard trade frequency over the last 90 trading days.",
+        FieldType::Number
+    ),
+    field!(
+        "trades.FrequencyLast1CY",
+        "Dashboard trade frequency over the last calendar year.",
+        FieldType::Number
+    ),
+    field!(
+        "trades.Cancelled",
+        "Whether the dashboard trade was cancelled.",
+        FieldType::Boolean
+    ),
+    field!(
+        "trades.TotalTrades",
+        "Dashboard trade total trade count.",
+        FieldType::Number
+    ),
+    field!(
+        "trades.ExternalFeed",
+        "Whether the dashboard trade came from an external feed.",
+        FieldType::Boolean
+    ),
+    field!(
         "trades.venue",
         "Dashboard trade venue classification.",
         FieldType::String
     ),
+    field!(
+        "trades.type",
+        "Dashboard trade opening or closing classification.",
+        FieldType::String
+    ),
+    field!(
+        "trades.events",
+        "Dashboard trade calendar event markers.",
+        FieldType::Array
+    ),
     field!("clusters.Date", "Dashboard cluster date.", FieldType::Date),
+    field!(
+        "clusters.IPODate",
+        "Dashboard cluster issuer IPO date.",
+        FieldType::Date
+    ),
+    field!(
+        "clusters.DateKey",
+        "Dashboard cluster date key.",
+        FieldType::Number
+    ),
+    field!(
+        "clusters.SecurityKey",
+        "Dashboard cluster security key.",
+        FieldType::Number
+    ),
+    field!(
+        "clusters.Ticker",
+        "Dashboard cluster ticker symbol.",
+        FieldType::String
+    ),
+    field!(
+        "clusters.Sector",
+        "Dashboard cluster issuer sector.",
+        FieldType::String
+    ),
+    field!(
+        "clusters.Industry",
+        "Dashboard cluster issuer industry.",
+        FieldType::String
+    ),
+    field!(
+        "clusters.Name",
+        "Dashboard cluster issuer name.",
+        FieldType::String
+    ),
+    field!(
+        "clusters.MinDateTime",
+        "Dashboard cluster minimum timestamp.",
+        FieldType::Datetime
+    ),
+    field!(
+        "clusters.MaxDateTime",
+        "Dashboard cluster maximum timestamp.",
+        FieldType::Datetime
+    ),
+    field!(
+        "clusters.MinTime",
+        "Dashboard cluster minimum time.",
+        FieldType::String
+    ),
+    field!(
+        "clusters.MaxTime",
+        "Dashboard cluster maximum time.",
+        FieldType::String
+    ),
     field!(
         "clusters.Price",
         "Dashboard cluster price.",
+        FieldType::Number
+    ),
+    field!(
+        "clusters.ClosePrice",
+        "Dashboard cluster close price.",
         FieldType::Number
     ),
     field!(
@@ -166,9 +529,125 @@ const DASHBOARD_FIELDS: &[FieldMetadata] = &[
         FieldType::Number
     ),
     field!(
+        "clusters.AverageBlockSizeShares",
+        "Dashboard cluster average block size in shares.",
+        FieldType::Number
+    ),
+    field!(
+        "clusters.AverageBlockSizeDollars",
+        "Dashboard cluster average block size in dollars.",
+        FieldType::Number
+    ),
+    field!(
+        "clusters.Volume",
+        "Dashboard cluster share volume.",
+        FieldType::Number
+    ),
+    field!(
+        "clusters.AverageDailyVolume",
+        "Dashboard cluster average daily volume.",
+        FieldType::Number
+    ),
+    field!(
         "clusters.TradeCount",
         "Dashboard cluster trade count.",
         FieldType::Number
+    ),
+    field!(
+        "clusters.DollarsMultiplier",
+        "Dashboard cluster relative dollar-size multiplier.",
+        FieldType::Number
+    ),
+    field!(
+        "clusters.CumulativeDistribution",
+        "Dashboard cluster cumulative distribution score.",
+        FieldType::Number
+    ),
+    field!(
+        "clusters.TradeClusterRank",
+        "Dashboard cluster rank.",
+        FieldType::Number
+    ),
+    field!(
+        "clusters.LastComparibleTradeClusterDate",
+        "Dashboard cluster last comparable cluster date.",
+        FieldType::Date
+    ),
+    field!(
+        "clusters.InsideBar",
+        "Whether the dashboard cluster is inside bar activity.",
+        FieldType::Boolean
+    ),
+    field!(
+        "clusters.DoubleInsideBar",
+        "Whether the dashboard cluster is double inside bar activity.",
+        FieldType::Boolean
+    ),
+    field!(
+        "clusters.TotalRows",
+        "Dashboard cluster total row count.",
+        FieldType::Number
+    ),
+    field!(
+        "clusters.ExternalFeed",
+        "Whether the dashboard cluster came from an external feed.",
+        FieldType::Boolean
+    ),
+    field!(
+        "clusters.window",
+        "Collapsed min and max dashboard cluster time window.",
+        FieldType::String
+    ),
+    field!(
+        "clusters.events",
+        "Dashboard cluster calendar event markers.",
+        FieldType::Array
+    ),
+    field!(
+        "levels.Ticker",
+        "Dashboard level ticker symbol.",
+        FieldType::String
+    ),
+    field!(
+        "levels.Sector",
+        "Dashboard level issuer sector.",
+        FieldType::String
+    ),
+    field!(
+        "levels.Industry",
+        "Dashboard level issuer industry.",
+        FieldType::String
+    ),
+    field!(
+        "levels.Name",
+        "Dashboard level issuer name.",
+        FieldType::String
+    ),
+    field!("levels.Date", "Dashboard level date.", FieldType::Date),
+    field!(
+        "levels.MinDate",
+        "Dashboard level minimum date.",
+        FieldType::Date
+    ),
+    field!(
+        "levels.MaxDate",
+        "Dashboard level maximum date.",
+        FieldType::Date
+    ),
+    field!(
+        "levels.FullDateTime",
+        "Dashboard level timestamp.",
+        FieldType::Datetime
+    ),
+    field!(
+        "levels.FullTimeString24",
+        "Dashboard level time.",
+        FieldType::String
+    ),
+    field!(
+        "levels.Dates",
+        "Dashboard level date list.",
+        FieldType::String
     ),
     field!("levels.Price", "Dashboard level price.", FieldType::Number),
     field!(
@@ -177,8 +656,103 @@ const DASHBOARD_FIELDS: &[FieldMetadata] = &[
         FieldType::Number
     ),
     field!(
+        "levels.Volume",
+        "Dashboard level share volume.",
+        FieldType::Number
+    ),
+    field!(
         "levels.Trades",
         "Dashboard level trade count.",
+        FieldType::Number
+    ),
+    field!(
+        "levels.RelativeSize",
+        "Dashboard level relative size score.",
+        FieldType::Number
+    ),
+    field!(
+        "levels.CumulativeDistribution",
+        "Dashboard level cumulative distribution score.",
+        FieldType::Number
+    ),
+    field!(
+        "levels.TradeLevelRank",
+        "Dashboard level rank.",
+        FieldType::Number
+    ),
+    field!(
+        "levels.TradeLevelTouches",
+        "Dashboard level touch count.",
+        FieldType::Number
+    ),
+    field!(
+        "levels.TotalRows",
+        "Dashboard level total row count.",
+        FieldType::Number
+    ),
+    field!(
+        "cluster_bombs.Date",
+        "Dashboard cluster-bomb date.",
+        FieldType::Date
+    ),
+    field!(
+        "cluster_bombs.IPODate",
+        "Dashboard cluster-bomb issuer IPO date.",
+        FieldType::Date
+    ),
+    field!(
+        "cluster_bombs.DateKey",
+        "Dashboard cluster-bomb date key.",
+        FieldType::Number
+    ),
+    field!(
+        "cluster_bombs.SecurityKey",
+        "Dashboard cluster-bomb security key.",
+        FieldType::Number
+    ),
+    field!(
+        "cluster_bombs.Ticker",
+        "Dashboard cluster-bomb ticker symbol.",
+        FieldType::String
+    ),
+    field!(
+        "cluster_bombs.Sector",
+        "Dashboard cluster-bomb issuer sector.",
+        FieldType::String
+    ),
+    field!(
+        "cluster_bombs.Industry",
+        "Dashboard cluster-bomb issuer industry.",
+        FieldType::String
+    ),
+    field!(
+        "cluster_bombs.Name",
+        "Dashboard cluster-bomb issuer name.",
+        FieldType::String
+    ),
+    field!(
+        "cluster_bombs.MinDateTime",
+        "Dashboard cluster-bomb minimum timestamp.",
+        FieldType::Datetime
+    ),
+    field!(
+        "cluster_bombs.MaxDateTime",
+        "Dashboard cluster-bomb maximum timestamp.",
+        FieldType::Datetime
+    ),
+    field!(
+        "cluster_bombs.MinTime",
+        "Dashboard cluster-bomb minimum time.",
+        FieldType::String
+    ),
+    field!(
+        "cluster_bombs.MaxTime",
+        "Dashboard cluster-bomb maximum time.",
+        FieldType::String
+    ),
+    field!(
+        "cluster_bombs.ClosePrice",
+        "Dashboard cluster-bomb close price.",
         FieldType::Number
     ),
     field!(
@@ -187,9 +761,79 @@ const DASHBOARD_FIELDS: &[FieldMetadata] = &[
         FieldType::Number
     ),
     field!(
+        "cluster_bombs.AverageBlockSizeShares",
+        "Dashboard cluster-bomb average block size in shares.",
+        FieldType::Number
+    ),
+    field!(
+        "cluster_bombs.AverageBlockSizeDollars",
+        "Dashboard cluster-bomb average block size in dollars.",
+        FieldType::Number
+    ),
+    field!(
+        "cluster_bombs.Volume",
+        "Dashboard cluster-bomb share volume.",
+        FieldType::Number
+    ),
+    field!(
+        "cluster_bombs.AverageDailyVolume",
+        "Dashboard cluster-bomb average daily volume.",
+        FieldType::Number
+    ),
+    field!(
         "cluster_bombs.TradeCount",
         "Dashboard cluster-bomb trade count.",
         FieldType::Number
+    ),
+    field!(
+        "cluster_bombs.DollarsMultiplier",
+        "Dashboard cluster-bomb relative dollar-size multiplier.",
+        FieldType::Number
+    ),
+    field!(
+        "cluster_bombs.CumulativeDistribution",
+        "Dashboard cluster-bomb cumulative distribution score.",
+        FieldType::Number
+    ),
+    field!(
+        "cluster_bombs.TradeClusterBombRank",
+        "Dashboard cluster-bomb rank.",
+        FieldType::Number
+    ),
+    field!(
+        "cluster_bombs.LastComparableTradeClusterBombDate",
+        "Dashboard cluster-bomb last comparable date.",
+        FieldType::Date
+    ),
+    field!(
+        "cluster_bombs.InsideBar",
+        "Whether the dashboard cluster bomb is inside bar activity.",
+        FieldType::Boolean
+    ),
+    field!(
+        "cluster_bombs.DoubleInsideBar",
+        "Whether the dashboard cluster bomb is double inside bar activity.",
+        FieldType::Boolean
+    ),
+    field!(
+        "cluster_bombs.TotalRows",
+        "Dashboard cluster-bomb total row count.",
+        FieldType::Number
+    ),
+    field!(
+        "cluster_bombs.ExternalFeed",
+        "Whether the dashboard cluster bomb came from an external feed.",
+        FieldType::Boolean
+    ),
+    field!(
+        "cluster_bombs.window",
+        "Collapsed min and max dashboard cluster-bomb time window.",
+        FieldType::String
+    ),
+    field!(
+        "cluster_bombs.events",
+        "Dashboard cluster-bomb calendar event markers.",
+        FieldType::Array
     ),
 ];
 
