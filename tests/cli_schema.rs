@@ -129,6 +129,18 @@ fn schema_command_emits_machine_readable_contract() {
             && arg["value_name"] == "COMMAND_PATH"
             && arg["multi_value"] == true
     }));
+
+    let trade_levels = schema["commands"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|command| command["path"] == serde_json::json!(["trade", "levels"]))
+        .unwrap();
+    assert!(trade_levels["args"].as_array().unwrap().iter().any(|arg| {
+        arg["name"] == "trade-level-count"
+            && arg["semantic_type"] == "integer"
+            && arg["possible_values"] == serde_json::json!(["5", "10", "20", "50"])
+    }));
 }
 
 #[test]
