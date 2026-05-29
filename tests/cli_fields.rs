@@ -43,6 +43,34 @@ fn fields_volume_institutional_emits_non_trade_metadata() {
 }
 
 #[test]
+fn fields_trade_dashboard_emits_nested_section_metadata() {
+    let output = Command::new(env!("CARGO_BIN_EXE_volumeleaders-agent"))
+        .args(["fields", "trade", "dashboard"])
+        .output()
+        .unwrap();
+
+    assert!(output.status.success());
+    assert!(output.stderr.is_empty());
+
+    let discovery: Value = serde_json::from_slice(&output.stdout).unwrap();
+    assert_eq!(discovery["command_path"], "trade dashboard");
+    assert_eq!(discovery["preferred_path"], "trade dashboard");
+
+    let fields = discovery["fields"].as_array().unwrap();
+    assert_field(fields, "trades.TradeRank", "number");
+    assert_field(fields, "trades.events", "array");
+    assert_field(fields, "clusters.TradeClusterRank", "number");
+    assert_field(fields, "clusters.window", "string");
+    assert_field(fields, "levels.TradeLevelRank", "number");
+    assert_field(fields, "cluster_bombs.TradeCount", "number");
+    assert!(fields.iter().all(|field| {
+        field["name"]
+            .as_str()
+            .is_some_and(|name| name.contains('.'))
+    }));
+}
+
+#[test]
 fn fields_unknown_command_returns_structured_usage_error() {
     let output = Command::new(env!("CARGO_BIN_EXE_volumeleaders-agent"))
         .args(["fields", "trade", "unknown"])

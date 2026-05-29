@@ -1187,6 +1187,8 @@ fn summarize_group(acc: TradeGroupAccumulator) -> TradeGroupSummary {
 
 #[cfg(test)]
 mod tests {
+    use std::collections::BTreeSet;
+
     use crate::{Trade, TradeCluster, TradeClusterAlert, TradeClusterBomb, TradeLevel};
     use serde_json::json;
 
@@ -1845,6 +1847,44 @@ mod tests {
 
         assert!(err.contains("no requested dashboard fields matched `trades` rows"));
         assert!(err.contains("case-sensitive"));
+    }
+
+    #[test]
+    fn dashboard_field_metadata_accepts_documented_projection_fields() {
+        let fields = field_metadata::field_names("trade dashboard").unwrap();
+
+        for field in fields {
+            let mut args = dashboard_args();
+            args.fields = Some(field.clone());
+
+            dashboard_output_value(&dashboard_fixture(), &args)
+                .unwrap_or_else(|err| panic!("metadata field `{field}` was rejected: {err}"));
+        }
+    }
+
+    #[test]
+    fn dashboard_field_metadata_covers_transformed_dashboard_fields() {
+        let mut args = dashboard_args();
+        args.all_fields = true;
+        let output = dashboard_output_value(&dashboard_fixture(), &args).unwrap();
+        let documented = field_metadata::field_names("trade dashboard")
+            .unwrap()
+            .into_iter()
+            .collect::<BTreeSet<_>>();
+
+        for section in ["trades", "clusters", "levels", "cluster_bombs"] {
+            let rows = output[section].as_array().unwrap();
+            for row in rows {
+                let row = row.as_object().unwrap();
+                for key in row.keys() {
+                    let qualified = format!("{section}.{key}");
+                    assert!(
+                        documented.contains(&qualified),
+                        "dashboard field `{qualified}` is accepted by --fields but missing from fields metadata"
+                    );
+                }
+            }
+        }
     }
 
     fn has_filter(filters: &[(String, String)], key: &str, value: &str) -> bool {
