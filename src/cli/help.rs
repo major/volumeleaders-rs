@@ -18,6 +18,7 @@ fn topic_text(topic: HelpTopic) -> &'static str {
         HelpTopic::ExitCodes => EXIT_CODES_HELP,
         HelpTopic::Schema => SCHEMA_HELP,
         HelpTopic::Examples => EXAMPLES_HELP,
+        HelpTopic::Workflows => WORKFLOWS_HELP,
     }
 }
 
@@ -174,6 +175,113 @@ volumeleaders-agent watchlist tickers --watchlist-key 123
 These examples are also exposed as structured schema `examples` entries for machine-readable discovery.
 "#;
 
+const WORKFLOWS_HELP: &str = r#"workflows
+
+Workflow guidance for common agent tasks:
+
+General rules:
+- Start with defaults first. Add date ranges, tickers, filters, or `jq` only when the research question requires them.
+- Institutional prints show unusual activity. They do not guarantee buy or sell intent.
+- Run `volumeleaders-agent fields <command path>` before choosing `--fields`; field names are exact and case-sensitive.
+- Use `volumeleaders-agent doctor` before live-data workflows when automation needs to confirm local auth readiness.
+
+0. Confirm local readiness
+Recommended first command: `volumeleaders-agent doctor`
+
+Copy-paste examples:
+volumeleaders-agent doctor
+volumeleaders-agent doctor --live
+volumeleaders-agent help auth
+
+0. Discover the right command before guessing
+Recommended first command: `volumeleaders-agent commands --grouped`
+
+Copy-paste examples:
+volumeleaders-agent commands --grouped
+volumeleaders-agent schema | jq '.commands[] | {path: .preferred_path, auth_required, mutating}'
+volumeleaders-agent help schema
+
+1. Single ticker institutional context
+Recommended first command: `volumeleaders-agent trade dashboard NVDA`
+
+Copy-paste examples:
+volumeleaders-agent trade dashboard NVDA
+volumeleaders-agent fields trade dashboard
+volumeleaders-agent trade dashboard NVDA --fields trades.TradeRank,trades.events,clusters.window,levels.TradeLevelRank,cluster_bombs.TradeCount
+volumeleaders-agent trade list NVDA
+volumeleaders-agent fields trade list
+volumeleaders-agent trade list NVDA --fields Ticker,DateTime,Price,Dollars,venue,type
+volumeleaders-agent trade list NVDA --start-date 2026-05-01 --end-date 2026-05-27 --fields Ticker,DateTime,Price,Dollars | jq '.[] | select(.Dollars > 1000000)'
+
+2. Broad daily scan
+Recommended first command: `volumeleaders-agent report top-100-rank`
+
+Copy-paste examples:
+volumeleaders-agent report top-100-rank
+volumeleaders-agent fields report top-100-rank
+volumeleaders-agent report top-100-rank --days 5 --fields Ticker,DateTime,Price,Dollars,TradeRank
+
+3. Support and resistance context
+Recommended first command: `volumeleaders-agent trade dashboard NVDA`
+
+Copy-paste examples:
+volumeleaders-agent trade dashboard NVDA
+volumeleaders-agent trade levels NVDA
+volumeleaders-agent fields trade levels
+volumeleaders-agent trade levels NVDA --trade-level-count 10 --fields Ticker,TradeLevelRank,Price,TradeLevelTouches,Dollars
+
+4. Sudden activity bursts
+Recommended first command: `volumeleaders-agent trade cluster-bombs NVDA`
+
+Copy-paste examples:
+volumeleaders-agent trade cluster-bombs NVDA
+volumeleaders-agent fields trade cluster-bombs
+volumeleaders-agent trade cluster-bombs NVDA --fields Ticker,TradeClusterBombRank,TradeCount,Dollars,window,events
+
+5. Repeated activity near a price
+Recommended first command: `volumeleaders-agent trade clusters NVDA`
+
+Copy-paste examples:
+volumeleaders-agent trade clusters NVDA
+volumeleaders-agent trade levels NVDA
+volumeleaders-agent fields trade clusters
+volumeleaders-agent trade clusters NVDA --fields Ticker,TradeClusterRank,Price,TradeCount,Dollars,window
+
+6. Leveraged ETF sentiment
+Recommended first command: `volumeleaders-agent trade sentiment`
+
+Copy-paste examples:
+volumeleaders-agent trade sentiment
+volumeleaders-agent trade sentiment --start-date 2026-05-01 --end-date 2026-05-27
+volumeleaders-agent help schema
+
+7. Earnings with institutional context
+Recommended first command: `volumeleaders-agent market earnings`
+
+Copy-paste examples:
+volumeleaders-agent market earnings
+volumeleaders-agent market earnings --start-date 2026-05-01 --end-date 2026-05-27
+volumeleaders-agent trade dashboard NVDA
+
+8. Check volume leaderboards
+Recommended first command: `volumeleaders-agent volume institutional`
+
+Copy-paste examples:
+volumeleaders-agent volume institutional
+volumeleaders-agent fields volume institutional
+volumeleaders-agent volume institutional --date 2026-05-27 --limit 50 --fields Ticker,Dollars,events
+
+9. Inspect or plan mutating alert and watchlist changes
+Recommended first command: `volumeleaders-agent alert configs`
+
+Copy-paste examples:
+volumeleaders-agent alert configs
+volumeleaders-agent watchlist configs
+volumeleaders-agent schema | jq '.commands[] | select(.mutating == true) | {path: .preferred_path, supports_dry_run, requires_confirmation}'
+volumeleaders-agent alert create --name BigTechSweeps --tickers AAPL,MSFT --dry-run
+volumeleaders-agent watchlist delete --key 123 --dry-run
+"#;
+
 #[cfg(test)]
 mod tests {
     use std::io;
@@ -206,6 +314,18 @@ mod tests {
         assert!(topic_text(HelpTopic::Examples).contains("--fields Ticker,Dollars | jq"));
         assert!(topic_text(HelpTopic::Examples).contains("--strict-empty trade list NVDA"));
         assert!(topic_text(HelpTopic::Examples).contains("-vv trade list NVDA"));
+        assert!(topic_text(HelpTopic::Workflows).contains("Start with defaults first"));
+        assert!(
+            topic_text(HelpTopic::Workflows).contains("Institutional prints show unusual activity")
+        );
+        assert!(topic_text(HelpTopic::Workflows).contains("fields <command path>"));
+        assert!(topic_text(HelpTopic::Workflows).contains("Recommended first command"));
+        assert!(topic_text(HelpTopic::Workflows).contains("trade dashboard NVDA"));
+        assert!(topic_text(HelpTopic::Workflows).contains("report top-100-rank"));
+        assert!(topic_text(HelpTopic::Workflows).contains("trade cluster-bombs"));
+        assert!(topic_text(HelpTopic::Workflows).contains("trade sentiment"));
+        assert!(topic_text(HelpTopic::Workflows).contains("market earnings"));
+        assert!(topic_text(HelpTopic::Workflows).contains("alert configs"));
     }
 
     #[test]
@@ -217,6 +337,7 @@ mod tests {
             HelpTopic::ExitCodes,
             HelpTopic::Schema,
             HelpTopic::Examples,
+            HelpTopic::Workflows,
         ] {
             assert!(topic_text(topic).ends_with('\n'));
         }

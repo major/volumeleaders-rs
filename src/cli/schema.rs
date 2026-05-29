@@ -971,7 +971,8 @@ mod tests {
                 "environment",
                 "exit-codes",
                 "schema",
-                "examples"
+                "examples",
+                "workflows"
             ])
         );
     }

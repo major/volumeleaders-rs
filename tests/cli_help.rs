@@ -49,6 +49,38 @@ fn help_help_lists_agent_topic() {
     let stdout = String::from_utf8(output.stdout).unwrap();
     assert!(stdout.contains("agent"));
     assert!(stdout.contains("Automation guidance for non-interactive agents"));
+    assert!(stdout.contains("workflows"));
+    assert!(stdout.contains("Workflow-oriented guidance for common agent tasks"));
+}
+
+#[test]
+fn help_workflows_topic_guides_common_agent_tasks() {
+    let output = Command::new(env!("CARGO_BIN_EXE_volumeleaders-agent"))
+        .args(["help", "workflows"])
+        .output()
+        .unwrap();
+
+    assert!(output.status.success());
+    assert!(output.stderr.is_empty());
+
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    assert!(stdout.contains("Recommended first command"));
+    assert!(stdout.contains("Start with defaults first"));
+    assert!(stdout.contains("Institutional prints show unusual activity"));
+    assert!(stdout.contains("fields <command path>"));
+    assert!(stdout.contains("volumeleaders-agent doctor"));
+    assert!(stdout.contains("volumeleaders-agent report top-100-rank"));
+    assert!(stdout.contains("volumeleaders-agent trade list NVDA"));
+    assert!(stdout.contains("volumeleaders-agent trade dashboard NVDA"));
+    assert!(stdout.contains("volumeleaders-agent trade levels NVDA"));
+    assert!(stdout.contains("volumeleaders-agent trade cluster-bombs NVDA"));
+    assert!(stdout.contains("volumeleaders-agent trade clusters NVDA"));
+    assert!(stdout.contains("volumeleaders-agent trade sentiment"));
+    assert!(stdout.contains("volumeleaders-agent market earnings"));
+    assert!(stdout.contains("volumeleaders-agent volume institutional"));
+    assert!(stdout.contains("volumeleaders-agent alert configs"));
+    assert!(stdout.contains("volumeleaders-agent watchlist configs"));
+    assert!(stdout.contains("--dry-run"));
 }
 
 #[test]
@@ -79,6 +111,7 @@ fn all_help_topics_succeed() {
         "exit-codes",
         "schema",
         "examples",
+        "workflows",
     ] {
         let output = Command::new(env!("CARGO_BIN_EXE_volumeleaders-agent"))
             .args(["help", topic])
