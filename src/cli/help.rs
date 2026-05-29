@@ -185,7 +185,7 @@ General rules:
 - Run `volumeleaders-agent fields <command path>` before choosing `--fields`; field names are exact and case-sensitive.
 - Use `volumeleaders-agent doctor` before live-data workflows when automation needs to confirm local auth readiness.
 
-0. Confirm local readiness
+1. Confirm local readiness
 Recommended first command: `volumeleaders-agent doctor`
 
 Copy-paste examples:
@@ -193,7 +193,7 @@ volumeleaders-agent doctor
 volumeleaders-agent doctor --live
 volumeleaders-agent help auth
 
-0. Discover the right command before guessing
+2. Discover the right command before guessing
 Recommended first command: `volumeleaders-agent commands --grouped`
 
 Copy-paste examples:
@@ -201,7 +201,7 @@ volumeleaders-agent commands --grouped
 volumeleaders-agent schema | jq '.commands[] | {path: .preferred_path, auth_required, mutating}'
 volumeleaders-agent help schema
 
-1. Single ticker institutional context
+3. Single ticker institutional context
 Recommended first command: `volumeleaders-agent trade dashboard NVDA`
 
 Copy-paste examples:
@@ -213,7 +213,7 @@ volumeleaders-agent fields trade list
 volumeleaders-agent trade list NVDA --fields Ticker,DateTime,Price,Dollars,venue,type
 volumeleaders-agent trade list NVDA --start-date 2026-05-01 --end-date 2026-05-27 --fields Ticker,DateTime,Price,Dollars | jq '.[] | select(.Dollars > 1000000)'
 
-2. Broad daily scan
+4. Broad daily scan
 Recommended first command: `volumeleaders-agent report top-100-rank`
 
 Copy-paste examples:
@@ -221,7 +221,7 @@ volumeleaders-agent report top-100-rank
 volumeleaders-agent fields report top-100-rank
 volumeleaders-agent report top-100-rank --days 5 --fields Ticker,DateTime,Price,Dollars,TradeRank
 
-3. Support and resistance context
+5. Support and resistance context
 Recommended first command: `volumeleaders-agent trade dashboard NVDA`
 
 Copy-paste examples:
@@ -230,7 +230,7 @@ volumeleaders-agent trade levels NVDA
 volumeleaders-agent fields trade levels
 volumeleaders-agent trade levels NVDA --trade-level-count 10 --fields Ticker,TradeLevelRank,Price,TradeLevelTouches,Dollars
 
-4. Sudden activity bursts
+6. Sudden activity bursts
 Recommended first command: `volumeleaders-agent trade cluster-bombs NVDA`
 
 Copy-paste examples:
@@ -238,7 +238,7 @@ volumeleaders-agent trade cluster-bombs NVDA
 volumeleaders-agent fields trade cluster-bombs
 volumeleaders-agent trade cluster-bombs NVDA --fields Ticker,TradeClusterBombRank,TradeCount,Dollars,window,events
 
-5. Repeated activity near a price
+7. Repeated activity near a price
 Recommended first command: `volumeleaders-agent trade clusters NVDA`
 
 Copy-paste examples:
@@ -247,7 +247,7 @@ volumeleaders-agent trade levels NVDA
 volumeleaders-agent fields trade clusters
 volumeleaders-agent trade clusters NVDA --fields Ticker,TradeClusterRank,Price,TradeCount,Dollars,window
 
-6. Leveraged ETF sentiment
+8. Leveraged ETF sentiment
 Recommended first command: `volumeleaders-agent trade sentiment`
 
 Copy-paste examples:
@@ -255,7 +255,7 @@ volumeleaders-agent trade sentiment
 volumeleaders-agent trade sentiment --start-date 2026-05-01 --end-date 2026-05-27
 volumeleaders-agent help schema
 
-7. Earnings with institutional context
+9. Earnings with institutional context
 Recommended first command: `volumeleaders-agent market earnings`
 
 Copy-paste examples:
@@ -263,7 +263,7 @@ volumeleaders-agent market earnings
 volumeleaders-agent market earnings --start-date 2026-05-01 --end-date 2026-05-27
 volumeleaders-agent trade dashboard NVDA
 
-8. Check volume leaderboards
+10. Check volume leaderboards
 Recommended first command: `volumeleaders-agent volume institutional`
 
 Copy-paste examples:
@@ -271,7 +271,7 @@ volumeleaders-agent volume institutional
 volumeleaders-agent fields volume institutional
 volumeleaders-agent volume institutional --date 2026-05-27 --limit 50 --fields Ticker,Dollars,events
 
-9. Inspect or plan mutating alert and watchlist changes
+11. Inspect or plan mutating alert and watchlist changes
 Recommended first command: `volumeleaders-agent alert configs`
 
 Copy-paste examples:
