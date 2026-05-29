@@ -67,8 +67,8 @@ volumeleaders-rs/
 
 ## CONVENTIONS
 
-- Rust edition `2024`, MSRV `1.95.0`.
-- `rust-toolchain.toml` pins Rust 1.95 locally for consistency with the MSRV workflow.
+- Rust edition `2024`, MSRV `1.96.0`.
+- `rust-toolchain.toml` pins Rust 1.96 locally for consistency with the MSRV workflow.
 - The package is publishable as `rusty-volumeleaders`; keep crate metadata valid for crates.io.
 - The CLI binary remains `volumeleaders-agent` and is built only when the `cli` feature is enabled. `cli` is enabled by default.
 - Runtime CLI errors are emitted to stderr as `{"ok":false,"error":{"kind":"...","message":"..."}}`; stdout remains compact JSON for successful commands.

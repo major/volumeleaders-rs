@@ -2,7 +2,7 @@
 name = "rusty-volumeleaders"
 version = "0.4.0"
 edition = "2024"
-rust-version = "1.95"
+rust-version = "1.96"
 publish = true
 description = "Browser-session API client and CLI for VolumeLeaders data"
 license = "Apache-2.0"

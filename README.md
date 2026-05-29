@@ -36,7 +36,7 @@ GitHub releases also provide cargo-dist archives and shell or PowerShell install
 
 ## Requirements
 
-- Rust 1.95.0 or newer
+- Rust 1.96.0 or newer
 - `rust-toolchain.toml` pins local builds to the CI MSRV by default
 - Browser login at `https://www.volumeleaders.com` for commands that need live authenticated data
 - Optional tools for local maintenance: `cargo llvm-cov`, `cargo audit`
@@ -166,7 +166,7 @@ cargo doc --all-features --no-deps
 cargo doc --no-default-features --no-deps
 ```
 
-`make check` runs formatting, clippy, tests, and docs for both supported feature shapes: the default CLI build and the library-only `--no-default-features` build. The GitHub CI workflow mirrors those checks across Linux, macOS, and Windows, with an MSRV job pinned to Rust 1.95. The separate audit workflow runs `actions-rust-lang/audit` on manifest changes and a daily schedule.
+`make check` runs formatting, clippy, tests, and docs for both supported feature shapes: the default CLI build and the library-only `--no-default-features` build. The GitHub CI workflow mirrors those checks across Linux, macOS, and Windows, with an MSRV job pinned to Rust 1.96. The separate audit workflow runs `actions-rust-lang/audit` on manifest changes and a daily schedule.
 
 Most tests are inline `#[cfg(test)]` modules in `src/**`. Fixtures live in `tests/fixtures/*.json` and represent server payload contracts. HTTP tests use `mockito`. Renovate configuration keeps `rookie` on a longer abandonment threshold because the crate is required for browser-cookie auth and still receives maintenance despite infrequent releases.
 
