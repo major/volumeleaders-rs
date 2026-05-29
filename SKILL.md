@@ -19,6 +19,7 @@ volumeleaders-agent help environment
 volumeleaders-agent help exit-codes
 volumeleaders-agent help schema
 volumeleaders-agent help examples
+volumeleaders-agent help workflows
 volumeleaders-agent trade list --help
 ```
 
@@ -26,7 +27,7 @@ volumeleaders-agent trade list --help
 - `schema` is the authoritative machine-readable command contract generated from the live clap tree. Command entries include `path`, `preferred_path`, `is_alias`, optional `alias_for`, `aliases`, auth requirements, mutating and dry-run safety metadata, help text, argument metadata with stable `name` identifiers and semantic types, known `possible_values` validation constraints, boolean flag versus value-taking option shape, and structured `examples` arrays.
 - `commands` is the lightweight plain-text leaf command list. Use `--grouped` for descriptions.
 - `fields <command path>` emits exact case-sensitive output field names, descriptions, and type hints for commands that support `--fields` without requiring live rows. `fields trade dashboard` uses section-qualified nested names such as `trades.TradeRank`, `clusters.window`, `levels.TradeLevelRank`, and `cluster_bombs.TradeCount`. Unknown projected fields fail with exit code `2` and structured `usage_error` JSON on stderr.
-- `help <topic>` gives operational guidance when README access is unavailable.
+- `help <topic>` gives operational guidance when README access is unavailable. Use `help workflows` for common agent workflows with recommended first commands and copy-paste examples.
 - `help agent` summarizes the recommended non-interactive automation flow.
 - Command-specific `--help` includes descriptions for public options and an `Examples:` section for every visible leaf command; schema also exposes structured examples for machine-readable access.
 

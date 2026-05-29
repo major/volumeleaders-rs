@@ -210,6 +210,8 @@ pub enum HelpTopic {
     Schema,
     /// Copy-paste command examples.
     Examples,
+    /// Workflow-oriented guidance for common agent tasks.
+    Workflows,
 }
 
 /// Arguments for shell completion generation (populated in a later wave).
