@@ -170,10 +170,7 @@ async fn post_credentials(
         .body(encode_form_pairs(&[
             ("Email".to_string(), username.to_string()),
             ("Password".to_string(), password.to_string()),
-            (
-                "__RequestVerificationToken".to_string(),
-                xsrf_token.to_string(),
-            ),
+            ("__RequestVerificationToken".to_string(), xsrf_token),
         ]))
         .send()
         .await
@@ -185,7 +182,7 @@ async fn post_credentials(
         .headers()
         .get(reqwest::header::LOCATION)
         .and_then(|v| v.to_str().ok())
-        && location.to_ascii_lowercase().contains("/login")
+        && redirect_location_is_login(location)
     {
         return Err(ClientError::LoginFailed {
             reason: "invalid username or password".to_string(),
@@ -242,6 +239,23 @@ fn parse_cookie_pair(set_cookie: &str) -> Option<(String, String)> {
     }
 
     Some((name, value))
+}
+
+fn redirect_location_is_login(location: &str) -> bool {
+    let path = url::Url::parse(location)
+        .map(|url| url.path().to_string())
+        .unwrap_or_else(|_| {
+            location
+                .split(['?', '#'])
+                .next()
+                .unwrap_or(location)
+                .to_string()
+        });
+
+    path.trim_end_matches('/')
+        .rsplit('/')
+        .next()
+        .is_some_and(|segment| segment.eq_ignore_ascii_case("login"))
 }
 
 // ---------------------------------------------------------------------------
@@ -331,7 +345,7 @@ async fn post_credentials_with_base(
         .headers()
         .get(reqwest::header::LOCATION)
         .and_then(|v| v.to_str().ok())
-        && location.to_ascii_lowercase().contains("/login")
+        && redirect_location_is_login(location)
     {
         return Err(ClientError::LoginFailed {
             reason: "invalid username or password".to_string(),
@@ -382,6 +396,21 @@ mod tests {
     #[test]
     fn parse_cookie_pair_rejects_empty_value() {
         assert!(parse_cookie_pair("name=").is_none());
+    }
+
+    #[test]
+    fn redirect_location_detects_login_path_segment() {
+        assert!(redirect_location_is_login("/Login"));
+        assert!(redirect_location_is_login(
+            "https://volumeleaders.com/Login?returnUrl=%2F"
+        ));
+    }
+
+    #[test]
+    fn redirect_location_ignores_incidental_login_substrings() {
+        assert!(!redirect_location_is_login("/api/relogin"));
+        assert!(!redirect_location_is_login("/nologin"));
+        assert!(!redirect_location_is_login("/ExecutiveSummary"));
     }
 
     #[tokio::test]

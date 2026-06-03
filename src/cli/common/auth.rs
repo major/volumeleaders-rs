@@ -78,11 +78,12 @@ pub fn handle_api_error(err: ClientError) -> i32 {
 
 /// Build an authenticated client from a session, refreshing the XSRF token.
 async fn build_client_from_session(session: Session) -> Result<Client, ClientError> {
-    let bootstrap_client = Client::new(session.clone())?;
+    let cookies = session.cookies().to_vec();
+    let bootstrap_client = Client::new(session)?;
 
     let xsrf_token = crate::extract_xsrf_token(&bootstrap_client).await?;
 
-    let refreshed_session = Session::new(session.cookies().to_vec(), xsrf_token);
+    let refreshed_session = Session::new(cookies, xsrf_token);
     Client::new(refreshed_session)
 }
 

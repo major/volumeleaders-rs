@@ -105,9 +105,19 @@ fn save_session_at(session: &Session, base_dir: &Path) -> Result<()> {
         .map_err(|err| ClientError::Cache(format!("failed to write session cache: {err}")))?;
     #[cfg(unix)]
     {
+        // tempfile creates files with restrictive permissions on Unix; set the
+        // mode explicitly as a defensive check because this file contains
+        // reusable authentication cookies.
         use std::os::unix::fs::PermissionsExt;
         fs::set_permissions(tmp.path(), fs::Permissions::from_mode(0o600))
             .map_err(|err| ClientError::Cache(format!("failed to secure session cache: {err}")))?;
+    }
+    #[cfg(not(unix))]
+    {
+        // NamedTempFile inherits platform ACLs on non-Unix targets. Add a
+        // Windows-specific ACL hardening step here if this cache begins storing
+        // broader auth material than the current per-user session file.
+        let _ = tmp.path();
     }
     tmp.persist(&path)
         .map_err(|err| ClientError::Cache(format!("failed to persist session cache: {err}")))?;
