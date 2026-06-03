@@ -166,7 +166,6 @@ mod tests {
         assert!(result.is_err());
         assert_eq!(result.unwrap_err(), 3);
     }
-
     #[tokio::test]
     async fn build_client_from_session_with_config_refreshes_xsrf() {
         let mut server = mockito::Server::new_async().await;

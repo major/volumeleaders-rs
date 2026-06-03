@@ -256,7 +256,8 @@ pub(crate) async fn login_with_base(
     password: &str,
 ) -> Result<Session> {
     let http = build_login_client_with_base(base_url)?;
-    let (form_xsrf, initial_cookies) = extract_login_form_xsrf_with_base(&http, base_url).await?;
+    let (form_xsrf, initial_cookies) =
+        extract_login_form_xsrf_with_base(&http, base_url).await?;
     let login_cookies =
         post_credentials_with_base(&http, base_url, form_xsrf, username, password).await?;
     let mut all_cookies = login_cookies;
@@ -281,7 +282,8 @@ async fn extract_login_form_xsrf_with_base(
     let body = response.text().await.map_err(ClientError::Http)?;
 
     let document = Html::parse_document(&body);
-    let selector = Selector::parse(XSRF_INPUT_SELECTOR).expect("hardcoded CSS selector is valid");
+    let selector =
+        Selector::parse(XSRF_INPUT_SELECTOR).expect("hardcoded CSS selector is valid");
 
     let token = document
         .select(&selector)
@@ -347,7 +349,6 @@ async fn post_credentials_with_base(
 
     Ok(cookies)
 }
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -421,7 +422,10 @@ mod tests {
                 "set-cookie",
                 "ASP.NET_SessionId=sess-abc; path=/; HttpOnly; Secure",
             )
-            .with_header("set-cookie", ".ASPXAUTH=auth-xyz; path=/; HttpOnly; Secure")
+            .with_header(
+                "set-cookie",
+                ".ASPXAUTH=auth-xyz; path=/; HttpOnly; Secure",
+            )
             .with_header(
                 "set-cookie",
                 "__RequestVerificationToken=xsrf-cookie-789; path=/",
