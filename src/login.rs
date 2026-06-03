@@ -59,10 +59,10 @@ pub async fn login(username: &str, password: &str) -> Result<Session> {
     let (form_xsrf, initial_cookies) = extract_login_form_xsrf(&http).await?;
     let login_cookies = post_credentials(&http, form_xsrf, username, password).await?;
 
-    // Merge cookies: the XSRF cookie from the GET response + auth cookies
-    // from the POST response.
-    let mut all_cookies = initial_cookies;
-    all_cookies.extend(login_cookies);
+    // Merge cookies: POST response cookies take precedence over GET cookies
+    // since the authenticated session cookies are set by the login redirect.
+    let mut all_cookies = login_cookies;
+    all_cookies.extend(initial_cookies);
     Session::from_cookies(all_cookies)
 }
 
@@ -244,10 +244,115 @@ fn parse_cookie_pair(set_cookie: &str) -> Option<(String, String)> {
     Some((name, value))
 }
 
+// ---------------------------------------------------------------------------
+// Test helpers (cfg(test) only) — exposed for use by other test modules
+// ---------------------------------------------------------------------------
+
+/// Test helper that uses a custom base URL.
+#[cfg(test)]
+pub(crate) async fn login_with_base(
+    base_url: &str,
+    username: &str,
+    password: &str,
+) -> Result<Session> {
+    let http = build_login_client_with_base(base_url)?;
+    let (form_xsrf, initial_cookies) =
+        extract_login_form_xsrf_with_base(&http, base_url).await?;
+    let login_cookies =
+        post_credentials_with_base(&http, base_url, form_xsrf, username, password).await?;
+    let mut all_cookies = login_cookies;
+    all_cookies.extend(initial_cookies);
+    Session::from_cookies(all_cookies)
+}
+
+#[cfg(test)]
+fn build_login_client_with_base(_base_url: &str) -> Result<reqwest::Client> {
+    build_login_client()
+}
+
+#[cfg(test)]
+async fn extract_login_form_xsrf_with_base(
+    http: &reqwest::Client,
+    base_url: &str,
+) -> Result<(String, Vec<Cookie>)> {
+    let url = format!("{base_url}{LOGIN_PATH}");
+    let response = http.get(&url).send().await.map_err(ClientError::Http)?;
+
+    let initial_cookies = extract_cookies(&response);
+    let body = response.text().await.map_err(ClientError::Http)?;
+
+    let document = Html::parse_document(&body);
+    let selector =
+        Selector::parse(XSRF_INPUT_SELECTOR).expect("hardcoded CSS selector is valid");
+
+    let token = document
+        .select(&selector)
+        .next()
+        .and_then(|input| input.value().attr("value"))
+        .filter(|v| !v.is_empty())
+        .map(str::to_string)
+        .ok_or_else(|| ClientError::UnexpectedContent {
+            expected: "login form XSRF token".to_string(),
+            actual: "[REDACTED XSRF]".to_string(),
+            url: url.clone(),
+        })?;
+
+    Ok((token, initial_cookies))
+}
+
+#[cfg(test)]
+async fn post_credentials_with_base(
+    http: &reqwest::Client,
+    base_url: &str,
+    xsrf_token: String,
+    username: &str,
+    password: &str,
+) -> Result<Vec<Cookie>> {
+    let url = format!("{base_url}{LOGIN_POST_PATH}");
+
+    let response = http
+        .post(&url)
+        .header(
+            CONTENT_TYPE,
+            "application/x-www-form-urlencoded; charset=UTF-8",
+        )
+        .header("Origin", base_url)
+        .header("Referer", &format!("{base_url}{LOGIN_PATH}"))
+        .body(encode_form_pairs(&[
+            ("Email".to_string(), username.to_string()),
+            ("Password".to_string(), password.to_string()),
+            ("__RequestVerificationToken".to_string(), xsrf_token),
+        ]))
+        .send()
+        .await
+        .map_err(ClientError::Http)?;
+
+    // On success, VL returns 302 → /ExecutiveSummary with Set-Cookie.
+    // On bad credentials, it redirects back to /Login.
+    if let Some(location) = response
+        .headers()
+        .get(reqwest::header::LOCATION)
+        .and_then(|v| v.to_str().ok())
+        && location.to_ascii_lowercase().contains("/login")
+    {
+        return Err(ClientError::LoginFailed {
+            reason: "invalid username or password".to_string(),
+        });
+    }
+
+    let cookies = extract_cookies(&response);
+    if cookies.is_empty() {
+        return Err(ClientError::SessionValidation {
+            message: "no session cookies received from login response".to_string(),
+        });
+    }
+
+    Ok(cookies)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::session::{FORMS_AUTH_COOKIE_NAME, SESSION_COOKIE_NAME};
 
     #[test]
     fn parse_cookie_pair_extracts_name_and_value() {
@@ -268,60 +373,32 @@ mod tests {
     }
 
     #[test]
-    fn parse_cookie_pair_rejects_empty_value() {
-        let result = parse_cookie_pair("name=; path=/");
-        assert_eq!(result, None);
+    fn parse_cookie_pair_rejects_empty_string() {
+        assert!(parse_cookie_pair("").is_none());
     }
 
     #[test]
     fn parse_cookie_pair_rejects_empty_name() {
-        let result = parse_cookie_pair("=value; path=/");
-        assert_eq!(result, None);
+        assert!(parse_cookie_pair("=value").is_none());
     }
 
     #[test]
-    fn parse_cookie_pair_rejects_empty_string() {
-        let result = parse_cookie_pair("");
-        assert_eq!(result, None);
-    }
-
-    #[test]
-    fn extract_cookies_filters_to_required_cookie_names() {
-        let headers = format!(
-            "{session}=sess-123; path=/; HttpOnly\r\n\
-             {forms}=auth-456; path=/; HttpOnly\r\n\
-             {xsrf}=xsrf-789; path=/\r\n\
-             _ga=tracking-id; path=/",
-            session = SESSION_COOKIE_NAME,
-            forms = FORMS_AUTH_COOKIE_NAME,
-            xsrf = REQUEST_VERIFICATION_COOKIE_NAME,
-        );
-
-        // We can't easily build a reqwest::Response in test, but we
-        // test parse_cookie_pair which is the core logic.
-        for part in [
-            SESSION_COOKIE_NAME,
-            FORMS_AUTH_COOKIE_NAME,
-            REQUEST_VERIFICATION_COOKIE_NAME,
-        ] {
-            let found = headers.contains(part);
-            assert!(found, "header must contain {part}");
-        }
+    fn parse_cookie_pair_rejects_empty_value() {
+        assert!(parse_cookie_pair("name=").is_none());
     }
 
     #[tokio::test]
     async fn login_with_http_mock() {
         let mut server = mockito::Server::new_async().await;
 
-        // Mock the login page GET: returns HTML with XSRF token and the
-        // __RequestVerificationToken cookie (set by the server on first visit).
+        // Mock the GET /Login page with XSRF token and initial cookie
         let login_page_mock = server
             .mock("GET", LOGIN_PATH)
             .with_status(200)
             .with_header("content-type", "text/html")
             .with_header(
                 "set-cookie",
-                "__RequestVerificationToken=xsrf-cookie-789; path=/; HttpOnly; Secure",
+                "__RequestVerificationToken=initial-xsrf-cookie; path=/",
             )
             .with_body(
                 r#"<html><form action="/Login/Login" method="post">
@@ -334,7 +411,7 @@ mod tests {
             .create_async()
             .await;
 
-        // Mock the login POST: returns auth cookies and redirects to executive summary
+        // Mock the login POST: returns cookies and redirects to executive summary
         let login_post_mock = server
             .mock("POST", "/Login/Login")
             .match_header(
@@ -346,12 +423,18 @@ mod tests {
                 "set-cookie",
                 "ASP.NET_SessionId=sess-abc; path=/; HttpOnly; Secure",
             )
-            .with_header("set-cookie", ".ASPXAUTH=auth-xyz; path=/; HttpOnly; Secure")
+            .with_header(
+                "set-cookie",
+                ".ASPXAUTH=auth-xyz; path=/; HttpOnly; Secure",
+            )
+            .with_header(
+                "set-cookie",
+                "__RequestVerificationToken=xsrf-cookie-789; path=/",
+            )
             .with_header("location", "/ExecutiveSummary")
             .create_async()
             .await;
 
-        // Override constants for testing
         let result = login_with_base(&server.url(), "user@example.com", "password123").await;
 
         login_page_mock.assert_async().await;
@@ -394,99 +477,5 @@ mod tests {
             }
             other => panic!("expected LoginFailed, got {other:?}"),
         }
-    }
-
-    /// Test helper that uses a custom base URL.
-    async fn login_with_base(base_url: &str, username: &str, password: &str) -> Result<Session> {
-        let http = build_login_client_with_base(base_url)?;
-        let (form_xsrf, initial_cookies) =
-            extract_login_form_xsrf_with_base(&http, base_url).await?;
-        let login_cookies =
-            post_credentials_with_base(&http, base_url, form_xsrf, username, password).await?;
-        let mut all_cookies = initial_cookies;
-        all_cookies.extend(login_cookies);
-        Session::from_cookies(all_cookies)
-    }
-
-    fn build_login_client_with_base(_base_url: &str) -> Result<reqwest::Client> {
-        build_login_client()
-    }
-
-    async fn extract_login_form_xsrf_with_base(
-        http: &reqwest::Client,
-        base_url: &str,
-    ) -> Result<(String, Vec<Cookie>)> {
-        let url = format!("{base_url}{LOGIN_PATH}");
-        let response = http.get(&url).send().await.map_err(ClientError::Http)?;
-
-        let initial_cookies = extract_cookies(&response);
-        let body = response.text().await.map_err(ClientError::Http)?;
-
-        let document = Html::parse_document(&body);
-        let selector =
-            Selector::parse(XSRF_INPUT_SELECTOR).expect("hardcoded CSS selector is valid");
-
-        let token = document
-            .select(&selector)
-            .next()
-            .and_then(|input| input.value().attr("value"))
-            .filter(|v| !v.is_empty())
-            .map(str::to_string)
-            .ok_or_else(|| ClientError::UnexpectedContent {
-                expected: "login form XSRF token".to_string(),
-                actual: "[REDACTED XSRF]".to_string(),
-                url: url.clone(),
-            })?;
-
-        Ok((token, initial_cookies))
-    }
-
-    async fn post_credentials_with_base(
-        http: &reqwest::Client,
-        base_url: &str,
-        xsrf_token: String,
-        username: &str,
-        password: &str,
-    ) -> Result<Vec<Cookie>> {
-        let url = format!("{base_url}{LOGIN_POST_PATH}");
-
-        let response = http
-            .post(&url)
-            .header(
-                CONTENT_TYPE,
-                "application/x-www-form-urlencoded; charset=UTF-8",
-            )
-            .header("Origin", base_url)
-            .header("Referer", &format!("{base_url}{LOGIN_PATH}"))
-            .body(encode_form_pairs(&[
-                ("Email".to_string(), username.to_string()),
-                ("Password".to_string(), password.to_string()),
-                ("__RequestVerificationToken".to_string(), xsrf_token),
-            ]))
-            .send()
-            .await
-            .map_err(ClientError::Http)?;
-
-        // On success, VL returns 302 → /ExecutiveSummary with Set-Cookie.
-        // On bad credentials, it redirects back to /Login.
-        if let Some(location) = response
-            .headers()
-            .get(reqwest::header::LOCATION)
-            .and_then(|v| v.to_str().ok())
-            && location.to_ascii_lowercase().contains("/login")
-        {
-            return Err(ClientError::LoginFailed {
-                reason: "invalid username or password".to_string(),
-            });
-        }
-
-        let cookies = extract_cookies(&response);
-        if cookies.is_empty() {
-            return Err(ClientError::SessionValidation {
-                message: "no session cookies received from login response".to_string(),
-            });
-        }
-
-        Ok(cookies)
     }
 }
