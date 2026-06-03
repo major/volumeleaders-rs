@@ -1,8 +1,8 @@
 //! Username/password login for VolumeLeaders.
 //!
 //! Provides credential-based authentication that extracts session cookies
-//! and the XSRF token from the login response. Replaces browser-cookie-based
-//! extraction via [`rookie`].
+//! and the XSRF token from the login response. Replaces the previous
+//! browser-cookie-based extraction.
 //!
 //! # Flow
 //!
