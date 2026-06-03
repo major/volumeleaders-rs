@@ -71,11 +71,14 @@ async fn make_client_with_creds(username: &str, password: &str) -> Result<Client
         warn!(%err, "failed to cache session");
     }
 
-    build_client_from_session(session).await
+    build_client_from_session(session)
+        .await
+        .map_err(|err| client_error(&err))
 }
 
-/// Build a VolumeLeaders client for the default browser cookie domain.
-/// (Deprecated — kept for backward compatibility in tests.)
+/// Build a VolumeLeaders client from environment-variable credentials.
+///
+/// Kept for backward compatibility in tests; prefer [`make_client_from_env`].
 pub async fn make_client() -> Result<Client, i32> {
     make_client_from_env().await
 }
@@ -86,20 +89,11 @@ pub fn handle_api_error(err: ClientError) -> i32 {
 }
 
 /// Build an authenticated client from a session, refreshing the XSRF token.
-async fn build_client_from_session(session: Session) -> Result<Client, i32> {
-    let bootstrap_client = match Client::new(session.clone()) {
-        Ok(c) => c,
-        Err(err) => return Err(client_error(&err)),
-    };
+async fn build_client_from_session(session: Session) -> Result<Client, ClientError> {
+    let bootstrap_client = Client::new(session.clone())?;
 
-    let xsrf_token = match crate::extract_xsrf_token(&bootstrap_client).await {
-        Ok(t) => t,
-        Err(err) => return Err(client_error(&err)),
-    };
+    let xsrf_token = crate::extract_xsrf_token(&bootstrap_client).await?;
 
     let refreshed_session = Session::new(session.cookies().to_vec(), xsrf_token);
-    match Client::new(refreshed_session) {
-        Ok(c) => Ok(c),
-        Err(err) => Err(client_error(&err)),
-    }
+    Client::new(refreshed_session)
 }

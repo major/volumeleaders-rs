@@ -129,8 +129,8 @@ pub fn client_error_kind(err: &ClientError) -> CliErrorKind {
         ClientError::BodyLimit { .. }
         | ClientError::UnexpectedContent { .. }
         | ClientError::Json(_)
-        | ClientError::Io(_)
-        | ClientError::Cache(_) => CliErrorKind::JsonError,
+        | ClientError::Io(_) => CliErrorKind::JsonError,
+        ClientError::Cache(_) => CliErrorKind::AuthError,
     }
 }
 

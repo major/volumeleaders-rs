@@ -170,7 +170,10 @@ impl ClientError {
     pub fn is_auth_error(&self) -> bool {
         matches!(
             self,
-            Self::SessionExpired { .. } | Self::SessionValidation { .. }
+            Self::SessionExpired { .. }
+                | Self::SessionValidation { .. }
+                | Self::LoginFailed { .. }
+                | Self::Cache(_)
         )
     }
 
@@ -274,6 +277,15 @@ mod tests {
             }
             .is_auth_error()
         );
+
+        assert!(
+            ClientError::LoginFailed {
+                reason: "bad credentials".into()
+            }
+            .is_auth_error()
+        );
+
+        assert!(ClientError::Cache("cache unreadable".into()).is_auth_error());
     }
 
     #[test]
@@ -379,6 +391,10 @@ mod tests {
             },
             ClientError::Json(serde_err),
             ClientError::Io(io_err),
+            ClientError::LoginFailed {
+                reason: "bad credentials".into(),
+            },
+            ClientError::Cache("cache unreadable".into()),
         ];
 
         // Every variant must produce non-empty Debug output without panicking

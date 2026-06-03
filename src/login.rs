@@ -53,7 +53,7 @@ const REQUIRED_COOKIE_NAMES: &[&str] = &[
 /// credentials or redirects back to the login page. Returns
 /// [`ClientError::SessionValidation`] if required cookies are missing
 /// from the login response.
-#[instrument(skip_all, fields(username = %username))]
+#[instrument(skip_all)]
 pub async fn login(username: &str, password: &str) -> Result<Session> {
     let http = build_login_client()?;
     let (form_xsrf, initial_cookies) = extract_login_form_xsrf(&http).await?;

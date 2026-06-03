@@ -97,12 +97,7 @@ async fn build_report(live: bool) -> DoctorReport {
             _ if credentials_set => {
                 // Try live login
                 match live_login_and_check().await {
-                    Ok(()) => LiveConnectivityReport {
-                        checked: true,
-                        status: LiveConnectivityStatus::Ok,
-                        reason: LIVE_CONNECTIVITY_SUCCESS_REASON,
-                        message: None,
-                    },
+                    Ok(report) => report,
                     Err(err) => live_connectivity_from_error(&err),
                 }
             }
@@ -139,7 +134,7 @@ fn skipped_live_connectivity() -> LiveConnectivityReport {
     }
 }
 
-async fn live_login_and_check() -> Result<()> {
+async fn live_login_and_check() -> Result<LiveConnectivityReport> {
     let username = std::env::var(ENV_USERNAME).map_err(|_| ClientError::SessionValidation {
         message: format!("{ENV_USERNAME} not set"),
     })?;
@@ -150,12 +145,7 @@ async fn live_login_and_check() -> Result<()> {
     let session = crate::login(&username, &password).await?;
     let _ = crate::save_session(&session);
 
-    live_connectivity_from_session(session, ClientConfig::default())
-        .await
-        .map(|_| ())
-        .map_err(|_| ClientError::SessionValidation {
-            message: "live connectivity check failed after login".to_string(),
-        })
+    live_connectivity_from_session(session, ClientConfig::default()).await
 }
 
 async fn live_connectivity_from_session(
@@ -427,7 +417,7 @@ mod tests {
     }
 
     #[test]
-    fn live_connectivity_reports_success_from_alert_configs() {
+    fn live_connectivity_reports_api_error_from_status_200() {
         let report: Value =
             serde_json::to_value(super::live_connectivity_from_error(&ClientError::Status {
                 code: 200,

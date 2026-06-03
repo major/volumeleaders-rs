@@ -9,6 +9,7 @@
 //! cleared automatically when used via the client's session-expiry detection.
 
 use std::fs;
+use std::io::Write;
 use std::path::{Path, PathBuf};
 
 use tracing::{debug, warn};
@@ -94,11 +95,21 @@ fn save_session_at(session: &Session, base_dir: &Path) -> Result<()> {
 
     let data = serde_json::to_string(session)?;
 
-    // Write atomically via a temp file then rename.
-    let tmp_path = path.with_extension("tmp");
-    fs::write(&tmp_path, &data)
+    // Write atomically via unique temp file then rename.
+    // Use NamedTempFile so temp files are auto-cleaned on failure
+    // and avoid racing concurrent writers.
+    let parent = path.parent().unwrap();
+    let mut tmp = tempfile::NamedTempFile::new_in(parent)
+        .map_err(|err| ClientError::Cache(format!("failed to create temp session file: {err}")))?;
+    tmp.write_all(data.as_bytes())
         .map_err(|err| ClientError::Cache(format!("failed to write session cache: {err}")))?;
-    fs::rename(&tmp_path, &path)
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        fs::set_permissions(tmp.path(), fs::Permissions::from_mode(0o600))
+            .map_err(|err| ClientError::Cache(format!("failed to secure session cache: {err}")))?;
+    }
+    tmp.persist(&path)
         .map_err(|err| ClientError::Cache(format!("failed to persist session cache: {err}")))?;
 
     debug!(?path, "saved session to cache");
