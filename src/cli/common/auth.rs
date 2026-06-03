@@ -100,8 +100,8 @@ async fn build_client_from_session(session: Session) -> Result<Client, ClientErr
 
 #[cfg(test)]
 mod tests {
-    use crate::login::login_with_base;
     use crate::ClientError;
+    use crate::login::login_with_base;
 
     use super::*;
 
@@ -215,7 +215,10 @@ mod tests {
         let _login_post = server
             .mock("POST", "/Login/Login")
             .with_status(302)
-            .with_header("set-cookie", "ASP.NET_SessionId=sess-mock; path=/; HttpOnly")
+            .with_header(
+                "set-cookie",
+                "ASP.NET_SessionId=sess-mock; path=/; HttpOnly",
+            )
             .with_header("set-cookie", ".ASPXAUTH=auth-mock; path=/; HttpOnly")
             .with_header("set-cookie", "__RequestVerificationToken=xsrf-post; path=/")
             .with_header("location", "/ExecutiveSummary")
@@ -236,12 +239,8 @@ mod tests {
             base_url: server.url(),
             ..crate::client::ClientConfig::default()
         };
-        let result = make_client_with_creds_with_config(
-            "user@example.com",
-            "password123",
-            config,
-        )
-        .await;
+        let result =
+            make_client_with_creds_with_config("user@example.com", "password123", config).await;
         assert!(result.is_ok());
     }
 

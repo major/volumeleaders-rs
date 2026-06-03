@@ -291,10 +291,7 @@ fn default_headers() -> HeaderMap {
         ),
     );
     headers.insert(ACCEPT_LANGUAGE, HeaderValue::from_static("en-US,en;q=0.5"));
-    headers.insert(
-        ACCEPT_ENCODING,
-        HeaderValue::from_static("gzip, deflate, br, zstd"),
-    );
+    headers.insert(ACCEPT_ENCODING, HeaderValue::from_static("gzip, deflate"));
     headers.insert("Sec-Fetch-Dest", HeaderValue::from_static("document"));
     headers.insert("Sec-Fetch-Mode", HeaderValue::from_static("navigate"));
     headers.insert("Sec-Fetch-Site", HeaderValue::from_static("same-origin"));
