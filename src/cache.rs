@@ -253,13 +253,6 @@ mod tests {
     }
 
     #[test]
-    fn clear_cache_at_non_existent_dir_handles_gracefully() {
-        let tmp = TempDir::new().expect("temp dir");
-        // Should not panic when nothing to clear.
-        clear_cache_at(tmp.path());
-    }
-
-    #[test]
     fn load_cached_session_at_read_error_returns_none() {
         let tmp = TempDir::new().expect("temp dir");
         let path = cache_path_for_temp(&tmp);

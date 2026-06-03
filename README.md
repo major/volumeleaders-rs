@@ -44,7 +44,7 @@ GitHub releases also provide cargo-dist archives and shell or PowerShell install
 
 ## CLI usage
 
-The CLI authenticates with VolumeLeaders by trying sources in this order: a valid cached session at `~/.cache/volumeleaders-agent/cookies.json`, non-empty `VL_USERNAME` and `VL_PASSWORD` environment variables, then `~/.config/volumeleaders-agent/config.json` with `{"username":"YOUR_EMAIL","password":"YOUR_PASSWORD"}`. Environment variables override the config file. If either auth environment variable is set, both must be set and non-empty, and config fallback is skipped. Command output goes to stdout as compact JSON by default. Use command-specific `--fields` for built-in projection and pipe through external `jq` for filtering, reshaping, sorting, or pretty-printing. Runtime errors are written to stderr as one compact JSON line such as `{"ok":false,"error":{"kind":"auth_error","message":"set VL_USERNAME and VL_PASSWORD environment variables or create ~/.config/volumeleaders-agent/config.json with username and password fields"}}`.
+The CLI authenticates with VolumeLeaders by trying sources in this order: a valid cached session at `~/.cache/volumeleaders-agent/cookies.json`, non-empty `VL_USERNAME` and `VL_PASSWORD` environment variables, then `~/.config/volumeleaders-agent/config.json` with `{"username":"YOUR_EMAIL","password":"YOUR_PASSWORD"}`. Environment variables override the config file. If either auth environment variable is set, both must be set and non-empty, and config fallback is skipped. The config file contains plaintext credentials, so keep it readable only by your user, for example with `chmod 600 ~/.config/volumeleaders-agent/config.json`. Command output goes to stdout as compact JSON by default. Use command-specific `--fields` for built-in projection and pipe through external `jq` for filtering, reshaping, sorting, or pretty-printing. Runtime errors are written to stderr as one compact JSON line such as `{"ok":false,"error":{"kind":"auth_error","message":"set VL_USERNAME and VL_PASSWORD environment variables or create ~/.config/volumeleaders-agent/config.json with username and password fields"}}`.
 
 Semantic exit codes are stable for automation: `0` means success, `2` is clap usage or argument validation, `3` is auth failure, `4` is HTTP transport failure, `5` is a VolumeLeaders API error response, `6` is JSON parsing or output transformation failure, and `7` is strict empty-result handling.
 
@@ -135,13 +135,9 @@ rusty-volumeleaders = { version = "0.4.0", default-features = false }
 
 This excludes `clap` and `clap_complete` and exposes `Client`, `Session`, request builders, response models, `ClientError`, and `Result`. The `cli` feature (enabled by default) adds the `Cli` parser and `run` entry point used by the `volumeleaders-agent` binary.
 
-## Client example
+## Client usage
 
-```bash
-cargo run --example credential_login
-```
-
-The `credential_login` example demonstrates the library login and session cache API.
+Library consumers can call `login(username, password).await?` to create a `Session`, pass that session to `Client::new(session)?`, and optionally persist it with `save_session(&session)?` for reuse by the CLI-compatible XDG cache.
 
 ## Development
 

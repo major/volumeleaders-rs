@@ -97,8 +97,8 @@ pub enum ClientError {
         reason: String,
     },
 
-    /// Failed to read from or write to the session cookie cache.
-    #[error("session cache error: {0}")]
+    /// Failed to read from or write to local auth storage such as cache or config.
+    #[error("local auth storage error: {0}")]
     Cache(String),
 }
 
@@ -286,6 +286,16 @@ mod tests {
         );
 
         assert!(ClientError::Cache("cache unreadable".into()).is_auth_error());
+    }
+
+    #[test]
+    fn cache_error_display_mentions_local_auth_storage() {
+        let error = ClientError::Cache("XDG config directory not available".into());
+
+        assert_eq!(
+            error.to_string(),
+            "local auth storage error: XDG config directory not available"
+        );
     }
 
     #[test]

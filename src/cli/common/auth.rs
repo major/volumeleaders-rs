@@ -55,13 +55,26 @@ async fn client_from_cached_session() -> Result<Option<Client>, i32> {
         match build_client_from_session(session).await {
             Ok(client) => return Ok(Some(client)),
             Err(err) => {
-                warn!(%err, "cached session invalid, will re-login");
-                crate::clear_cache();
+                if should_clear_cached_session(&err) {
+                    warn!(%err, "cached session invalid, will re-login");
+                    crate::clear_cache();
+                } else {
+                    warn!(%err, "cached session refresh failed, will re-login without clearing cache");
+                }
             }
         }
     }
 
     Ok(None)
+}
+
+fn should_clear_cached_session(err: &ClientError) -> bool {
+    matches!(
+        err,
+        ClientError::SessionExpired { .. }
+            | ClientError::SessionValidation { .. }
+            | ClientError::LoginFailed { .. }
+    )
 }
 
 /// Build a VolumeLeaders client from environment-variable credentials.
@@ -110,6 +123,33 @@ mod tests {
             body: "error".into(),
         });
         assert_eq!(code, 5);
+    }
+
+    #[test]
+    fn cached_session_clear_is_limited_to_auth_errors() {
+        assert!(should_clear_cached_session(&ClientError::SessionExpired {
+            url: "https://example.com/Login".to_string(),
+        }));
+        assert!(should_clear_cached_session(
+            &ClientError::SessionValidation {
+                message: "missing cookie".to_string(),
+            }
+        ));
+        assert!(should_clear_cached_session(&ClientError::LoginFailed {
+            reason: "invalid credentials".to_string(),
+        }));
+        assert!(!should_clear_cached_session(&ClientError::Status {
+            code: 500,
+            url: "https://example.com".to_string(),
+            body: "server error".to_string(),
+        }));
+        assert!(!should_clear_cached_session(
+            &ClientError::UnexpectedContent {
+                expected: "XSRF token".to_string(),
+                actual: "unexpected page".to_string(),
+                url: "https://example.com/ExecutiveSummary".to_string(),
+            },
+        ));
     }
 
     #[tokio::test]
