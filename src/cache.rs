@@ -235,12 +235,39 @@ mod tests {
         let result = load_cached_session_at(&path);
         assert!(result.is_none());
     }
-
     #[test]
     fn clear_cache_at_non_existent_dir_handles_gracefully() {
         let tmp = TempDir::new().expect("temp dir");
         // Should not panic when nothing to clear.
         clear_cache_at(tmp.path());
+    }
+
+    /// Override `XDG_CACHE_HOME` for tests that exercise the public wrappers.
+    fn with_xdg_cache_dir(dir: &Path) {
+        unsafe {
+            std::env::set_var("XDG_CACHE_HOME", dir);
+        }
+    }
+
+    #[test]
+    fn save_session_public_wrapper_writes_to_xdg_cache() {
+        let tmp = TempDir::new().expect("temp dir");
+        with_xdg_cache_dir(tmp.path());
+
+        let session = valid_session();
+        save_session(&session).expect("save should succeed");
+
+        let path = tmp.path().join(CACHE_DIR).join(CACHE_FILE);
+        assert!(path.exists());
+    }
+
+    #[test]
+    fn clear_cache_removes_nonexistent_quietly() {
+        let tmp = TempDir::new().expect("temp dir");
+        with_xdg_cache_dir(tmp.path());
+
+        // Should not panic when nothing to clear.
+        clear_cache();
     }
 
     #[test]
