@@ -252,10 +252,7 @@ mod tests {
         save_session(&session).expect("save should succeed");
 
         // Verify it was written to the XDG cache subdirectory.
-        let path = tmp
-            .path()
-            .join(CACHE_DIR)
-            .join(CACHE_FILE);
+        let path = tmp.path().join(CACHE_DIR).join(CACHE_FILE);
         assert!(path.exists());
     }
 
