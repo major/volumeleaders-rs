@@ -8,7 +8,8 @@ use std::error::Error as StdError;
 use std::time::Duration;
 
 use reqwest::header::{
-    ACCEPT, ACCEPT_LANGUAGE, CONTENT_TYPE, COOKIE, HeaderMap, HeaderValue, USER_AGENT,
+    ACCEPT, ACCEPT_ENCODING, ACCEPT_LANGUAGE, CONTENT_TYPE, COOKIE, HeaderMap, HeaderValue,
+    USER_AGENT,
 };
 use serde::Serialize;
 use tracing::instrument;
@@ -20,7 +21,8 @@ use crate::session::Session;
 const DEFAULT_BASE_URL: &str = "https://www.volumeleaders.com";
 const DEFAULT_BODY_LIMIT: usize = 10 * 1024 * 1024;
 const DEFAULT_TIMEOUT: Duration = Duration::from_secs(60);
-const DEFAULT_USER_AGENT: &str = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36";
+const DEFAULT_USER_AGENT: &str =
+    "Mozilla/5.0 (X11; Linux x86_64; rv:151.0) Gecko/20100101 Firefox/151.0";
 const MAX_REDIRECTS: usize = 10;
 const PASSWORD_INPUT_MARKER: &str = r#"<input type="password"#;
 const X_REQUESTED_WITH: &str = "X-Requested-With";
@@ -143,6 +145,8 @@ impl Client {
                 "application/x-www-form-urlencoded; charset=UTF-8",
             )
             .header(ACCEPT, "application/json, text/javascript, */*; q=0.01")
+            .header("Sec-Fetch-Dest", "empty")
+            .header("Sec-Fetch-Mode", "cors")
             .body(encode_form_pairs(&pairs))
             .send()
             .await
@@ -201,6 +205,8 @@ impl Client {
             .header(X_REQUESTED_WITH, "XMLHttpRequest")
             .header(CONTENT_TYPE, "application/json; charset=UTF-8")
             .header(ACCEPT, "application/json, text/javascript, */*; q=0.01")
+            .header("Sec-Fetch-Dest", "empty")
+            .header("Sec-Fetch-Mode", "cors")
             .body(body)
             .send()
             .await
@@ -280,13 +286,21 @@ fn default_headers() -> HeaderMap {
     let mut headers = HeaderMap::new();
     headers.insert(
         ACCEPT,
-        HeaderValue::from_static("text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"),
+        HeaderValue::from_static(
+            "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/png,image/svg+xml,*/*;q=0.8",
+        ),
     );
-    headers.insert(ACCEPT_LANGUAGE, HeaderValue::from_static("en-US,en;q=0.9"));
+    headers.insert(ACCEPT_LANGUAGE, HeaderValue::from_static("en-US,en;q=0.5"));
+    headers.insert(
+        ACCEPT_ENCODING,
+        HeaderValue::from_static("gzip, deflate, br, zstd"),
+    );
     headers.insert("Sec-Fetch-Dest", HeaderValue::from_static("document"));
     headers.insert("Sec-Fetch-Mode", HeaderValue::from_static("navigate"));
     headers.insert("Sec-Fetch-Site", HeaderValue::from_static("same-origin"));
+    headers.insert("Upgrade-Insecure-Requests", HeaderValue::from_static("1"));
     headers.insert(USER_AGENT, HeaderValue::from_static(DEFAULT_USER_AGENT));
+    headers.insert("Priority", HeaderValue::from_static("u=0, i"));
     headers
 }
 

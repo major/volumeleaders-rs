@@ -2,7 +2,7 @@
 
 > **Disclaimer:** This project is unofficial and is not affiliated with, endorsed by, or sponsored by [volumeleaders.com](https://www.volumeleaders.com).
 
-Rust crate for working with VolumeLeaders data from an authenticated browser session. The package is published as `rusty-volumeleaders` and includes both a reusable API client library and the `volumeleaders-agent` CLI.
+Rust crate for working with VolumeLeaders data from an authenticated session. The package is published as `rusty-volumeleaders` and includes both a reusable API client library and the `volumeleaders-agent` CLI. Authentication uses `VL_USERNAME` and `VL_PASSWORD` environment variables with a cached-session XDG cookie store.
 
 ## Install
 
@@ -38,21 +38,21 @@ GitHub releases also provide cargo-dist archives and shell or PowerShell install
 
 - Rust 1.96.0 or newer
 - `rust-toolchain.toml` pins local builds to the CI MSRV by default
-- Browser login at `https://www.volumeleaders.com` for commands that need live authenticated data
+- Set `VL_USERNAME` and `VL_PASSWORD` environment variables for commands that need live authenticated data
 - Optional tools for local maintenance: `cargo llvm-cov`, `cargo audit`
 - Optional tool for local patch coverage checks: `diff-cover` or `uvx diff-cover`
 
 ## CLI usage
 
-The CLI reads browser cookies automatically. If auth fails, log in to VolumeLeaders in the browser and retry. Command output goes to stdout as compact JSON by default. Use command-specific `--fields` for built-in projection and pipe through external `jq` for filtering, reshaping, sorting, or pretty-printing. Runtime errors are written to stderr as one compact JSON line such as `{"ok":false,"error":{"kind":"auth_error","message":"browser cookies are missing or expired"}}`.
+The CLI authenticates with VolumeLeaders using `VL_USERNAME` and `VL_PASSWORD` environment variables. Sessions are cached in the XDG cache directory (`~/.cache/volumeleaders-agent/cookies.json`) so subsequent invocations reuse valid sessions without re-authenticating. Command output goes to stdout as compact JSON by default. Use command-specific `--fields` for built-in projection and pipe through external `jq` for filtering, reshaping, sorting, or pretty-printing. Runtime errors are written to stderr as one compact JSON line such as `{"ok":false,"error":{"kind":"auth_error","message":"set VL_USERNAME and VL_PASSWORD environment variables"}}`.
 
-Semantic exit codes are stable for automation: `0` means success, `2` is clap usage or argument validation, `3` is browser auth failure, `4` is HTTP transport failure, `5` is a VolumeLeaders API error response, `6` is JSON parsing or output transformation failure, and `7` is strict empty-result handling.
+Semantic exit codes are stable for automation: `0` means success, `2` is clap usage or argument validation, `3` is auth failure, `4` is HTTP transport failure, `5` is a VolumeLeaders API error response, `6` is JSON parsing or output transformation failure, and `7` is strict empty-result handling.
 
 Use global `--strict-empty` when an empty record array should fail automation instead of returning `[]` on stdout. Data commands that would emit an empty array return exit code `7` and write a structured `empty_result` error to stderr with command-specific recovery guidance. Object outputs, discovery commands, help topics, completions, and local diagnostics are not treated as empty arrays.
 
-Use global `-v`, `-vv`, or `-vvv` to enable info, debug, or trace diagnostics on stderr. Without `-v`, the CLI logs warnings and errors only. stdout remains reserved for command output so JSON pipelines stay clean, and sensitive browser-cookie material is never logged.
+Use global `-v`, `-vv`, or `-vvv` to enable info, debug, or trace diagnostics on stderr. Without `-v`, the CLI logs warnings and errors only. stdout remains reserved for command output so JSON pipelines stay clean, and sensitive cookie material is never logged.
 
-Use `schema` for machine-readable CLI discovery. It emits compact JSON generated from the live clap command tree with the binary version, browser-cookie auth model, leaf command paths, help text, explicit alias metadata, auth requirements, mutating and dry-run safety metadata, argument metadata with stable names and semantic types, boolean flag versus value-taking option shape, and structured command examples.
+Use `schema` for machine-readable CLI discovery. It emits compact JSON generated from the live clap command tree with the binary version, credential-based auth model, leaf command paths, help text, explicit alias metadata, auth requirements, mutating and dry-run safety metadata, argument metadata with stable names and semantic types, boolean flag versus value-taking option shape, and structured command examples.
 
 Schema argument metadata includes known custom validation constraints, such as `trade levels --trade-level-count` accepting only `5`, `10`, `20`, or `50`. Invalid values still fail with structured `usage_error` JSON on stderr and exit code `2`.
 
@@ -66,7 +66,7 @@ Top-level aliases are available for the highest-frequency trade commands: `trade
 
 Use `commands` for lightweight CLI discovery. It emits a sorted plain-text list of leaf command paths, or grouped command names with short descriptions when run with `--grouped`.
 
-Use `doctor` for a safe local readiness check before running live data commands. It emits compact JSON with the CLI version, browser-cookie auth status, and live-connectivity status without making a network request by default. Add `--live` to perform a low-cost authenticated connectivity check; live auth, HTTP transport, and API failures use exit codes `3`, `4`, and `5`.
+Use `doctor` for a safe local readiness check before running live data commands. It emits compact JSON with the CLI version, credential-based auth status, and live-connectivity status without making a network request by default. Add `--live` to perform a low-cost authenticated connectivity check; live auth, HTTP transport, and API failures use exit codes `3`, `4`, and `5`.
 
 Use `help <topic>` for built-in operational guidance when README access is unavailable. Topics are `agent`, `auth`, `environment`, `exit-codes`, `schema`, `examples`, and `workflows`; regular clap help remains available with `--help` on the root or any subcommand. The `agent` topic summarizes the recommended non-interactive automation flow, and `workflows` gives copy-paste starts for common agent tasks.
 
@@ -138,10 +138,10 @@ This excludes `clap` and `clap_complete` and exposes `Client`, `Session`, reques
 ## Client example
 
 ```bash
-cargo run --example rookie_spike
+cargo run --example credential_login
 ```
 
-The `rookie_spike` example checks whether required VolumeLeaders cookies can be extracted from Chrome, then Firefox, and prints manual fallback guidance if needed.
+The `credential_login` example demonstrates the library login and session cache API.
 
 ## Development
 
@@ -171,7 +171,7 @@ cargo doc --no-default-features --no-deps
 
 `make check` runs formatting, clippy, tests, and docs for both supported feature shapes: the default CLI build and the library-only `--no-default-features` build. The GitHub CI workflow mirrors those checks across Linux, macOS, and Windows, with an MSRV job pinned to Rust 1.96. The separate audit workflow runs `actions-rust-lang/audit` on manifest changes and a daily schedule.
 
-Most tests are inline `#[cfg(test)]` modules in `src/**`. Fixtures live in `tests/fixtures/*.json` and represent server payload contracts. HTTP tests use `mockito`. Renovate configuration keeps `rookie` on a longer abandonment threshold because the crate is required for browser-cookie auth and still receives maintenance despite infrequent releases.
+Most tests are inline `#[cfg(test)]` modules in `src/**`. Fixtures live in `tests/fixtures/*.json` and represent server payload contracts. HTTP tests use `mockito`.
 
 CLI drift tests assert that every visible clap leaf appears in `commands` and `schema`, every public option has help text, every leaf has command-specific examples, structured schema examples stay valid, aliases keep canonical preferred paths, and global flags plus semantic argument metadata stay present in schema metadata.
 

@@ -119,9 +119,9 @@ pub fn client_error(err: &ClientError) -> i32 {
 #[must_use]
 pub fn client_error_kind(err: &ClientError) -> CliErrorKind {
     match err {
-        ClientError::SessionExpired { .. } | ClientError::SessionValidation { .. } => {
-            CliErrorKind::AuthError
-        }
+        ClientError::SessionExpired { .. }
+        | ClientError::SessionValidation { .. }
+        | ClientError::LoginFailed { .. } => CliErrorKind::AuthError,
         ClientError::Http(_) => CliErrorKind::HttpError,
         ClientError::Status { .. }
         | ClientError::RateLimit { .. }
@@ -129,7 +129,8 @@ pub fn client_error_kind(err: &ClientError) -> CliErrorKind {
         ClientError::BodyLimit { .. }
         | ClientError::UnexpectedContent { .. }
         | ClientError::Json(_)
-        | ClientError::Io(_) => CliErrorKind::JsonError,
+        | ClientError::Io(_)
+        | ClientError::Cache(_) => CliErrorKind::JsonError,
     }
 }
 

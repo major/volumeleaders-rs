@@ -1,6 +1,6 @@
 # VolumeLeaders CLI Skill
 
-Use this skill when an agent needs to operate `volumeleaders-agent`, discover its command surface, diagnose auth, or modify the CLI implementation. The CLI reads an authenticated browser session for live VolumeLeaders data and is optimized for machine-readable automation.
+Use this skill when an agent needs to operate `volumeleaders-agent`, discover its command surface, diagnose auth, or modify the CLI implementation. The CLI authenticates with `VL_USERNAME` and `VL_PASSWORD` environment variables and caches sessions in the XDG cache directory.
 
 ## Self-discovery
 
@@ -23,7 +23,7 @@ volumeleaders-agent help workflows
 volumeleaders-agent trade list --help
 ```
 
-- `doctor` is local-only by default and reports browser-cookie readiness as compact JSON. Use `doctor --live` for a low-cost authenticated connectivity check.
+- `doctor` is local-only by default and reports credential-based readiness as compact JSON. Use `doctor --live` for an authenticated connectivity check that tries the cached session first, then falls back to a live login if credentials are set.
 - `schema` is the authoritative machine-readable command contract generated from the live clap tree. Command entries include `path`, `preferred_path`, `is_alias`, optional `alias_for`, `aliases`, auth requirements, mutating and dry-run safety metadata, help text, argument metadata with stable `name` identifiers and semantic types, known `possible_values` validation constraints, boolean flag versus value-taking option shape, and structured `examples` arrays.
 - `commands` is the lightweight plain-text leaf command list. Use `--grouped` for descriptions.
 - `fields <command path>` emits exact case-sensitive output field names, descriptions, and type hints for commands that support `--fields` without requiring live rows. `fields trade dashboard` uses section-qualified nested names such as `trades.TradeRank`, `clusters.window`, `levels.TradeLevelRank`, and `cluster_bombs.TradeCount`. Unknown projected fields fail with exit code `2` and structured `usage_error` JSON on stderr.
@@ -38,11 +38,11 @@ volumeleaders-agent trade list --help
 - Runtime errors write one compact JSON object to stderr: `{"ok":false,"error":{"kind":"...","message":"..."}}`.
 - Diagnostic logs from `-v`, `-vv`, and `-vvv` go to stderr only. stdout must remain parseable command output.
 - Exit codes: `0` success, `2` usage error, `3` auth error, `4` HTTP transport error, `5` API error, `6` JSON parse or output transformation error, `7` strict empty result.
-- Commands that need live data require browser cookies. Local discovery commands (`doctor`, `schema`, `commands`, `fields`, `help`, `completions`) do not require live API access. `doctor --live` is the explicit exception for checking authenticated connectivity.
+- Commands that need live data require `VL_USERNAME` and `VL_PASSWORD` environment variables. Local discovery commands (`doctor`, `schema`, `commands`, `fields`, `help`, `completions`) do not require live API access. `doctor --live` is the explicit exception for checking authenticated connectivity.
 
 ## Auth model
 
-The CLI extracts browser cookies for `volumeleaders.com` from local Chrome first, then Firefox. Required session material includes the ASP.NET session cookie, forms auth cookie, and request verification token. Cookie values and XSRF tokens must never be printed or logged.
+The CLI authenticates with VolumeLeaders using `VL_USERNAME` and `VL_PASSWORD` environment variables. On first use, it logs in via username/password POST to `/Login/Login` and extracts session cookies and the XSRF token. Sessions are cached at `~/.cache/volumeleaders-agent/cookies.json` and reused on subsequent invocations. Cookie values and XSRF tokens must never be printed or logged.
 
 Use this recovery flow:
 
@@ -55,10 +55,10 @@ volumeleaders-agent help auth
 
 Common failures:
 
-- No browser login: log in at `https://www.volumeleaders.com`, then rerun `doctor`.
-- Expired cookies: refresh the browser session and retry.
-- Missing XSRF token: reload the site in the browser, then retry.
-- Browser profile mismatch: run the CLI as the same OS user that owns the logged-in browser profile.
+- Missing credentials: set `VL_USERNAME` and `VL_PASSWORD` environment variables, then rerun `doctor`.
+- Invalid credentials: check the username and password, then retry.
+- Expired session: the cached session is automatically cleared; the next live request will re-authenticate.
+- Cache unavailable: the XDG cache directory may not be available; check filesystem permissions.
 
 ## Global flags and reusable argument shapes
 
@@ -196,5 +196,4 @@ When changing public CLI behavior, update `README.md`, `AGENTS.md`, this `SKILL.
 Dependency and workflow maintenance notes:
 
 - Security audit CI uses `actions-rust-lang/audit`; keep `make audit` for local checks.
-- Renovate configuration keeps `rookie` on a longer abandonment threshold because browser-cookie extraction is core auth behavior and upstream maintenance continues even with infrequent releases.
 - The cargo-dist release workflow uses OIDC trusted publishing through a release-tagged `rust-lang/crates-io-auth-action` pin.

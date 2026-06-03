@@ -26,8 +26,8 @@ unused = { level = "deny", priority = -1 }
 chrono = { version = "0.4", features = ["serde"] }
 clap = { version = "4", features = ["derive"], optional = true }
 clap_complete = { version = "4", optional = true }
-reqwest = { version = "0.13", features = ["cookies", "json", "multipart"] }
-rookie = "0.5"
+dirs = "6"
+reqwest = { version = "0.13", features = ["cookies", "gzip", "json", "multipart"] }
 rust_decimal = { version = "1", features = ["serde-float"] }
 scraper = "0.27"
 serde = { version = "1", features = ["derive"] }
@@ -40,6 +40,7 @@ url = "2"
 
 [dev-dependencies]
 mockito = "=1.7.2"
+tempfile = "3"
 
 # Config for 'dist'
 [profile.dist]

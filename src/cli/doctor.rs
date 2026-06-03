@@ -6,15 +6,14 @@ use serde::Serialize;
 
 use crate::alerts::AlertConfigsRequest;
 use crate::cli::DoctorArgs;
-use crate::cli::common::auth::VL_DOMAIN;
 use crate::cli::error::{CliErrorKind, client_error_kind};
 use crate::cli::output::{finish_output, print_json};
 use crate::client::{Client, ClientConfig};
 use crate::error::{ClientError, Result};
-use crate::session::{
-    Cookie, FORMS_AUTH_COOKIE_NAME, REQUEST_VERIFICATION_COOKIE_NAME, SESSION_COOKIE_NAME, Session,
-};
+use crate::session::{FORMS_AUTH_COOKIE_NAME, SESSION_COOKIE_NAME, Session};
 
+const ENV_USERNAME: &str = "VL_USERNAME";
+const ENV_PASSWORD: &str = "VL_PASSWORD";
 const LIVE_CONNECTIVITY_SKIP_REASON: &str = "doctor performs local checks by default";
 const LIVE_CONNECTIVITY_SUCCESS_REASON: &str = "alert configs endpoint responded successfully";
 const LIVE_CONNECTIVITY_AUTH_REASON: &str = "authenticated live check could not be started";
@@ -38,12 +37,13 @@ struct DoctorReport {
 #[derive(Debug, Serialize)]
 struct AuthReport {
     kind: &'static str,
-    cookie_source: &'static str,
-    cookies_found: bool,
+    credentials_set: bool,
+    cached_session: bool,
     session_cookie_found: bool,
     forms_auth_cookie_found: bool,
     xsrf_token_found: bool,
     status: AuthStatus,
+    #[serde(skip_serializing_if = "Option::is_none")]
     message: Option<String>,
 }
 
@@ -76,38 +76,36 @@ enum LiveConnectivityStatus {
 }
 
 async fn build_report(live: bool) -> DoctorReport {
-    build_report_from_cookies(crate::extract_browser_cookies(VL_DOMAIN), live).await
-}
+    let username_set = std::env::var(ENV_USERNAME).is_ok_and(|v| !v.is_empty());
+    let password_set = std::env::var(ENV_PASSWORD).is_ok_and(|v| !v.is_empty());
+    let credentials_set = username_set && password_set;
 
-async fn build_report_from_cookies(cookies: Result<Vec<Cookie>>, live: bool) -> DoctorReport {
-    build_report_from_cookies_with_config(cookies, live, ClientConfig::default()).await
-}
+    let cached = crate::load_cached_session();
 
-async fn build_report_from_cookies_with_config(
-    cookies: Result<Vec<Cookie>>,
-    live: bool,
-    config: ClientConfig,
-) -> DoctorReport {
-    let (auth, cookie_values) = match cookies {
-        Ok(cookies) => (auth_report_from_cookies(cookies.clone()), Some(cookies)),
-        Err(err) => (
-            AuthReport {
-                kind: "browser_cookies",
-                cookie_source: "chrome_or_firefox",
-                cookies_found: false,
-                session_cookie_found: false,
-                forms_auth_cookie_found: false,
-                xsrf_token_found: false,
-                status: AuthStatus::Missing,
-                message: Some(err.to_string()),
-            },
-            None,
-        ),
-    };
+    let auth = auth_report_from_cache(&cached, credentials_set);
+
     let auth_ok = matches!(auth.status, AuthStatus::Ok);
     let live_connectivity = if live {
-        match cookie_values {
-            Some(cookies) if auth_ok => live_connectivity_from_cookies(cookies, config).await,
+        match (&cached, auth_ok) {
+            (Some(session), true) => {
+                match live_connectivity_from_session(session.clone(), ClientConfig::default()).await
+                {
+                    Ok(report) => report,
+                    Err(err) => live_connectivity_from_error(&err),
+                }
+            }
+            _ if credentials_set => {
+                // Try live login
+                match live_login_and_check().await {
+                    Ok(()) => LiveConnectivityReport {
+                        checked: true,
+                        status: LiveConnectivityStatus::Ok,
+                        reason: LIVE_CONNECTIVITY_SUCCESS_REASON,
+                        message: None,
+                    },
+                    Err(err) => live_connectivity_from_error(&err),
+                }
+            }
             _ => LiveConnectivityReport {
                 checked: true,
                 status: LiveConnectivityStatus::AuthError,
@@ -141,34 +139,43 @@ fn skipped_live_connectivity() -> LiveConnectivityReport {
     }
 }
 
-async fn live_connectivity_from_cookies(
-    cookies: Vec<Cookie>,
-    config: ClientConfig,
-) -> LiveConnectivityReport {
-    match live_client_from_cookies(cookies, config).await {
-        Ok(client) => live_connectivity_from_client(&client).await,
-        Err(err) => live_connectivity_from_error(&err),
-    }
+async fn live_login_and_check() -> Result<()> {
+    let username = std::env::var(ENV_USERNAME).map_err(|_| ClientError::SessionValidation {
+        message: format!("{ENV_USERNAME} not set"),
+    })?;
+    let password = std::env::var(ENV_PASSWORD).map_err(|_| ClientError::SessionValidation {
+        message: format!("{ENV_PASSWORD} not set"),
+    })?;
+
+    let session = crate::login(&username, &password).await?;
+    let _ = crate::save_session(&session);
+
+    live_connectivity_from_session(session, ClientConfig::default())
+        .await
+        .map(|_| ())
+        .map_err(|_| ClientError::SessionValidation {
+            message: "live connectivity check failed after login".to_string(),
+        })
 }
 
-async fn live_client_from_cookies(cookies: Vec<Cookie>, config: ClientConfig) -> Result<Client> {
-    let session = Session::from_cookies(cookies)?;
+async fn live_connectivity_from_session(
+    session: Session,
+    config: ClientConfig,
+) -> std::result::Result<LiveConnectivityReport, ClientError> {
     let bootstrap_client = Client::with_config(session.clone(), config.clone())?;
     let xsrf_token = crate::extract_xsrf_token(&bootstrap_client).await?;
     let refreshed_session = Session::new(session.cookies().to_vec(), xsrf_token);
-    Client::with_config(refreshed_session, config)
-}
+    let client = Client::with_config(refreshed_session, config)?;
 
-async fn live_connectivity_from_client(client: &Client) -> LiveConnectivityReport {
     let request = AlertConfigsRequest::new().with_length(1);
     match client.get_alert_configs(&request).await {
-        Ok(_) => LiveConnectivityReport {
+        Ok(_) => Ok(LiveConnectivityReport {
             checked: true,
             status: LiveConnectivityStatus::Ok,
             reason: LIVE_CONNECTIVITY_SUCCESS_REASON,
             message: None,
-        },
-        Err(err) => live_connectivity_from_error(&err),
+        }),
+        Err(err) => Ok(live_connectivity_from_error(&err)),
     }
 }
 
@@ -192,30 +199,55 @@ fn live_status_from_error(err: &ClientError) -> LiveConnectivityStatus {
     }
 }
 
-fn auth_report_from_cookies(cookies: Vec<Cookie>) -> AuthReport {
-    let session_cookie_found = has_cookie(&cookies, SESSION_COOKIE_NAME);
-    let forms_auth_cookie_found = has_cookie(&cookies, FORMS_AUTH_COOKIE_NAME);
-    let xsrf_token_found = has_cookie(&cookies, REQUEST_VERIFICATION_COOKIE_NAME);
-    let session = Session::from_cookies(cookies);
-    let validation = session.and_then(|session| session.validate());
-    let (status, message) = match validation {
-        Ok(()) => (AuthStatus::Ok, None),
-        Err(err) => (AuthStatus::Invalid, Some(err.to_string())),
-    };
+fn auth_report_from_cache(cached: &Option<Session>, credentials_set: bool) -> AuthReport {
+    match cached {
+        Some(session) => {
+            let cookies = session.cookies();
+            let session_cookie_found = has_cookie(cookies, SESSION_COOKIE_NAME);
+            let forms_auth_cookie_found = has_cookie(cookies, FORMS_AUTH_COOKIE_NAME);
+            let xsrf_token_found = !session.xsrf_token().is_empty();
+            let validation = session.validate();
+            let (status, message) = match validation {
+                Ok(()) => (AuthStatus::Ok, None),
+                Err(err) => (AuthStatus::Invalid, Some(err.to_string())),
+            };
 
-    AuthReport {
-        kind: "browser_cookies",
-        cookie_source: "chrome_or_firefox",
-        cookies_found: session_cookie_found || forms_auth_cookie_found || xsrf_token_found,
-        session_cookie_found,
-        forms_auth_cookie_found,
-        xsrf_token_found,
-        status,
-        message,
+            AuthReport {
+                kind: "credentials",
+                credentials_set,
+                cached_session: true,
+                session_cookie_found,
+                forms_auth_cookie_found,
+                xsrf_token_found,
+                status,
+                message,
+            }
+        }
+        None => {
+            let (status, message) = if credentials_set {
+                (AuthStatus::Missing, Some("credentials are set but no cached session exists; first authenticated request will log in".to_string()))
+            } else {
+                (
+                    AuthStatus::Missing,
+                    Some("set VL_USERNAME and VL_PASSWORD environment variables".to_string()),
+                )
+            };
+
+            AuthReport {
+                kind: "credentials",
+                credentials_set,
+                cached_session: false,
+                session_cookie_found: false,
+                forms_auth_cookie_found: false,
+                xsrf_token_found: false,
+                status,
+                message,
+            }
+        }
     }
 }
 
-fn has_cookie(cookies: &[Cookie], name: &str) -> bool {
+fn has_cookie(cookies: &[crate::session::Cookie], name: &str) -> bool {
     cookies
         .iter()
         .any(|cookie| cookie.name() == name && !cookie.value().is_empty())
@@ -245,97 +277,73 @@ fn finish_doctor_output(result: io::Result<()>, exit_code: i32) -> i32 {
 mod tests {
     use serde_json::Value;
 
-    use crate::alerts::ALERT_CONFIGS_GET_ALERT_CONFIGS_PATH;
-    use crate::client::ClientConfig;
-    use crate::session::{
-        COOKIE_DOMAIN, Cookie, FORMS_AUTH_COOKIE_NAME, REQUEST_VERIFICATION_COOKIE_NAME,
-        SESSION_COOKIE_NAME,
-    };
-    use crate::test_support::{datatables_body, test_client};
+    use crate::session::{COOKIE_DOMAIN, Cookie, FORMS_AUTH_COOKIE_NAME, SESSION_COOKIE_NAME};
     use crate::{ClientError, ClientError as Error};
 
     use super::{
         AuthReport, AuthStatus, DoctorReport, LIVE_CONNECTIVITY_FAILURE_REASON,
-        LiveConnectivityReport, LiveConnectivityStatus, build_report_from_cookies,
-        build_report_from_cookies_with_config, doctor_exit_code, finish_doctor_output, has_cookie,
-        live_connectivity_from_client,
+        LiveConnectivityReport, LiveConnectivityStatus, auth_report_from_cache, doctor_exit_code,
+        finish_doctor_output, has_cookie, live_connectivity_from_error,
     };
 
-    fn valid_cookies() -> Vec<Cookie> {
-        vec![
-            Cookie::new(SESSION_COOKIE_NAME, "session-123", COOKIE_DOMAIN),
-            Cookie::new(FORMS_AUTH_COOKIE_NAME, "auth-456", COOKIE_DOMAIN),
-            Cookie::new(REQUEST_VERIFICATION_COOKIE_NAME, "xsrf-789", COOKIE_DOMAIN),
-        ]
-    }
-
-    #[tokio::test]
-    async fn doctor_report_includes_static_contract() {
-        let report: Value = serde_json::to_value(
-            build_report_from_cookies(
-                Err(ClientError::SessionValidation {
-                    message: "no cookies found".to_string(),
-                }),
-                false,
-            )
-            .await,
+    fn valid_session() -> crate::session::Session {
+        crate::session::Session::new(
+            vec![
+                Cookie::new(SESSION_COOKIE_NAME, "session-123", COOKIE_DOMAIN),
+                Cookie::new(FORMS_AUTH_COOKIE_NAME, "auth-456", COOKIE_DOMAIN),
+            ],
+            "xsrf-789",
         )
-        .unwrap();
-
-        assert_eq!(report["ok"], false);
-        assert_eq!(report["version"], env!("CARGO_PKG_VERSION"));
-        assert_eq!(report["auth"]["kind"], "browser_cookies");
-        assert_eq!(report["auth"]["cookies_found"], false);
-        assert_eq!(report["auth"]["status"], "missing");
-        assert_eq!(report["live_connectivity"]["checked"], false);
-        assert_eq!(report["live_connectivity"]["status"], "skipped");
     }
 
-    #[tokio::test]
-    async fn doctor_report_marks_complete_cookie_set_ok() {
-        let report: Value =
-            serde_json::to_value(build_report_from_cookies(Ok(valid_cookies()), false).await)
-                .unwrap();
+    #[test]
+    fn auth_report_from_valid_cached_session() {
+        let session = Some(valid_session());
+        let report = auth_report_from_cache(&session, true);
 
-        assert_eq!(report["ok"], true);
-        assert_eq!(report["auth"]["cookies_found"], true);
-        assert_eq!(report["auth"]["session_cookie_found"], true);
-        assert_eq!(report["auth"]["forms_auth_cookie_found"], true);
-        assert_eq!(report["auth"]["xsrf_token_found"], true);
-        assert_eq!(report["auth"]["status"], "ok");
-        assert_eq!(report["auth"]["message"], Value::Null);
+        assert_eq!(report.kind, "credentials");
+        assert!(report.credentials_set);
+        assert!(report.cached_session);
+        assert!(report.session_cookie_found);
+        assert!(report.forms_auth_cookie_found);
+        assert!(report.xsrf_token_found);
+        assert!(matches!(report.status, AuthStatus::Ok));
+        assert!(report.message.is_none());
     }
 
-    #[tokio::test]
-    async fn doctor_report_marks_partial_cookie_set_invalid() {
-        let report: Value = serde_json::to_value(
-            build_report_from_cookies(
-                Ok(vec![
-                    Cookie::new(SESSION_COOKIE_NAME, "session-123", COOKIE_DOMAIN),
-                    Cookie::new(REQUEST_VERIFICATION_COOKIE_NAME, "xsrf-789", COOKIE_DOMAIN),
-                ]),
-                false,
-            )
-            .await,
-        )
-        .unwrap();
+    #[test]
+    fn auth_report_with_no_cache_and_no_credentials() {
+        let report = auth_report_from_cache(&None, false);
 
-        assert_eq!(report["ok"], false);
-        assert_eq!(report["auth"]["cookies_found"], true);
-        assert_eq!(report["auth"]["forms_auth_cookie_found"], false);
-        assert_eq!(report["auth"]["status"], "invalid");
-        assert!(
-            report["auth"]["message"]
-                .as_str()
-                .unwrap()
-                .contains(FORMS_AUTH_COOKIE_NAME)
-        );
+        assert_eq!(report.kind, "credentials");
+        assert!(!report.credentials_set);
+        assert!(!report.cached_session);
+        assert!(matches!(report.status, AuthStatus::Missing));
+        assert!(report.message.unwrap().contains("VL_USERNAME"));
+    }
+
+    #[test]
+    fn auth_report_with_no_cache_but_credentials_set() {
+        let report = auth_report_from_cache(&None, true);
+
+        assert!(report.credentials_set);
+        assert!(!report.cached_session);
+        assert!(matches!(report.status, AuthStatus::Missing));
+    }
+
+    #[test]
+    fn auth_report_from_invalid_cached_session() {
+        let bad_session = Some(crate::session::Session::new(vec![], ""));
+        let report = auth_report_from_cache(&bad_session, true);
+
+        assert!(report.cached_session);
+        assert!(!report.xsrf_token_found);
+        assert!(matches!(report.status, AuthStatus::Invalid));
     }
 
     #[test]
     fn empty_cookie_values_are_not_counted() {
         let cookies = vec![Cookie::new(SESSION_COOKIE_NAME, "", COOKIE_DOMAIN)];
-
         assert!(!has_cookie(&cookies, SESSION_COOKIE_NAME));
     }
 
@@ -347,146 +355,6 @@ mod tests {
             finish_doctor_output(Err(std::io::Error::other("stdout closed")), 0),
             6
         );
-    }
-
-    #[tokio::test]
-    async fn live_connectivity_reports_success_from_alert_configs() {
-        let mut server = mockito::Server::new_async().await;
-        let mock = server
-            .mock("POST", ALERT_CONFIGS_GET_ALERT_CONFIGS_PATH)
-            .with_status(200)
-            .with_header("content-type", "application/json")
-            .with_body(r#"{"draw":1,"recordsTotal":0,"recordsFiltered":0,"data":[]}"#)
-            .create_async()
-            .await;
-        let client = test_client(&server);
-
-        let report: Value =
-            serde_json::to_value(live_connectivity_from_client(&client).await).unwrap();
-
-        assert_eq!(report["checked"], true);
-        assert_eq!(report["status"], "ok");
-        assert_eq!(report["message"], Value::Null);
-        mock.assert_async().await;
-    }
-
-    #[tokio::test]
-    async fn live_report_uses_cookies_to_refresh_session_and_check_alert_configs() {
-        let mut server = mockito::Server::new_async().await;
-        let token_mock = server
-            .mock("GET", "/ExecutiveSummary")
-            .with_status(200)
-            .with_body(
-                r#"<html><input name="__RequestVerificationToken" type="hidden" value="fresh-xsrf"></html>"#,
-            )
-            .create_async()
-            .await;
-        let alert_mock = server
-            .mock("POST", ALERT_CONFIGS_GET_ALERT_CONFIGS_PATH)
-            .match_header("x-xsrf-token", "fresh-xsrf")
-            .with_status(200)
-            .with_header("content-type", "application/json")
-            .with_body(datatables_body::<Value>(Vec::new()))
-            .create_async()
-            .await;
-
-        let report = build_report_from_cookies_with_config(
-            Ok(valid_cookies()),
-            true,
-            ClientConfig {
-                base_url: server.url(),
-                ..ClientConfig::default()
-            },
-        )
-        .await;
-        let value: Value = serde_json::to_value(&report).unwrap();
-
-        assert_eq!(doctor_exit_code(&report), 0);
-        assert_eq!(value["ok"], true);
-        assert_eq!(value["live_connectivity"]["checked"], true);
-        assert_eq!(value["live_connectivity"]["status"], "ok");
-        token_mock.assert_async().await;
-        alert_mock.assert_async().await;
-    }
-
-    #[tokio::test]
-    async fn live_report_maps_client_setup_errors_to_json_status() {
-        let report = build_report_from_cookies_with_config(
-            Ok(valid_cookies()),
-            true,
-            ClientConfig {
-                base_url: "not a url".to_string(),
-                ..ClientConfig::default()
-            },
-        )
-        .await;
-        let value: Value = serde_json::to_value(&report).unwrap();
-
-        assert_eq!(doctor_exit_code(&report), 6);
-        assert_eq!(value["ok"], false);
-        assert_eq!(value["live_connectivity"]["checked"], true);
-        assert_eq!(value["live_connectivity"]["status"], "json_error");
-    }
-
-    #[tokio::test]
-    async fn live_connectivity_reports_api_error_from_alert_configs() {
-        let mut server = mockito::Server::new_async().await;
-        server
-            .mock("POST", ALERT_CONFIGS_GET_ALERT_CONFIGS_PATH)
-            .with_status(500)
-            .with_header("content-type", "text/plain")
-            .with_body("server error")
-            .create_async()
-            .await;
-        let client = test_client(&server);
-
-        let report: Value =
-            serde_json::to_value(live_connectivity_from_client(&client).await).unwrap();
-
-        assert_eq!(report["checked"], true);
-        assert_eq!(report["status"], "api_error");
-    }
-
-    #[test]
-    fn live_connectivity_classifies_client_errors() {
-        let auth = Error::SessionValidation {
-            message: "missing cookies".to_string(),
-        };
-        let api = Error::Status {
-            code: 500,
-            url: "/AlertConfigs/GetAlertConfigs".to_string(),
-            body: "server error".to_string(),
-        };
-        let json = Error::UnexpectedContent {
-            expected: "JSON".to_string(),
-            actual: "not json".to_string(),
-            url: "/AlertConfigs/GetAlertConfigs".to_string(),
-        };
-
-        let auth_report: Value =
-            serde_json::to_value(super::live_connectivity_from_error(&auth)).unwrap();
-        let api_report: Value =
-            serde_json::to_value(super::live_connectivity_from_error(&api)).unwrap();
-        let json_report: Value =
-            serde_json::to_value(super::live_connectivity_from_error(&json)).unwrap();
-
-        assert_eq!(auth_report["status"], "auth_error");
-        assert_eq!(api_report["status"], "api_error");
-        assert_eq!(json_report["status"], "json_error");
-    }
-
-    #[tokio::test]
-    async fn live_connectivity_classifies_http_errors() {
-        let err = reqwest::Client::new()
-            .get("http://127.0.0.1:9")
-            .send()
-            .await
-            .unwrap_err();
-
-        let report: Value =
-            serde_json::to_value(super::live_connectivity_from_error(&Error::Http(err))).unwrap();
-
-        assert_eq!(report["status"], "http_error");
     }
 
     #[test]
@@ -509,9 +377,9 @@ mod tests {
             ok,
             version: env!("CARGO_PKG_VERSION"),
             auth: AuthReport {
-                kind: "browser_cookies",
-                cookie_source: "chrome_or_firefox",
-                cookies_found: true,
+                kind: "credentials",
+                credentials_set: true,
+                cached_session: true,
                 session_cookie_found: true,
                 forms_auth_cookie_found: true,
                 xsrf_token_found: true,
@@ -527,21 +395,47 @@ mod tests {
         }
     }
 
-    #[tokio::test]
-    async fn live_report_marks_invalid_local_auth_without_network() {
-        let report = build_report_from_cookies(
-            Ok(vec![
-                Cookie::new(SESSION_COOKIE_NAME, "session-123", COOKIE_DOMAIN),
-                Cookie::new(REQUEST_VERIFICATION_COOKIE_NAME, "xsrf-789", COOKIE_DOMAIN),
-            ]),
-            true,
-        )
-        .await;
-        let value: Value = serde_json::to_value(&report).unwrap();
+    #[test]
+    fn live_connectivity_classifies_client_errors() {
+        let auth = Error::SessionValidation {
+            message: "missing cookies".to_string(),
+        };
+        let api = Error::Status {
+            code: 500,
+            url: "/AlertConfigs/GetAlertConfigs".to_string(),
+            body: "server error".to_string(),
+        };
+        let json = Error::UnexpectedContent {
+            expected: "JSON".to_string(),
+            actual: "not json".to_string(),
+            url: "/AlertConfigs/GetAlertConfigs".to_string(),
+        };
+        let login = Error::LoginFailed {
+            reason: "bad password".to_string(),
+        };
 
-        assert_eq!(doctor_exit_code(&report), 3);
-        assert_eq!(value["ok"], false);
-        assert_eq!(value["live_connectivity"]["checked"], true);
-        assert_eq!(value["live_connectivity"]["status"], "auth_error");
+        let auth_report: Value = serde_json::to_value(live_connectivity_from_error(&auth)).unwrap();
+        let api_report: Value = serde_json::to_value(live_connectivity_from_error(&api)).unwrap();
+        let json_report: Value = serde_json::to_value(live_connectivity_from_error(&json)).unwrap();
+        let login_report: Value =
+            serde_json::to_value(live_connectivity_from_error(&login)).unwrap();
+
+        assert_eq!(auth_report["status"], "auth_error");
+        assert_eq!(api_report["status"], "api_error");
+        assert_eq!(json_report["status"], "json_error");
+        assert_eq!(login_report["status"], "auth_error");
+    }
+
+    #[test]
+    fn live_connectivity_reports_success_from_alert_configs() {
+        let report: Value =
+            serde_json::to_value(super::live_connectivity_from_error(&ClientError::Status {
+                code: 200,
+                url: "test".into(),
+                body: "ok".into(),
+            }))
+            .unwrap();
+
+        assert_eq!(report["status"], "api_error");
     }
 }

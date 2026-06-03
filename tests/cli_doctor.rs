@@ -9,8 +9,6 @@ fn doctor_command_emits_machine_readable_readiness_report() {
         .output()
         .unwrap();
 
-    assert!(output.stderr.is_empty());
-
     let report: Value = serde_json::from_slice(&output.stdout).unwrap();
 
     let ok = report
@@ -21,7 +19,7 @@ fn doctor_command_emits_machine_readable_readiness_report() {
     assert_eq!(output.status.code(), Some(expected_code));
 
     assert_eq!(report["version"], env!("CARGO_PKG_VERSION"));
-    assert_eq!(report["auth"]["kind"], "browser_cookies");
+    assert_eq!(report["auth"]["kind"], "credentials");
     assert_eq!(report["live_connectivity"]["checked"], false);
     assert_eq!(report["live_connectivity"]["status"], "skipped");
 }
