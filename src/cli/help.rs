@@ -32,7 +32,7 @@ const AGENT_HELP: &str = r#"agent
 Guidance for non-interactive automation and coding agents:
 
 1. Check local readiness first.
-   Run `volumeleaders-agent doctor` before authenticated data commands when automation needs to confirm browser-cookie readiness. `doctor` is local-only by default and does not make a network request. Use `volumeleaders-agent doctor --live` when you also need a low-cost authenticated connectivity check.
+   Run `volumeleaders-agent doctor` before authenticated data commands when automation needs to confirm credential readiness. `doctor` is local-only by default and does not make a network request. If auth is not ready, read the JSON `auth.actions` array and do exactly what it says. Use `volumeleaders-agent doctor --live` when you also need a low-cost authenticated connectivity check.
 
 2. Discover commands before guessing.
 Use `volumeleaders-agent commands` for a quick leaf-command list, `volumeleaders-agent commands --grouped` for grouped descriptions, `volumeleaders-agent schema` for machine-readable command, alias, auth, mutation safety, help, stable argument, semantic argument, and boolean option metadata, and `volumeleaders-agent fields <command path>` for field projection metadata.
@@ -47,7 +47,7 @@ Use `volumeleaders-agent commands` for a quick leaf-command list, `volumeleaders
 Use global `--strict-empty` when an empty record array should fail automation with exit code 7. Avoid mutating alert and watchlist commands unless the user explicitly requested the mutation. When mutation is requested, run the command with `--dry-run` first; live delete commands require `--yes`.
 
 6. Recover by exit code.
-Exit 2 means usage or argument validation failed, including unknown `--fields` names. Exit 3 means browser auth failed. Exit 4 means HTTP transport failed. Exit 5 means the API returned an error. Exit 6 means JSON parsing or output transformation failed. Exit 7 means `--strict-empty` rejected an empty record array.
+Exit 2 means usage or argument validation failed, including unknown `--fields` names. Exit 3 means credential login setup failed. Exit 4 means HTTP transport failed. Exit 5 means the API returned an error. Exit 6 means JSON parsing or output transformation failed. Exit 7 means `--strict-empty` rejected an empty record array.
 
 Copy-paste examples:
 
@@ -66,30 +66,41 @@ volumeleaders-agent volume institutional --date 2026-05-27 --tickers AAPL,NVDA -
 
 const AUTH_HELP: &str = r#"auth
 
-VolumeLeaders live-data commands authenticate with browser cookies from a local Chrome or Firefox profile. Log in at https://www.volumeleaders.com in a browser first, then rerun the CLI.
+VolumeLeaders live-data commands authenticate with a cached session or username/password login credentials.
 
-The CLI needs the ASP.NET session cookie, forms auth cookie, and request verification cookie. Cookie values and XSRF tokens are never printed.
+Credential source order for live commands:
+1. Use the cached session from `~/.cache/volumeleaders-agent/cookies.json` when it exists and the XSRF refresh succeeds.
+2. If the cache is missing, invalid, or expired, use non-empty `VL_USERNAME` and `VL_PASSWORD` environment variables.
+3. If neither environment variable is set, read `~/.config/volumeleaders-agent/config.json`.
+4. If credentials are still unavailable or invalid, exit 3 with structured auth guidance on stderr.
 
-Run `volumeleaders-agent doctor` for a safe local readiness check. It does not make a network request by default and exits 0 when the local browser-cookie session looks usable, or 3 when auth is missing or invalid. Run `volumeleaders-agent doctor --live` to add a low-cost authenticated connectivity check; live auth, HTTP transport, and API failures use exit codes 3, 4, and 5.
+Config file shape:
+{"username":"YOUR_EMAIL","password":"YOUR_PASSWORD"}
+
+Environment variables take precedence over the config file. If either `VL_USERNAME` or `VL_PASSWORD` is set, both must be set and non-empty; a partial or empty environment setup is an auth error and the config file is not used.
+
+Run `volumeleaders-agent doctor` for a safe local readiness check. It exits 0 when a cached session is usable or complete credentials are configured. It exits 3 when auth is missing or invalid and includes an `auth.actions` array with exact steps for LLM callers. Run `volumeleaders-agent doctor --live` to verify the credentials against VolumeLeaders and create or refresh the cached session. Cookie values, passwords, and XSRF tokens are never printed.
 
 Common fixes:
-- Log in to VolumeLeaders again and retry.
-- Use the same OS user that owns the browser profile.
-- Close browser profile locks if your platform requires it.
-- Check `help environment` for local profile expectations.
+- Set `VL_USERNAME` and `VL_PASSWORD` in the process environment.
+- Or create `~/.config/volumeleaders-agent/config.json` with username and password fields.
+- Do not set only one auth environment variable.
+- Run `volumeleaders-agent doctor --live` after editing credentials.
 "#;
 
 const ENVIRONMENT_HELP: &str = r#"environment
 
-The CLI reads local browser profiles through the operating system account running `volumeleaders-agent`. It currently has no config file or environment-variable precedence layer.
+The CLI uses platform XDG directories through the operating system account running `volumeleaders-agent`.
 
 Expected setup:
 - Rust users can run the CLI with `cargo run -- ...`; installed users run `volumeleaders-agent ...`.
-- Browser-cookie auth expects a logged-in Chrome or Firefox profile for https://www.volumeleaders.com.
+- Cached sessions are stored under `~/.cache/volumeleaders-agent/cookies.json`.
+- Optional credential config is stored at `~/.config/volumeleaders-agent/config.json` unless `XDG_CONFIG_HOME` points somewhere else.
+- Credential environment variables are `VL_USERNAME` and `VL_PASSWORD`; they override config file credentials.
 - stdout is reserved for command data, either compact JSON for data commands or plain text for discovery/help commands.
 - stderr is reserved for diagnostics and structured runtime errors. Use `-v`, `-vv`, or `-vvv` to enable info, debug, or trace diagnostics without changing stdout.
 
-Use `volumeleaders-agent doctor` before live data commands when automation needs to confirm local auth readiness without spending API quota. Use `volumeleaders-agent doctor --live` only when automation needs to verify authenticated connectivity too.
+Use `volumeleaders-agent doctor` before live data commands when automation needs to confirm local auth readiness without spending API quota. If it exits 3, parse `auth.actions` from stdout and apply those steps. Use `volumeleaders-agent doctor --live` only when automation needs to verify authenticated connectivity too.
 "#;
 
 const EXIT_CODES_HELP: &str = r#"exit-codes
@@ -98,18 +109,18 @@ Semantic exit codes are stable for automation:
 
 0  success
 2  usage error, invalid arguments, unknown --fields names, or clap validation failure
-3  auth error, browser cookies are missing, expired, or invalid
+3  auth error, cached session or login credentials are missing, expired, invalid, or incomplete
 4  HTTP transport error
 5  VolumeLeaders API error response
 6  JSON parse or output transformation error
 7  strict empty-result handling requested with --strict-empty
 
 Runtime errors are written to stderr as one compact JSON object:
-{"ok":false,"error":{"kind":"auth_error","message":"browser cookies are missing or expired"}}
+{"ok":false,"error":{"kind":"auth_error","message":"set VL_USERNAME and VL_PASSWORD environment variables or create ~/.config/volumeleaders-agent/config.json with username and password fields"}}
 
 Recovery guidance:
 - Exit 2: check `--help`, `commands`, `schema`, `fields <command path>`, or this help topic.
-- Exit 3: run `doctor`, then log in to VolumeLeaders again if needed.
+- Exit 3: run `doctor`, read `auth.actions`, then set both env vars or create the XDG config file before retrying.
 - Exit 4 or 5: retry later or narrow the request.
 - Exit 6: check field names and JSON-processing pipeline assumptions.
 - Exit 7: check the ticker, widen the date range, relax filters, or accept that no configured rows may be valid account state.
@@ -300,7 +311,8 @@ mod tests {
         assert!(topic_text(HelpTopic::Agent).contains("external `jq` handles reshaping"));
         assert!(topic_text(HelpTopic::Agent).contains("--strict-empty trades NVDA"));
         assert!(topic_text(HelpTopic::Agent).contains("--fields Ticker,Dollars | jq"));
-        assert!(topic_text(HelpTopic::Environment).contains("browser profiles"));
+        assert!(topic_text(HelpTopic::Environment).contains("XDG directories"));
+        assert!(topic_text(HelpTopic::Auth).contains("auth.actions"));
         assert!(topic_text(HelpTopic::ExitCodes).contains("3  auth error"));
         assert!(topic_text(HelpTopic::ExitCodes).contains("unknown --fields names"));
         assert!(topic_text(HelpTopic::ExitCodes).contains("-vvv"));

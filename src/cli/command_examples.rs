@@ -50,7 +50,7 @@ macro_rules! example {
 
 const DOCTOR_EXAMPLES: &[CommandExample] = &[
     example!(
-        "Check local browser-cookie readiness",
+        "Check local auth readiness and recovery actions",
         "volumeleaders-agent doctor"
     ),
     example!(

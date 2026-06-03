@@ -8,7 +8,7 @@ use crate::ClientError;
 
 /// Exit code used by clap for invalid flags, arguments, or command shape.
 pub const EXIT_USAGE_ERROR: i32 = 2;
-/// Exit code for missing, expired, or unusable browser authentication.
+/// Exit code for missing, expired, or unusable authentication.
 pub const EXIT_AUTH_ERROR: i32 = 3;
 /// Exit code for transport-level HTTP failures.
 pub const EXIT_HTTP_ERROR: i32 = 4;
@@ -24,7 +24,7 @@ pub const EXIT_EMPTY_RESULT: i32 = 7;
 pub enum CliErrorKind {
     /// Invalid flags, arguments, or command shape beyond clap's parser checks.
     UsageError,
-    /// Missing, expired, or unusable browser authentication.
+    /// Missing, expired, or unusable authentication.
     AuthError,
     /// Network, DNS, timeout, TLS, or HTTP-client failure.
     HttpError,
@@ -158,14 +158,14 @@ mod tests {
         write_error(
             &mut buffer,
             CliErrorKind::AuthError,
-            "browser cookies are missing",
+            "login credentials are missing",
         )
         .unwrap();
 
         let value: serde_json::Value = serde_json::from_slice(&buffer).unwrap();
         assert_eq!(value["ok"], false);
         assert_eq!(value["error"]["kind"], "auth_error");
-        assert_eq!(value["error"]["message"], "browser cookies are missing");
+        assert_eq!(value["error"]["message"], "login credentials are missing");
     }
 
     #[test]
