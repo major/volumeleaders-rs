@@ -27,7 +27,7 @@ struct CliSchema {
 #[derive(Debug, Serialize)]
 struct AuthSchema {
     kind: &'static str,
-    sources: [&'static str; 2],
+    sources: [&'static str; 3],
     network_required_for_doctor: bool,
 }
 
@@ -99,8 +99,8 @@ fn build_schema() -> CliSchema {
         binary: BINARY_NAME,
         version: env!("CARGO_PKG_VERSION"),
         auth: AuthSchema {
-            kind: "browser_cookies",
-            sources: ["chrome", "firefox"],
+            kind: "credential_login",
+            sources: ["xdg_cache", "environment", "xdg_config"],
             network_required_for_doctor: false,
         },
         commands,
@@ -478,10 +478,10 @@ mod tests {
         assert_eq!(schema["schema_version"], 1);
         assert_eq!(schema["binary"], "volumeleaders-agent");
         assert_eq!(schema["version"], env!("CARGO_PKG_VERSION"));
-        assert_eq!(schema["auth"]["kind"], "browser_cookies");
+        assert_eq!(schema["auth"]["kind"], "credential_login");
         assert_eq!(
             schema["auth"]["sources"],
-            serde_json::json!(["chrome", "firefox"])
+            serde_json::json!(["xdg_cache", "environment", "xdg_config"])
         );
     }
 

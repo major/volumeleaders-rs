@@ -18,6 +18,8 @@ pub mod cli;
 pub mod client;
 /// Trade cluster and cluster bomb DataTables endpoints.
 pub mod clusters;
+/// Credential configuration loading.
+pub mod config;
 /// ASP.NET DataTables wire format encoding and pagination.
 pub mod datatables;
 /// Earnings calendar DataTables endpoint.
@@ -55,6 +57,7 @@ pub use cache::{clear_cache, load_cached_session, save_session};
 pub use cli::{Cli, run};
 pub use client::{Client, ClientConfig};
 pub use clusters::{TradeClusterBombsRequest, TradeClustersRequest};
+pub use config::{CredentialSource, Credentials, ResolvedCredentials, resolve_credentials};
 pub use datatables::{DataTablesColumn, DataTablesResponse};
 pub use earnings::EarningsRequest;
 pub use error::{ClientError, Result};

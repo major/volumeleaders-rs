@@ -2,7 +2,7 @@
 
 > **Disclaimer:** This project is unofficial and is not affiliated with, endorsed by, or sponsored by [volumeleaders.com](https://www.volumeleaders.com).
 
-Rust crate for working with VolumeLeaders data from an authenticated session. The package is published as `rusty-volumeleaders` and includes both a reusable API client library and the `volumeleaders-agent` CLI. Authentication uses `VL_USERNAME` and `VL_PASSWORD` environment variables with a cached-session XDG cookie store.
+Rust crate for working with VolumeLeaders data from an authenticated session. The package is published as `rusty-volumeleaders` and includes both a reusable API client library and the `volumeleaders-agent` CLI. Authentication uses an XDG cached session first, then `VL_USERNAME` and `VL_PASSWORD`, then an optional XDG config file.
 
 ## Install
 
@@ -38,13 +38,13 @@ GitHub releases also provide cargo-dist archives and shell or PowerShell install
 
 - Rust 1.96.0 or newer
 - `rust-toolchain.toml` pins local builds to the CI MSRV by default
-- Set `VL_USERNAME` and `VL_PASSWORD` environment variables for commands that need live authenticated data
+- Configure credentials for commands that need live authenticated data with either `VL_USERNAME` and `VL_PASSWORD` or `~/.config/volumeleaders-agent/config.json`
 - Optional tools for local maintenance: `cargo llvm-cov`, `cargo audit`
 - Optional tool for local patch coverage checks: `diff-cover` or `uvx diff-cover`
 
 ## CLI usage
 
-The CLI authenticates with VolumeLeaders using `VL_USERNAME` and `VL_PASSWORD` environment variables. Sessions are cached in the XDG cache directory (`~/.cache/volumeleaders-agent/cookies.json`) so subsequent invocations reuse valid sessions without re-authenticating. Command output goes to stdout as compact JSON by default. Use command-specific `--fields` for built-in projection and pipe through external `jq` for filtering, reshaping, sorting, or pretty-printing. Runtime errors are written to stderr as one compact JSON line such as `{"ok":false,"error":{"kind":"auth_error","message":"set VL_USERNAME and VL_PASSWORD environment variables"}}`.
+The CLI authenticates with VolumeLeaders by trying sources in this order: a valid cached session at `~/.cache/volumeleaders-agent/cookies.json`, non-empty `VL_USERNAME` and `VL_PASSWORD` environment variables, then `~/.config/volumeleaders-agent/config.json` with `{"username":"YOUR_EMAIL","password":"YOUR_PASSWORD"}`. Environment variables override the config file. If either auth environment variable is set, both must be set and non-empty, and config fallback is skipped. The config file contains plaintext credentials, so keep it readable only by your user, for example with `chmod 600 ~/.config/volumeleaders-agent/config.json`. Command output goes to stdout as compact JSON by default. Use command-specific `--fields` for built-in projection and pipe through external `jq` for filtering, reshaping, sorting, or pretty-printing. Runtime errors are written to stderr as one compact JSON line such as `{"ok":false,"error":{"kind":"auth_error","message":"set VL_USERNAME and VL_PASSWORD environment variables or create ~/.config/volumeleaders-agent/config.json with username and password fields"}}`.
 
 Semantic exit codes are stable for automation: `0` means success, `2` is clap usage or argument validation, `3` is auth failure, `4` is HTTP transport failure, `5` is a VolumeLeaders API error response, `6` is JSON parsing or output transformation failure, and `7` is strict empty-result handling.
 
@@ -66,7 +66,7 @@ Top-level aliases are available for the highest-frequency trade commands: `trade
 
 Use `commands` for lightweight CLI discovery. It emits a sorted plain-text list of leaf command paths, or grouped command names with short descriptions when run with `--grouped`.
 
-Use `doctor` for a safe local readiness check before running live data commands. It emits compact JSON with the CLI version, credential-based auth status, and live-connectivity status without making a network request by default. Add `--live` to perform a low-cost authenticated connectivity check; live auth, HTTP transport, and API failures use exit codes `3`, `4`, and `5`.
+Use `doctor` for a safe local readiness check before running live data commands. It emits compact JSON with the CLI version, credential-based auth status, credential source, config path when relevant, and an `auth.actions` array with exact recovery steps for LLM callers. It does not make a network request by default. Add `--live` to perform a low-cost authenticated connectivity check and create or refresh the cached session; live auth, HTTP transport, and API failures use exit codes `3`, `4`, and `5`.
 
 Use `help <topic>` for built-in operational guidance when README access is unavailable. Topics are `agent`, `auth`, `environment`, `exit-codes`, `schema`, `examples`, and `workflows`; regular clap help remains available with `--help` on the root or any subcommand. The `agent` topic summarizes the recommended non-interactive automation flow, and `workflows` gives copy-paste starts for common agent tasks.
 
@@ -135,13 +135,9 @@ rusty-volumeleaders = { version = "0.4.0", default-features = false }
 
 This excludes `clap` and `clap_complete` and exposes `Client`, `Session`, request builders, response models, `ClientError`, and `Result`. The `cli` feature (enabled by default) adds the `Cli` parser and `run` entry point used by the `volumeleaders-agent` binary.
 
-## Client example
+## Client usage
 
-```bash
-cargo run --example credential_login
-```
-
-The `credential_login` example demonstrates the library login and session cache API.
+Library consumers can call `login(username, password).await?` to create a `Session`, pass that session to `Client::new(session)?`, and optionally persist it with `save_session(&session)?` for reuse by the CLI-compatible XDG cache.
 
 ## Development
 

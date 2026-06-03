@@ -1,72 +1,45 @@
-use std::env;
-
 use tracing::{debug, warn};
 
 use crate::cli::error::client_error;
-use crate::{Client, ClientError, Session};
+use crate::{Client, ClientError, Session, resolve_credentials};
 
 /// Cookie domain used for VolumeLeaders authentication.
 pub const VL_DOMAIN: &str = "volumeleaders.com";
 
-/// Environment variable for the VolumeLeaders username (email).
-const ENV_USERNAME: &str = "VL_USERNAME";
-
-/// Environment variable for the VolumeLeaders password.
-const ENV_PASSWORD: &str = "VL_PASSWORD";
-
-/// Build a VolumeLeaders client from environment-variable credentials.
+/// Build a VolumeLeaders client from cached auth or configured credentials.
 ///
 /// Flow:
-/// 1. Reads `VL_USERNAME` and `VL_PASSWORD` from the environment.
-/// 2. Tries to load a cached session from `~/.cache/volumeleaders-agent/`.
-/// 3. If the cached session is valid and current, refreshes its XSRF token.
-/// 4. If no valid cached session exists, logs in with credentials and
-///    saves the new session to the cache.
+/// 1. Tries to load a cached session from `~/.cache/volumeleaders-agent/`.
+/// 2. If the cached session is valid and current, refreshes its XSRF token.
+/// 3. If no valid cached session exists, resolves credentials from
+///    environment variables or XDG config.
+/// 4. Logs in with resolved credentials and saves the new session to the cache.
 /// 5. Returns an authenticated [`Client`] ready for API calls.
 pub async fn make_client_from_env() -> Result<Client, i32> {
-    let username = match env::var(ENV_USERNAME) {
-        Ok(u) if !u.is_empty() => u,
-        _ => {
-            return Err(client_error(&ClientError::SessionValidation {
-                message: format!("{ENV_USERNAME} environment variable not set or empty"),
-            }));
-        }
-    };
+    if let Some(client) = client_from_cached_session().await? {
+        return Ok(client);
+    }
 
-    let password = match env::var(ENV_PASSWORD) {
-        Ok(p) if !p.is_empty() => p,
-        _ => {
-            return Err(client_error(&ClientError::SessionValidation {
-                message: format!("{ENV_PASSWORD} environment variable not set or empty"),
-            }));
-        }
-    };
-
-    make_client_with_creds(&username, &password).await
+    let resolved = resolve_credentials().map_err(|err| client_error(&err))?;
+    debug!(
+        source = resolved.source().kind(),
+        "logging in with resolved credentials"
+    );
+    make_client_with_creds(
+        resolved.credentials().username(),
+        resolved.credentials().password(),
+    )
+    .await
 }
 
 /// Build a VolumeLeaders client from explicit credentials.
 async fn make_client_with_creds(username: &str, password: &str) -> Result<Client, i32> {
-    // Try cached session first.
-    if let Some(session) = crate::load_cached_session() {
-        debug!("using cached session");
-        match build_client_from_session(session).await {
-            Ok(client) => return Ok(client),
-            Err(err) => {
-                warn!(%err, "cached session invalid, will re-login");
-                crate::clear_cache();
-            }
-        }
-    }
-
-    // Login with credentials.
     debug!("logging in with credentials");
     let session = match crate::login(username, password).await {
         Ok(s) => s,
         Err(err) => return Err(client_error(&err)),
     };
 
-    // Save session to cache for future invocations.
     if let Err(err) = crate::save_session(&session) {
         warn!(%err, "failed to cache session");
     }
@@ -74,6 +47,34 @@ async fn make_client_with_creds(username: &str, password: &str) -> Result<Client
     build_client_from_session(session)
         .await
         .map_err(|err| client_error(&err))
+}
+
+async fn client_from_cached_session() -> Result<Option<Client>, i32> {
+    if let Some(session) = crate::load_cached_session() {
+        debug!("using cached session");
+        match build_client_from_session(session).await {
+            Ok(client) => return Ok(Some(client)),
+            Err(err) => {
+                if should_clear_cached_session(&err) {
+                    warn!(%err, "cached session invalid, will re-login");
+                    crate::clear_cache();
+                } else {
+                    warn!(%err, "cached session refresh failed, will re-login without clearing cache");
+                }
+            }
+        }
+    }
+
+    Ok(None)
+}
+
+fn should_clear_cached_session(err: &ClientError) -> bool {
+    matches!(
+        err,
+        ClientError::SessionExpired { .. }
+            | ClientError::SessionValidation { .. }
+            | ClientError::LoginFailed { .. }
+    )
 }
 
 /// Build a VolumeLeaders client from environment-variable credentials.
@@ -90,11 +91,12 @@ pub fn handle_api_error(err: ClientError) -> i32 {
 
 /// Build an authenticated client from a session, refreshing the XSRF token.
 async fn build_client_from_session(session: Session) -> Result<Client, ClientError> {
-    let bootstrap_client = Client::new(session.clone())?;
+    let cookies = session.cookies().to_vec();
+    let bootstrap_client = Client::new(session)?;
 
     let xsrf_token = crate::extract_xsrf_token(&bootstrap_client).await?;
 
-    let refreshed_session = Session::new(session.cookies().to_vec(), xsrf_token);
+    let refreshed_session = Session::new(cookies, xsrf_token);
     Client::new(refreshed_session)
 }
 
@@ -123,48 +125,31 @@ mod tests {
         assert_eq!(code, 5);
     }
 
-    #[tokio::test]
-    async fn make_client_from_env_missing_username() {
-        unsafe {
-            env::remove_var(ENV_USERNAME);
-            env::remove_var(ENV_PASSWORD);
-        }
-        let result = make_client_from_env().await;
-        assert!(result.is_err());
-        assert_eq!(result.unwrap_err(), 3);
-    }
-
-    #[tokio::test]
-    async fn make_client_from_env_empty_username() {
-        unsafe {
-            env::set_var(ENV_USERNAME, "");
-            env::remove_var(ENV_PASSWORD);
-        }
-        let result = make_client_from_env().await;
-        assert!(result.is_err());
-        assert_eq!(result.unwrap_err(), 3);
-    }
-
-    #[tokio::test]
-    async fn make_client_from_env_username_set_but_no_password() {
-        unsafe {
-            env::set_var(ENV_USERNAME, "user@example.com");
-            env::remove_var(ENV_PASSWORD);
-        }
-        let result = make_client_from_env().await;
-        assert!(result.is_err());
-        assert_eq!(result.unwrap_err(), 3);
-    }
-
-    #[tokio::test]
-    async fn make_client_from_env_empty_password() {
-        unsafe {
-            env::set_var(ENV_USERNAME, "user@example.com");
-            env::set_var(ENV_PASSWORD, "");
-        }
-        let result = make_client_from_env().await;
-        assert!(result.is_err());
-        assert_eq!(result.unwrap_err(), 3);
+    #[test]
+    fn cached_session_clear_is_limited_to_auth_errors() {
+        assert!(should_clear_cached_session(&ClientError::SessionExpired {
+            url: "https://example.com/Login".to_string(),
+        }));
+        assert!(should_clear_cached_session(
+            &ClientError::SessionValidation {
+                message: "missing cookie".to_string(),
+            }
+        ));
+        assert!(should_clear_cached_session(&ClientError::LoginFailed {
+            reason: "invalid credentials".to_string(),
+        }));
+        assert!(!should_clear_cached_session(&ClientError::Status {
+            code: 500,
+            url: "https://example.com".to_string(),
+            body: "server error".to_string(),
+        }));
+        assert!(!should_clear_cached_session(
+            &ClientError::UnexpectedContent {
+                expected: "XSRF token".to_string(),
+                actual: "unexpected page".to_string(),
+                url: "https://example.com/ExecutiveSummary".to_string(),
+            },
+        ));
     }
 
     #[tokio::test]

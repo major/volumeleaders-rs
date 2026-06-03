@@ -308,7 +308,8 @@ fn same_origin(first: &Url, next: &Url) -> bool {
 }
 
 fn redirected_to_login(url: &Url) -> bool {
-    url.path().to_ascii_lowercase().contains("/login")
+    url.path_segments()
+        .is_some_and(|mut segments| segments.any(|segment| segment.eq_ignore_ascii_case("login")))
 }
 
 fn redirect_location_matches(response: &reqwest::Response, success_redirect: &str) -> bool {
@@ -531,6 +532,23 @@ mod tests {
         let error = client.get("/endpoint").await.unwrap_err();
 
         assert!(matches!(error, ClientError::SessionExpired { .. }));
+    }
+
+    #[test]
+    fn redirected_to_login_requires_login_path_segment() {
+        assert!(redirected_to_login(
+            &Url::parse("https://volumeleaders.com/Login").unwrap()
+        ));
+        assert!(redirected_to_login(
+            &Url::parse("https://volumeleaders.com/app/login?returnUrl=%2F").unwrap()
+        ));
+
+        assert!(!redirected_to_login(
+            &Url::parse("https://volumeleaders.com/api/relogin").unwrap()
+        ));
+        assert!(!redirected_to_login(
+            &Url::parse("https://volumeleaders.com/not-login").unwrap()
+        ));
     }
 
     #[tokio::test]

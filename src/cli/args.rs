@@ -16,8 +16,8 @@ use crate::cli::commands::watchlist::WatchlistCommand;
     about = "CLI tool for querying VolumeLeaders institutional trade data",
     long_about = "volumeleaders-agent queries institutional trade data from VolumeLeaders.\n\n\
         Use it for trades, volume leaderboards, market data, alerts, and watchlists.\n\n\
-        Auth: reads browser cookies automatically. If auth fails with exit code 3,\n\
-        log in at https://www.volumeleaders.com in your browser, then retry.\n\n\
+        Auth: tries the cached XDG session first, then VL_USERNAME/VL_PASSWORD, then ~/.config/volumeleaders-agent/config.json.\n\
+        If auth fails with exit code 3, run `volumeleaders-agent doctor` and follow auth.actions.\n\n\
         Output: compact JSON to stdout. Use command-specific --fields for built-in projection and pipe through external jq for transformations.\n\
         Runtime errors use one structured JSON line on stderr.",
     disable_help_subcommand = true,

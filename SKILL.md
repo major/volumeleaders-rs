@@ -1,6 +1,6 @@
 # VolumeLeaders CLI Skill
 
-Use this skill when an agent needs to operate `volumeleaders-agent`, discover its command surface, diagnose auth, or modify the CLI implementation. The CLI authenticates with `VL_USERNAME` and `VL_PASSWORD` environment variables and caches sessions in the XDG cache directory.
+Use this skill when an agent needs to operate `volumeleaders-agent`, discover its command surface, diagnose auth, or modify the CLI implementation. The CLI authenticates with an XDG cached session first, then `VL_USERNAME` and `VL_PASSWORD`, then optional XDG config credentials.
 
 ## Self-discovery
 
@@ -23,7 +23,7 @@ volumeleaders-agent help workflows
 volumeleaders-agent trade list --help
 ```
 
-- `doctor` is local-only by default and reports credential-based readiness as compact JSON. Use `doctor --live` for an authenticated connectivity check that tries the cached session first, then falls back to a live login if credentials are set.
+- `doctor` is local-only by default and reports credential-based readiness as compact JSON. If auth is missing or invalid, parse `auth.actions` and apply each recovery step. Use `doctor --live` for an authenticated connectivity check that tries the cached session first, then falls back to a live login if credentials are configured.
 - `schema` is the authoritative machine-readable command contract generated from the live clap tree. Command entries include `path`, `preferred_path`, `is_alias`, optional `alias_for`, `aliases`, auth requirements, mutating and dry-run safety metadata, help text, argument metadata with stable `name` identifiers and semantic types, known `possible_values` validation constraints, boolean flag versus value-taking option shape, and structured `examples` arrays.
 - `commands` is the lightweight plain-text leaf command list. Use `--grouped` for descriptions.
 - `fields <command path>` emits exact case-sensitive output field names, descriptions, and type hints for commands that support `--fields` without requiring live rows. `fields trade dashboard` uses section-qualified nested names such as `trades.TradeRank`, `clusters.window`, `levels.TradeLevelRank`, and `cluster_bombs.TradeCount`. Unknown projected fields fail with exit code `2` and structured `usage_error` JSON on stderr.
@@ -38,11 +38,18 @@ volumeleaders-agent trade list --help
 - Runtime errors write one compact JSON object to stderr: `{"ok":false,"error":{"kind":"...","message":"..."}}`.
 - Diagnostic logs from `-v`, `-vv`, and `-vvv` go to stderr only. stdout must remain parseable command output.
 - Exit codes: `0` success, `2` usage error, `3` auth error, `4` HTTP transport error, `5` API error, `6` JSON parse or output transformation error, `7` strict empty result.
-- Commands that need live data require `VL_USERNAME` and `VL_PASSWORD` environment variables. Local discovery commands (`doctor`, `schema`, `commands`, `fields`, `help`, `completions`) do not require live API access. `doctor --live` is the explicit exception for checking authenticated connectivity.
+- Commands that need live data require a valid cached session, `VL_USERNAME` and `VL_PASSWORD`, or `~/.config/volumeleaders-agent/config.json`. Local discovery commands (`doctor`, `schema`, `commands`, `fields`, `help`, `completions`) do not require live API access. `doctor --live` is the explicit exception for checking authenticated connectivity.
 
 ## Auth model
 
-The CLI authenticates with VolumeLeaders using `VL_USERNAME` and `VL_PASSWORD` environment variables. On first use, it logs in via username/password POST to `/Login/Login` and extracts session cookies and the XSRF token. Sessions are cached at `~/.cache/volumeleaders-agent/cookies.json` and reused on subsequent invocations. Cookie values and XSRF tokens must never be printed or logged.
+The CLI authenticates with VolumeLeaders using this source order:
+
+1. Cached session at `~/.cache/volumeleaders-agent/cookies.json`, if it exists and XSRF refresh succeeds.
+2. Non-empty `VL_USERNAME` and `VL_PASSWORD` environment variables.
+3. Config file at `~/.config/volumeleaders-agent/config.json` containing `{"username":"YOUR_EMAIL","password":"YOUR_PASSWORD"}`.
+4. Structured auth error with exit code `3`.
+
+Environment variables take precedence over the config file. If either `VL_USERNAME` or `VL_PASSWORD` is set, both must be set and non-empty; partial or empty env credentials are an auth error and the config file is not used. On credential login, the CLI POSTs to `/Login/Login`, extracts session cookies and the XSRF token, and caches the session. Cookie values, passwords, and XSRF tokens must never be printed or logged.
 
 Use this recovery flow:
 
@@ -55,10 +62,11 @@ volumeleaders-agent help auth
 
 Common failures:
 
-- Missing credentials: set `VL_USERNAME` and `VL_PASSWORD` environment variables, then rerun `doctor`.
+- Missing credentials: set both `VL_USERNAME` and `VL_PASSWORD`, or create `~/.config/volumeleaders-agent/config.json`, then rerun `doctor`.
 - Invalid credentials: check the username and password, then retry.
 - Expired session: the cached session is automatically cleared; the next live request will re-authenticate.
 - Cache unavailable: the XDG cache directory may not be available; check filesystem permissions.
+- Ambiguous setup: do not set only one auth environment variable. Env vars override config fallback.
 
 ## Global flags and reusable argument shapes
 

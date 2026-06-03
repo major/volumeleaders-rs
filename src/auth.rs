@@ -35,10 +35,26 @@ pub async fn extract_xsrf_token(client: &Client) -> Result<String> {
 
 /// Returns `true` if the URL or body indicates a login page.
 ///
-/// Checks whether the URL path contains `/login` (case-insensitive) or
+/// Checks whether the URL path contains a `login` segment (case-insensitive) or
 /// the body contains a password input field.
 pub fn is_login_page(url: &str, body: &str) -> bool {
-    url.to_ascii_lowercase().contains("/login") || body.contains(r#"type="password""#)
+    url_has_login_segment(url) || body.contains(r#"type="password""#)
+}
+
+fn url_has_login_segment(url: &str) -> bool {
+    url::Url::parse(url)
+        .ok()
+        .and_then(|url| {
+            url.path_segments()
+                .map(|mut segments| segments.any(|segment| segment.eq_ignore_ascii_case("login")))
+        })
+        .unwrap_or_else(|| {
+            url.split(['?', '#'])
+                .next()
+                .unwrap_or(url)
+                .split('/')
+                .any(|segment| segment.eq_ignore_ascii_case("login"))
+        })
 }
 
 /// Rebuilds a session with a fresh XSRF token from the server.
@@ -184,6 +200,8 @@ mod tests {
             "/ExecutiveSummary",
             r#"<script>if ("ExecutiveSummary" != "Login") { init(); }</script>"#
         ));
+        assert!(!is_login_page("/api/relogin", ""));
+        assert!(!is_login_page("/not-login", ""));
     }
 
     // --- extract_xsrf_token integration tests ---
