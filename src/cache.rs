@@ -235,4 +235,48 @@ mod tests {
         let result = load_cached_session_at(&path);
         assert!(result.is_none());
     }
+
+    /// Override `XDG_CACHE_HOME` for tests that exercise the public wrappers.
+    fn with_xdg_cache_dir(dir: &Path) {
+        unsafe {
+            std::env::set_var("XDG_CACHE_HOME", dir);
+        }
+    }
+
+    #[test]
+    fn save_session_public_wrapper_writes_to_xdg_cache() {
+        let tmp = TempDir::new().expect("temp dir");
+        with_xdg_cache_dir(tmp.path());
+
+        let session = valid_session();
+        save_session(&session).expect("save should succeed");
+
+        // Verify it was written to the XDG cache subdirectory.
+        let path = tmp
+            .path()
+            .join(CACHE_DIR)
+            .join(CACHE_FILE);
+        assert!(path.exists());
+    }
+
+    #[test]
+    fn clear_cache_removes_nonexistent_quietly() {
+        let tmp = TempDir::new().expect("temp dir");
+        with_xdg_cache_dir(tmp.path());
+
+        // Should not panic when nothing to clear.
+        clear_cache();
+    }
+
+    #[test]
+    fn load_cached_session_at_read_error_returns_none() {
+        let tmp = TempDir::new().expect("temp dir");
+        let path = cache_path_for_temp(&tmp);
+
+        // Create a directory where the file should be — reading a dir fails.
+        fs::create_dir_all(&path).unwrap();
+
+        let result = load_cached_session_at(&path);
+        assert!(result.is_none());
+    }
 }

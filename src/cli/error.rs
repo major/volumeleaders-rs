@@ -232,5 +232,15 @@ mod tests {
             client_error_kind(&ClientError::Io(std::io::Error::other("disk error"))),
             CliErrorKind::JsonError
         );
+        assert_eq!(
+            client_error_kind(&ClientError::LoginFailed {
+                reason: "bad credentials".into()
+            }),
+            CliErrorKind::AuthError
+        );
+        assert_eq!(
+            client_error_kind(&ClientError::Cache("unreadable".into())),
+            CliErrorKind::AuthError
+        );
     }
 }
