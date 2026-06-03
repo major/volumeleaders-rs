@@ -9,8 +9,8 @@
 pub mod alerts;
 /// Login-page detection and XSRF token extraction.
 pub mod auth;
-/// Browser cookie extraction for session bootstrapping.
-pub mod browser_auth;
+/// Session cookie cache persistence.
+pub mod cache;
 /// Command-line interface for VolumeLeaders data.
 #[cfg(feature = "cli")]
 pub mod cli;
@@ -28,6 +28,8 @@ pub mod error;
 pub mod executive_summary;
 /// Trade level and level-touch DataTables endpoints.
 pub mod levels;
+/// Username/password login for VolumeLeaders.
+pub mod login;
 /// API response models for trade data.
 pub mod models;
 /// Browser session material (cookies and XSRF token).
@@ -48,7 +50,7 @@ pub use alerts::{
     TradeAlertsRequest, TradeClusterAlertsRequest,
 };
 pub use auth::{extract_xsrf_token, is_login_page};
-pub use browser_auth::{extract_browser_cookies, session_from_browser};
+pub use cache::{clear_cache, load_cached_session, save_session};
 #[cfg(feature = "cli")]
 pub use cli::{Cli, run};
 pub use client::{Client, ClientConfig};
@@ -60,6 +62,7 @@ pub use executive_summary::{
     ExhaustionScoresRequest, WelcomeTradeClustersRequest, WelcomeTradesRequest,
 };
 pub use levels::{TradeLevelTouchesRequest, TradeLevelsRequest};
+pub use login::login;
 pub use models::{
     AlertConfig, AspNetDate, Earning, ExhaustionScore, FlexBool, Trade, TradeAlert, TradeCluster,
     TradeClusterAlert, TradeClusterBomb, TradeLevel, WatchListConfig, WatchListTicker,

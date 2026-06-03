@@ -119,9 +119,9 @@ pub fn client_error(err: &ClientError) -> i32 {
 #[must_use]
 pub fn client_error_kind(err: &ClientError) -> CliErrorKind {
     match err {
-        ClientError::SessionExpired { .. } | ClientError::SessionValidation { .. } => {
-            CliErrorKind::AuthError
-        }
+        ClientError::SessionExpired { .. }
+        | ClientError::SessionValidation { .. }
+        | ClientError::LoginFailed { .. } => CliErrorKind::AuthError,
         ClientError::Http(_) => CliErrorKind::HttpError,
         ClientError::Status { .. }
         | ClientError::RateLimit { .. }
@@ -130,6 +130,7 @@ pub fn client_error_kind(err: &ClientError) -> CliErrorKind {
         | ClientError::UnexpectedContent { .. }
         | ClientError::Json(_)
         | ClientError::Io(_) => CliErrorKind::JsonError,
+        ClientError::Cache(_) => CliErrorKind::AuthError,
     }
 }
 
@@ -230,6 +231,16 @@ mod tests {
         assert_eq!(
             client_error_kind(&ClientError::Io(std::io::Error::other("disk error"))),
             CliErrorKind::JsonError
+        );
+        assert_eq!(
+            client_error_kind(&ClientError::LoginFailed {
+                reason: "bad credentials".into()
+            }),
+            CliErrorKind::AuthError
+        );
+        assert_eq!(
+            client_error_kind(&ClientError::Cache("unreadable".into())),
+            CliErrorKind::AuthError
         );
     }
 }

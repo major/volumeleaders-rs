@@ -89,6 +89,17 @@ pub enum ClientError {
     /// A filesystem or I/O operation failed.
     #[error("I/O error: {0}")]
     Io(#[from] std::io::Error),
+
+    /// VolumeLeaders login failed (bad credentials, account locked, etc.).
+    #[error("login failed: {reason}")]
+    LoginFailed {
+        /// Human-readable reason for the login failure.
+        reason: String,
+    },
+
+    /// Failed to read from or write to the session cookie cache.
+    #[error("session cache error: {0}")]
+    Cache(String),
 }
 
 // Manual Debug impl to redact sensitive fields that may contain
@@ -142,6 +153,13 @@ impl std::fmt::Debug for ClientError {
             Self::Json(err) => f.debug_tuple("Json").field(err).finish(),
 
             Self::Io(err) => f.debug_tuple("Io").field(err).finish(),
+
+            Self::LoginFailed { reason } => f
+                .debug_struct("LoginFailed")
+                .field("reason", reason)
+                .finish(),
+
+            Self::Cache(reason) => f.debug_struct("Cache").field("reason", reason).finish(),
         }
     }
 }
@@ -152,7 +170,10 @@ impl ClientError {
     pub fn is_auth_error(&self) -> bool {
         matches!(
             self,
-            Self::SessionExpired { .. } | Self::SessionValidation { .. }
+            Self::SessionExpired { .. }
+                | Self::SessionValidation { .. }
+                | Self::LoginFailed { .. }
+                | Self::Cache(_)
         )
     }
 
@@ -256,6 +277,15 @@ mod tests {
             }
             .is_auth_error()
         );
+
+        assert!(
+            ClientError::LoginFailed {
+                reason: "bad credentials".into()
+            }
+            .is_auth_error()
+        );
+
+        assert!(ClientError::Cache("cache unreadable".into()).is_auth_error());
     }
 
     #[test]
@@ -361,6 +391,10 @@ mod tests {
             },
             ClientError::Json(serde_err),
             ClientError::Io(io_err),
+            ClientError::LoginFailed {
+                reason: "bad credentials".into(),
+            },
+            ClientError::Cache("cache unreadable".into()),
         ];
 
         // Every variant must produce non-empty Debug output without panicking

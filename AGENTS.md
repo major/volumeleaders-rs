@@ -2,7 +2,7 @@
 
 ## OVERVIEW
 
-Rust 2024 single-crate project for VolumeLeaders access. The package is `rusty-volumeleaders`; it exposes the browser-session API client as the library and the `volumeleaders-agent` binary behind the default `cli` feature.
+Rust 2024 single-crate project for VolumeLeaders access. The package is `rusty-volumeleaders`; it exposes the credential-based API client as the library and the `volumeleaders-agent` binary behind the default `cli` feature.
 
 ## DOC FRESHNESS
 
@@ -61,7 +61,9 @@ volumeleaders-rs/
 | Symbol | Type | Location | Role |
 |--------|------|----------|------|
 | `rusty_volumeleaders::Client` | Type | `src/lib.rs` | API client public boundary |
-| `rusty_volumeleaders::Session` | Type | `src/lib.rs` | Browser-session auth state |
+| `rusty_volumeleaders::Session` | Type | `src/lib.rs` | Credential-based auth state |
+| `rusty_volumeleaders::login` | Module | `src/login.rs` | Username/password login flow |
+| `rusty_volumeleaders::cache` | Module | `src/cache.rs` | XDG cookie cache persistence |
 | `rusty_volumeleaders::cli::run` | Function | `src/cli/mod.rs` | CLI parse and dispatch entry |
 | `Cli`, `Commands` | clap types | `src/cli/args.rs` | Top-level command tree |
 
@@ -77,7 +79,7 @@ volumeleaders-rs/
 - Top-level aliases `trades`, `dashboard`, and `levels` execute canonical `trade list`, `trade dashboard`, and `trade levels`; schema metadata keeps canonical preferred paths, marks alias entries with `is_alias` and `alias_for`, and lists aliases on canonical entries.
 - `volumeleaders-agent commands` emits a plain-text leaf command list, with `--grouped` for grouped descriptions, generated from the live clap tree.
 - `volumeleaders-agent fields <command path>` emits compact JSON field metadata for exact, case-sensitive `--fields` projection; it is local discovery and must not require live API rows. Dashboard fields are section-qualified nested names such as `trades.TradeRank`, `clusters.window`, `levels.TradeLevelRank`, and `cluster_bombs.TradeCount`. The CLI keeps jq-style filtering external, so users should pipe projected stdout to `jq` for reshaping, filtering, sorting, or pretty-printing.
-- `volumeleaders-agent doctor` emits local browser-cookie readiness diagnostics as compact JSON and skips live network checks by default; `volumeleaders-agent doctor --live` adds a low-cost authenticated connectivity check.
+- `volumeleaders-agent doctor` emits local credential-based readiness diagnostics as compact JSON and skips live network checks by default; `volumeleaders-agent doctor --live` adds a low-cost authenticated connectivity check.
 - `volumeleaders-agent help <topic>` emits plain-text operational guidance for agent automation, auth, environment, exit codes, discovery, examples, and workflow-oriented common agent tasks. Root and command clap help remain available through `--help`.
 - Every visible leaf command includes a concise `about` and command-specific `long_about` with an `Examples:` section containing at least two `volumeleaders-agent` invocations.
 - `volumeleaders-agent schema` emits machine-readable discovery metadata from `Cli::command()` so command paths, help text, structured examples, aliases, auth requirements, mutating and dry-run safety metadata, stable argument names, semantic argument hints, known custom validation `possible_values`, and boolean flag versus option shape cannot drift from clap definitions.
@@ -125,7 +127,7 @@ cargo doc --no-default-features --no-deps
 - The crate root sets `#![deny(missing_docs)]`. Wire-type models use a module-level allow, clap arg structs and request builders use item-level `#[allow(missing_docs)]`, `Commands` allows `clippy::large_enum_variant` for generated parser shape, and alert construction allows `clippy::too_many_arguments` for request fidelity. New public items need doc comments or an explicit allow with rationale.
 - Audit is a separate workflow and also runs on manifest changes plus a daily schedule through `actions-rust-lang/audit`.
 - CodeRabbit uses `.coderabbit.yaml`; keep its path instructions aligned with the single-crate `src/**` layout, library-only feature support, machine-readable CLI output, and release automation policy.
-- Renovate dependency hygiene lives in `renovate.json`; keep `rookie` on a longer abandonment threshold because it is required for browser-cookie auth and still receives maintenance despite infrequent crates.io releases.
+- Renovate dependency hygiene lives in `renovate.json`.
 - `release-plz.yml` uses `RELEASE_PLZ_TOKEN`; the token is needed so release PR branch updates and pushed release tags trigger normal workflows.
 - `release-plz.toml` creates `v{{ version }}` tags but does not publish crates.io packages or GitHub Releases.
 - `dist-workspace.toml` configures cargo-dist for the `volumeleaders-agent` binary installers. Regenerate `.github/workflows/release.yml` after changing dist settings, then reapply the Rust toolchain update and OIDC publish job if cargo-dist drops them.

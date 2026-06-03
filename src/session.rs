@@ -5,6 +5,8 @@
 //! the XSRF token are treated as secrets: the [`Debug`] implementation
 //! shows cookie names but replaces all values with `[REDACTED]`.
 
+use serde::{Deserialize, Serialize};
+
 use crate::error::{ClientError, Result};
 
 /// Cookie domain used by VolumeLeaders browser sessions.
@@ -23,7 +25,7 @@ pub const REQUEST_VERIFICATION_COOKIE_NAME: &str = "__RequestVerificationToken";
 const REQUIRED_COOKIE_NAMES: &[&str] = &[SESSION_COOKIE_NAME, FORMS_AUTH_COOKIE_NAME];
 
 /// A single browser cookie with name, value, and domain.
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Cookie {
     name: String,
     value: String,
@@ -79,7 +81,7 @@ impl std::fmt::Debug for Cookie {
 /// Call [`Session::validate`] before making API requests to catch
 /// missing authentication material early with a descriptive error
 /// listing ALL missing fields.
-#[derive(PartialEq, Eq)]
+#[derive(PartialEq, Eq, Serialize, Deserialize)]
 pub struct Session {
     cookies: Vec<Cookie>,
     xsrf_token: String,

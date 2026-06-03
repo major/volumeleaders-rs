@@ -26,12 +26,13 @@ unused = { level = "deny", priority = -1 }
 chrono = { version = "0.4", features = ["serde"] }
 clap = { version = "4", features = ["derive"], optional = true }
 clap_complete = { version = "4", optional = true }
-reqwest = { version = "0.13", features = ["cookies", "json", "multipart"] }
-rookie = "0.5"
+dirs = "6"
+reqwest = { version = "0.13", features = ["cookies", "gzip", "json", "multipart"] }
 rust_decimal = { version = "1", features = ["serde-float"] }
 scraper = "0.27"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
+tempfile = "3"
 thiserror = "2"
 tokio = { version = "1", features = ["macros", "rt", "rt-multi-thread"] }
 tracing = "0.1"
