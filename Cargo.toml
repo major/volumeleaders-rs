@@ -41,7 +41,6 @@ url = "2"
 
 [dev-dependencies]
 mockito = "=1.7.2"
-tempfile = "3"
 
 # Config for 'dist'
 [profile.dist]
