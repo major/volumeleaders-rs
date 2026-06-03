@@ -97,3 +97,72 @@ async fn build_client_from_session(session: Session) -> Result<Client, ClientErr
     let refreshed_session = Session::new(session.cookies().to_vec(), xsrf_token);
     Client::new(refreshed_session)
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::ClientError;
+
+    use super::*;
+
+    #[test]
+    fn handle_api_error_maps_auth_error() {
+        let code = handle_api_error(ClientError::SessionValidation {
+            message: "test".into(),
+        });
+        assert_eq!(code, 3);
+    }
+
+    #[test]
+    fn handle_api_error_maps_http_error() {
+        let code = handle_api_error(ClientError::Status {
+            code: 500,
+            url: "https://example.com".into(),
+            body: "error".into(),
+        });
+        assert_eq!(code, 5);
+    }
+
+    #[tokio::test]
+    async fn make_client_from_env_missing_username() {
+        unsafe {
+            env::remove_var(ENV_USERNAME);
+            env::remove_var(ENV_PASSWORD);
+        }
+        let result = make_client_from_env().await;
+        assert!(result.is_err());
+        assert_eq!(result.unwrap_err(), 3);
+    }
+
+    #[tokio::test]
+    async fn make_client_from_env_empty_username() {
+        unsafe {
+            env::set_var(ENV_USERNAME, "");
+            env::remove_var(ENV_PASSWORD);
+        }
+        let result = make_client_from_env().await;
+        assert!(result.is_err());
+        assert_eq!(result.unwrap_err(), 3);
+    }
+
+    #[tokio::test]
+    async fn make_client_from_env_username_set_but_no_password() {
+        unsafe {
+            env::set_var(ENV_USERNAME, "user@example.com");
+            env::remove_var(ENV_PASSWORD);
+        }
+        let result = make_client_from_env().await;
+        assert!(result.is_err());
+        assert_eq!(result.unwrap_err(), 3);
+    }
+
+    #[tokio::test]
+    async fn make_client_from_env_empty_password() {
+        unsafe {
+            env::set_var(ENV_USERNAME, "user@example.com");
+            env::set_var(ENV_PASSWORD, "");
+        }
+        let result = make_client_from_env().await;
+        assert!(result.is_err());
+        assert_eq!(result.unwrap_err(), 3);
+    }
+}
