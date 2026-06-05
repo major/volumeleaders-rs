@@ -67,30 +67,30 @@ pub(super) fn dashboard_output_value(
     };
 
     transform_trade_dashboard(map);
-    insert_dashboard_section_metadata(map);
 
     match args.fields.as_deref().map(str::trim) {
-        _ if args.all_fields => Ok(value),
-        Some(fields) if fields.eq_ignore_ascii_case("all") => Ok(value),
+        _ if args.all_fields => {}
+        Some(fields) if fields.eq_ignore_ascii_case("all") => {}
         Some(fields) if !fields.is_empty() => {
             let selection = parse_dashboard_fields(fields)?;
             apply_selected_dashboard_fields(map, &selection)?;
-            Ok(value)
         }
         _ => {
             apply_compact_dashboard_fields(map);
-            Ok(value)
         }
     }
+
+    insert_dashboard_section_metadata(map);
+    Ok(value)
 }
 
 fn insert_dashboard_section_metadata(map: &mut Map<String, Value>) {
     let mut sections = Map::new();
     for section in ["trades", "clusters", "levels", "cluster_bombs"] {
-        let count = map
-            .get(section)
-            .and_then(Value::as_array)
-            .map_or(0, Vec::len);
+        let Some(Value::Array(rows)) = map.get(section) else {
+            continue;
+        };
+        let count = rows.len();
         sections.insert(
             section.to_string(),
             json!({ "count": count, "empty": count == 0 }),
