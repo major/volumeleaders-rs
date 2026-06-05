@@ -1564,6 +1564,23 @@ mod tests {
     }
 
     #[test]
+    fn dashboard_output_section_metadata_matches_projected_sections() {
+        let mut args = dashboard_args();
+        args.fields = Some("trades.Date".to_string());
+
+        let output = dashboard_output_value(&dashboard_fixture(), &args).unwrap();
+
+        assert!(output.get("clusters").is_none());
+        assert!(output.get("levels").is_none());
+        assert!(output.get("cluster_bombs").is_none());
+        assert_eq!(output["sections"]["trades"]["count"], 1);
+        assert_eq!(output["sections"]["trades"]["empty"], false);
+        assert!(output["sections"].get("clusters").is_none());
+        assert!(output["sections"].get("levels").is_none());
+        assert!(output["sections"].get("cluster_bombs").is_none());
+    }
+
+    #[test]
     fn compact_headers_use_transformed_trade_fields() {
         assert!(CLUSTER_HEADERS.contains(&"window"));
         assert!(CLUSTER_HEADERS.contains(&"events"));
