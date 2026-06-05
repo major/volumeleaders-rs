@@ -34,6 +34,7 @@ volumeleaders-agent trade list --help
 ## Invocation contract
 
 - Successful data commands write compact JSON to stdout.
+- `trade dashboard` includes `sections.<name>.count` and `sections.<name>.empty` metadata for `trades`, `clusters`, `levels`, and `cluster_bombs` so empty sibling sections are explicit.
 - Plain discovery/help outputs (`commands`, `help`, shell `completions`, clap `--help`) write plain text to stdout.
 - Runtime errors write one compact JSON object to stderr: `{"ok":false,"error":{"kind":"...","message":"..."}}`.
 - Diagnostic logs from `-v`, `-vv`, and `-vvv` go to stderr only. stdout must remain parseable command output.
