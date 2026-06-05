@@ -1545,6 +1545,25 @@ mod tests {
     }
 
     #[test]
+    fn dashboard_output_marks_empty_sections() {
+        let args = dashboard_args();
+        let mut dashboard = dashboard_fixture();
+        dashboard.trades.clear();
+
+        let output = dashboard_output_value(&dashboard, &args).unwrap();
+
+        assert_eq!(output["trades"], json!([]));
+        assert_eq!(output["sections"]["trades"]["count"], 0);
+        assert_eq!(output["sections"]["trades"]["empty"], true);
+        assert_eq!(output["sections"]["clusters"]["count"], 1);
+        assert_eq!(output["sections"]["clusters"]["empty"], false);
+        assert_eq!(output["sections"]["levels"]["count"], 1);
+        assert_eq!(output["sections"]["levels"]["empty"], false);
+        assert_eq!(output["sections"]["cluster_bombs"]["count"], 1);
+        assert_eq!(output["sections"]["cluster_bombs"]["empty"], false);
+    }
+
+    #[test]
     fn compact_headers_use_transformed_trade_fields() {
         assert!(CLUSTER_HEADERS.contains(&"window"));
         assert!(CLUSTER_HEADERS.contains(&"events"));

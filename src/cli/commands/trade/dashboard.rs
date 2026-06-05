@@ -1,12 +1,12 @@
 use serde::Serialize;
-use serde_json::{Map, Value};
+use serde_json::{Map, Value, json};
 
 use crate::cli::common::trade_transforms::transform_trade_dashboard;
 use crate::cli::field_metadata;
 
 use super::{DashboardArgs, DateRange};
 
-const DASHBOARD_TOP_LEVEL_FIELDS: [&str; 3] = ["ticker", "date_range", "count"];
+const DASHBOARD_TOP_LEVEL_FIELDS: [&str; 4] = ["ticker", "date_range", "count", "sections"];
 const DASHBOARD_COMPACT_TRADE_FIELDS: [&str; 9] = [
     "Date",
     "FullTimeString24",
@@ -67,6 +67,7 @@ pub(super) fn dashboard_output_value(
     };
 
     transform_trade_dashboard(map);
+    insert_dashboard_section_metadata(map);
 
     match args.fields.as_deref().map(str::trim) {
         _ if args.all_fields => Ok(value),
@@ -81,6 +82,21 @@ pub(super) fn dashboard_output_value(
             Ok(value)
         }
     }
+}
+
+fn insert_dashboard_section_metadata(map: &mut Map<String, Value>) {
+    let mut sections = Map::new();
+    for section in ["trades", "clusters", "levels", "cluster_bombs"] {
+        let count = map
+            .get(section)
+            .and_then(Value::as_array)
+            .map_or(0, Vec::len);
+        sections.insert(
+            section.to_string(),
+            json!({ "count": count, "empty": count == 0 }),
+        );
+    }
+    map.insert("sections".to_string(), Value::Object(sections));
 }
 
 pub(super) fn parse_dashboard_fields(fields: &str) -> Result<DashboardFieldSelection, String> {

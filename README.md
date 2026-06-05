@@ -60,6 +60,8 @@ Mutating alert and watchlist commands support `--dry-run` so automation can insp
 
 Use `fields <command path>` for machine-readable output field discovery before using `--fields`. It emits compact JSON with the preferred command path, exact case-sensitive field names accepted by `--fields`, short descriptions, and type hints. Nested dashboard fields are section-qualified, such as `trades.TradeRank`, `clusters.window`, `levels.TradeLevelRank`, and `cluster_bombs.TradeCount`. It does not need a live API response or non-empty result rows. Unknown projected fields fail with exit code `2` and structured `usage_error` JSON on stderr.
 
+`trade dashboard` returns `sections` metadata with per-section `count` and `empty` values for `trades`, `clusters`, `levels`, and `cluster_bombs`. Use it to distinguish a genuinely empty dashboard section from a populated sibling section without treating the whole object as an empty result.
+
 The CLI intentionally does not embed a jq expression engine. Built-in output shaping stays focused on `--fields` and `--all-fields`; use external `jq` after projection when automation needs filters or derived objects. For example: `volumeleaders-agent trade list NVDA --fields Ticker,Dollars | jq '.[] | select(.Dollars > 1000000)'`.
 
 Top-level aliases are available for the highest-frequency trade commands: `trades` for `trade list`, `dashboard` for `trade dashboard`, and `levels` for `trade levels`. The schema keeps the canonical `trade ...` preferred paths, marks alias entries with `is_alias` and `alias_for`, and lists each alias on its canonical command so automation can normalize either form.
