@@ -83,7 +83,7 @@ jobs:
           toolchain: stable
           components: llvm-tools
           rustflags: ""
-      - uses: taiki-e/install-action@50b4a718b59c718df4ef27a3b445f86cd57b9f00 # v2.80.0
+      - uses: taiki-e/install-action@0631aa6515c7d545823c67cfae7ef4fc7f490154 # v2.81.8
         with:
           tool: cargo-llvm-cov
       - name: Enforce 90% line coverage
@@ -104,7 +104,7 @@ jobs:
         with:
           toolchain: stable
           rustflags: ""
-      - uses: taiki-e/install-action@50b4a718b59c718df4ef27a3b445f86cd57b9f00 # v2.80.0
+      - uses: taiki-e/install-action@0631aa6515c7d545823c67cfae7ef4fc7f490154 # v2.81.8
         with:
           tool: cargo-machete
       - run: cargo machete
