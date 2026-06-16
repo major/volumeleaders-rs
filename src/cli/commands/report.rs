@@ -627,9 +627,8 @@ async fn execute_preset(args: &ReportArgs) -> i32 {
         }
     }
 
-    let request = crate::TradesRequest::new().with_trade_filters(filters);
-
     let limit = flags.limit.unwrap_or(DEFAULT_LIMIT);
+    let request = build_report_request(filters, limit);
 
     // Authenticate and create client.
     let client = match make_client().await {
@@ -638,10 +637,11 @@ async fn execute_preset(args: &ReportArgs) -> i32 {
     };
 
     // Fetch trades.
-    let trades = match client.get_trades_limit(&request, limit).await {
-        Ok(t) => t,
+    let mut trades = match client.get_trades(&request).await {
+        Ok(response) => response.data,
         Err(e) => return handle_api_error(e),
     };
+    trades.truncate(limit);
 
     // Output results.
     let result = if let Some(group) = flags.summary_group {
@@ -658,6 +658,15 @@ async fn execute_preset(args: &ReportArgs) -> i32 {
     };
 
     finish_output(result)
+}
+
+fn build_report_request(filters: Vec<(String, String)>, limit: usize) -> crate::TradesRequest {
+    let length = i32::try_from(limit).unwrap_or(i32::MAX);
+    crate::TradesRequest::new()
+        .with_length(length)
+        .with_search("", false)
+        .with_order(1, "DESC", "FullTimeString24")
+        .with_trade_filters(filters)
 }
 
 fn report_command_path(preset_name: &str) -> String {
@@ -967,6 +976,16 @@ mod tests {
         assert_eq!(entries.len(), 11);
         assert_eq!(entries[0].name, "Top 100 Rank");
         assert_eq!(entries[0].command, "report top-100-rank");
+    }
+
+    #[test]
+    fn report_request_uses_limit_as_datatables_length() {
+        let request = build_report_request(vec![("TradeRank".to_string(), "100".to_string())], 500);
+
+        let encoded = request.encode();
+
+        assert!(encoded.contains("length=500"));
+        assert!(encoded.contains("TradeRank=100"));
     }
 
     fn make_test_trade(
