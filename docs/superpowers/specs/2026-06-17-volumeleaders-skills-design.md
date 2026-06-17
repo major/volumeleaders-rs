@@ -93,15 +93,35 @@ When results are in hand and need interpretation: load `volumeleaders-interpret`
 
 ### Core Field Concepts
 
-| Concept | Draft interpretation (to be verified) |
-|---|---|
-| `TradeRank` | Ranks trades by institutional significance for that ticker on that day. Rank 1 = the single largest/most significant institutional trade. Lower numbers = higher significance. |
-| `Dollars` | Total dollar volume of the trade. Larger values indicate more significant institutional capital deployment. |
-| `clusters` | Groups of trades at similar price levels over a time window, indicating institutional accumulation (buying cluster) or distribution (selling cluster) at a price zone. |
-| `cluster_bombs` | An unusually large or highly concentrated cluster — a strong signal of aggressive institutional positioning at a level. |
-| `levels` | Key price levels where institutions have historically traded heavily. These tend to act as support or resistance on revisit. |
-| `level_touches` | Instances where price has revisited an institutional level. High touch count = level is being respected by the market. |
-| `vcd` (volume concentration delta) | Score measuring how concentrated volume is at a price level relative to surrounding levels. Higher VCD = more institutional conviction at that price. |
+| Concept | Status | Interpretation |
+|---|---|---|
+| `TradeRank` | ✅ confirmed | Current rank of the trade — shifts downward as larger trades arrive. Lower = higher current significance. Use for live/recent context. |
+| `TradeRankSnapshot` | ✅ confirmed | Immutable rank at the moment the trade hit. Never changes. Use for historical comparisons. |
+| `Dollars` | ✅ confirmed | Total dollar volume of the trade. Larger = more significant institutional capital deployment. |
+| `CumulativeDistribution` | ✅ confirmed from data | 0–1 percentile rank. 1.0 = 100th percentile = most significant in the dataset. |
+| `DollarsMultiplier` | ✅ confirmed from data | How many times larger this trade is vs. the average trade size for that security (e.g. 8.04 = 8.04× average). This is what the website labels as "relative size". Use this field for trade-level relative size. |
+| `RelativeSize` | ✅ confirmed from data | Same concept as `DollarsMultiplier` but not populated in trade API responses. Use for levels (e.g. NVDA $211 level = 15.67× average). On trades, read `DollarsMultiplier` instead. |
+| `FrequencyLast30TD` / `FrequencyLast90TD` / `FrequencyLast1CY` | ✅ confirmed from data | Count of institutional trades for that ticker in the last 30 trading days / 90 trading days / 1 calendar year. Values of 1/1/1 = rare or first-ever institutional activity for that ticker. |
+| `InsideBar` | ✅ confirmed from data | Trade occurred on a day when the price bar was fully inside the prior day's high/low range — a consolidation/compression signal. |
+| `DoubleInsideBar` | ✅ confirmed from data | Two consecutive inside bar days — stronger consolidation signal than a single inside bar. |
+| `PhantomPrint` | ✅ confirmed from data | Trade appeared on the tape but has not yet been fulfilled. `PhantomPrintFulfillmentDate` is null until fulfilled; `TradeRankSnapshot` is 0 on unfulfilled phantom prints. |
+| `OffsettingTradeDate` | ✅ confirmed from data | Date of a paired offsetting trade. Presence indicates this trade is part of a matched pair (hedging, rolling, or unwinding). |
+| `EOM` | ✅ confirmed | Boolean flag: trade occurred at end of month. Only appears in output when relevant. |
+| `EOQ` | ✅ confirmed | Boolean flag: trade occurred at end of quarter. Only appears in output when relevant. |
+| `EOY` | ✅ inferred | Boolean flag: trade occurred at end of year. Only appears in output when relevant. |
+| `OPEX` | ✅ confirmed | Boolean flag: trade occurred on options expiration date. Only appears in output when relevant. |
+| `VOLEX` | ✅ confirmed | Boolean flag: trade occurred on VIX/volatility expiration date. Only appears in output when relevant. |
+| `venue` | ✅ observed in data | Report-layer field (not in base trade model): `"dark_pool"` or `"dark_pool_sweep"`. Indicates which report type surfaced this trade. |
+| `clusters` | ✅ confirmed | Groups of trades at similar price levels over a time window, indicating institutional accumulation or distribution at a price zone. |
+| `cluster_bombs` | ✅ confirmed | An unusually large or highly concentrated cluster — a strong signal of aggressive institutional positioning at a level. |
+| `levels` | ✅ confirmed | Key price levels where institutions have historically traded heavily. Tend to act as support or resistance on revisit. |
+| `level_touches` | ✅ confirmed | Instances where price has revisited an institutional level. High touch count = level is being respected by the market. |
+| `vcd` (volume concentration delta) | ⚠️ needs verification | Score measuring how concentrated volume is at a price level. Higher VCD = more institutional conviction at that price? |
+| `ExhaustionScoreRank` (+ 30/90/365-day variants) | ❓ needs input | NVDA today: rank 337 overall, 16 for 30-day, 38 for 90-day, 90 for 365-day. Is rank 1 = most exhausted? What does exhaustion measure? |
+| `SignaturePrint` | ❓ needs input | No examples found in live data. What makes a print "signature"? |
+| `TD30` / `TD90` / `TD1CY` | ❓ needs input | Always null in responses. Reference dates 30/90 trading days and 1 calendar year ago? |
+| `NewPosition` | ❓ needs input | True on new ETFs and on high-frequency tickers. Institution opening a brand-new position vs. adding to existing? |
+| `PercentDailyVolume` | ❓ needs input | Always 0.0 in every response seen. Data availability issue or not currently populated? |
 
 ### Report Signal Meanings
 
