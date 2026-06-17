@@ -1170,6 +1170,11 @@ mod tests {
     #[test]
     fn validate_report_fields_uses_preset_metadata() {
         validate_report_fields("top-100-rank", Some("Ticker,Dollars")).unwrap();
+        validate_report_fields("top-10-rank", Some("RelativeSize")).unwrap();
+
+        let multiplier_err =
+            validate_report_fields("top-10-rank", Some("DollarsMultiplier")).unwrap_err();
+        assert!(multiplier_err.to_string().contains("DollarsMultiplier"));
 
         let err = validate_report_fields("top-100-rank", Some("ticker")).unwrap_err();
 

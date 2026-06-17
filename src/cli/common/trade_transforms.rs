@@ -55,7 +55,7 @@ pub const TRADE_HEADERS: [&str; 14] = [
     "Time",
     "Price",
     "Dollars",
-    "DollarsMultiplier",
+    "RelativeSize",
     "CumulativeDistribution",
     "TradeRank",
     "RSI",
@@ -121,10 +121,16 @@ pub fn transform_trade_row(row: &mut Map<String, Value>, kind: TradeRecordKind) 
     }
     normalize_rsi(row);
     strip_question_marks(row);
+    if kind == TradeRecordKind::Trade {
+        alias_trade_relative_size(row);
+    }
     collapse_calendar_events(row);
     omit_sentinel_ranks(row);
     round_currency_fields(row);
     round_float_fields(row);
+    if kind == TradeRecordKind::Trade {
+        omit_trade_dollars_multiplier(row);
+    }
     compact_date_timezone(row);
 }
 
@@ -139,6 +145,27 @@ fn normalize_rsi(row: &mut Map<String, Value>) {
 /// Remove fields whose value is the literal string `"?"`.
 fn strip_question_marks(row: &mut Map<String, Value>) {
     row.retain(|_, v| v.as_str() != Some("?"));
+}
+
+/// Surface the browser RS value under the user-facing `RelativeSize` field.
+///
+/// `/Trades/GetTrades` trade rows often return `RelativeSize` as null while the
+/// browser displays its RS column from `DollarsMultiplier`. Preserve any real
+/// upstream `RelativeSize` value, but fill null or missing values from the
+/// column the site actually renders.
+fn alias_trade_relative_size(row: &mut Map<String, Value>) {
+    let relative_size_missing = row.get("RelativeSize").is_none_or(Value::is_null);
+    if relative_size_missing
+        && let Some(value) = row.get("DollarsMultiplier").cloned()
+        && !value.is_null()
+    {
+        row.insert("RelativeSize".to_string(), value);
+    }
+}
+
+/// Remove the raw API field after `RelativeSize` has been populated for trade rows.
+fn omit_trade_dollars_multiplier(row: &mut Map<String, Value>) {
+    row.remove("DollarsMultiplier");
 }
 
 /// Collapse `OpeningTrade` and `ClosingTrade` booleans into a single
@@ -351,6 +378,20 @@ mod tests {
         assert!(!row.contains_key("DarkPool"));
         assert!(!row.contains_key("Sweep"));
         assert!(!row.contains_key("ClosingTrade"));
+    }
+
+    #[test]
+    fn trade_transform_aliases_relative_size_from_dollars_multiplier_when_source_is_null() {
+        let mut value = json!({
+            "DollarsMultiplier": 8.041,
+            "RelativeSize": null
+        });
+
+        let row = value.as_object_mut().unwrap();
+        transform_trade_row(row, TradeRecordKind::Trade);
+
+        assert_eq!(row["RelativeSize"], 8.04);
+        assert!(!row.contains_key("DollarsMultiplier"));
     }
 
     #[test]

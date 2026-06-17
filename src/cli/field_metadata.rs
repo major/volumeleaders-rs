@@ -106,8 +106,8 @@ const TRADE_FIELDS: &[FieldMetadata] = &[
     field!("Price", "Trade price.", FieldType::Number),
     field!("Dollars", "Trade notional value.", FieldType::Number),
     field!(
-        "DollarsMultiplier",
-        "Relative dollar-size multiplier.",
+        "RelativeSize",
+        "Browser RS value for trade rows, derived from DollarsMultiplier when the upstream RelativeSize field is empty.",
         FieldType::Number
     ),
     field!(
