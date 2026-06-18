@@ -8,8 +8,8 @@ pub mod dates;
 pub mod format;
 /// Ticker symbol parsing and normalization.
 pub mod tickers;
-/// Reusable trade-shaped row transforms and header definitions.
-pub mod trade_transforms;
+/// Trade-shaped row kind definitions.
+pub mod trade_record_kind;
 /// Shared CLI types: order direction, summary groups, tri-state filters.
 pub mod types;
 

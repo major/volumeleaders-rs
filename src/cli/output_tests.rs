@@ -5,11 +5,9 @@ use serde::Serialize;
 use super::{
     configure_strict_empty, empty_result_suggestion, finish_output, print_record_values,
     print_record_values_with_allowed_fields, print_records, print_records_with_allowed_fields,
-    print_transformed_record_values, print_transformed_record_values_with_allowed_fields,
     records_to_values, selected_fields, strict_empty_command_from_args, write_json,
     write_record_values,
 };
-use crate::cli::common::trade_transforms::TradeRecordKind;
 
 static STRICT_EMPTY_TEST_LOCK: LazyLock<Mutex<()>> = LazyLock::new(|| Mutex::new(()));
 
@@ -272,27 +270,6 @@ fn print_records_with_allowed_fields_accepts_metadata_fields() {
 }
 
 #[test]
-fn print_transformed_record_values_with_allowed_fields_accepts_metadata_fields() {
-    let records = vec![serde_json::json!({
-        "Ticker": "AAPL",
-        "Date": "/Date(1767312000000)/",
-        "Price": 150.5,
-        "Dollars": 1_000_000.0
-    })];
-    let allowed_fields = vec!["Ticker".to_string(), "events".to_string()];
-
-    print_transformed_record_values_with_allowed_fields(
-        &records,
-        TradeRecordKind::Trade,
-        &["Ticker"],
-        Some("events"),
-        false,
-        Some(&allowed_fields),
-    )
-    .unwrap();
-}
-
-#[test]
 fn write_record_values_validates_metadata_before_strict_empty() {
     with_strict_empty_test_lock(|| {
         configure_strict_empty(true, Some("watchlist configs".to_string()));
@@ -332,28 +309,6 @@ fn print_records_validates_metadata_before_strict_empty() {
 
         assert_eq!(err.kind(), std::io::ErrorKind::InvalidInput);
         assert!(err.to_string().contains("price"));
-    });
-}
-
-#[test]
-fn transformed_records_validate_metadata_before_strict_empty() {
-    with_strict_empty_test_lock(|| {
-        configure_strict_empty(true, Some("report top-100-rank".to_string()));
-        let records: Vec<serde_json::Value> = Vec::new();
-        let allowed_fields = vec!["Ticker".to_string()];
-
-        let err = print_transformed_record_values_with_allowed_fields(
-            &records,
-            TradeRecordKind::Trade,
-            &["Ticker"],
-            Some("ticker"),
-            false,
-            Some(&allowed_fields),
-        )
-        .unwrap_err();
-
-        assert_eq!(err.kind(), std::io::ErrorKind::InvalidInput);
-        assert!(err.to_string().contains("ticker"));
     });
 }
 
@@ -453,26 +408,6 @@ fn print_record_values_maps_strict_empty_to_sentinel_error() {
 
         assert_eq!(err.kind(), std::io::ErrorKind::NotFound);
         assert!(err.to_string().contains("valid account state"));
-    });
-}
-
-#[test]
-fn print_transformed_record_values_maps_strict_empty_to_sentinel_error() {
-    with_strict_empty_test_lock(|| {
-        let records: Vec<TestRecord> = Vec::new();
-        configure_strict_empty(true, Some("report dark-pool-sweeps".to_string()));
-
-        let err = print_transformed_record_values(
-            &records,
-            TradeRecordKind::Trade,
-            &["Ticker"],
-            None,
-            false,
-        )
-        .unwrap_err();
-
-        assert_eq!(err.kind(), std::io::ErrorKind::NotFound);
-        assert!(err.to_string().contains("broader report"));
     });
 }
 

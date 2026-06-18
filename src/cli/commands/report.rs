@@ -12,13 +12,12 @@ use crate::cli::common::DATE_FMT;
 use crate::cli::common::auth::make_client;
 use crate::cli::common::dates::resolve_date_range;
 use crate::cli::common::tickers::parse_tickers;
-use crate::cli::common::trade_transforms::TradeRecordKind;
 use crate::cli::common::types::SummaryGroup;
 use crate::cli::error::{CliExit, usage_error};
 use crate::cli::field_metadata;
 use crate::cli::field_metadata::TRADE_HEADERS;
 use crate::cli::output::{
-    finish_output, print_json, print_transformed_record_values, selected_fields,
+    finish_output, print_json, print_records_with_allowed_fields, selected_fields,
 };
 
 /// Default trade limit when none is specified on the command line.
@@ -254,7 +253,7 @@ pub enum ReportCommand {
     /// Dark pool sweep trades.
     #[command(
         name = "dark-pool-sweeps",
-        long_about = "Run the dark pool sweep trades preset.\n\nExamples:\n  volumeleaders-agent report dark-pool-sweeps\n  volumeleaders-agent report dark-pool-sweeps --tickers SPY,QQQ --days 3 --fields Ticker,DateTime,Price,Dollars"
+        long_about = "Run the dark pool sweep trades preset.\n\nExamples:\n  volumeleaders-agent report dark-pool-sweeps\n  volumeleaders-agent report dark-pool-sweeps --tickers SPY,QQQ --days 3 --fields FullTimeString24,Price,Dollars,DollarsMultiplier"
     )]
     DarkPoolSweeps(#[command(flatten)] ReportFlags),
     /// Disproportionately large trades relative to average.
@@ -266,7 +265,7 @@ pub enum ReportCommand {
     /// Institutional trades in leveraged ETFs.
     #[command(
         name = "leveraged-etfs",
-        long_about = "Run the leveraged ETF institutional trades preset.\n\nExamples:\n  volumeleaders-agent report leveraged-etfs\n  volumeleaders-agent report leveraged-etfs --days 10 --limit 100 --fields Ticker,DateTime,Price,Dollars"
+        long_about = "Run the leveraged ETF institutional trades preset.\n\nExamples:\n  volumeleaders-agent report leveraged-etfs\n  volumeleaders-agent report leveraged-etfs --days 10 --limit 100 --fields FullTimeString24,Price,Dollars,DollarsMultiplier"
     )]
     LeveragedEtfs(#[command(flatten)] ReportFlags),
     /// Trades with overbought RSI conditions.
@@ -336,7 +335,7 @@ pub struct ReportFlags {
     /// Exact, case-sensitive output fields to keep, comma-separated; discover with `fields report top-100-rank`, `fields report dark-pool-sweeps`, or the matching report path.
     #[arg(long, conflicts_with = "all_fields")]
     pub fields: Option<String>,
-    /// Return every field after semantic trade transforms.
+    /// Return every raw API field.
     #[arg(long)]
     pub all_fields: bool,
 }
@@ -471,12 +470,13 @@ async fn execute_preset(args: &ReportArgs) -> Result<(), CliExit> {
         let summary = build_summary(&trades, group, &start, &end);
         print_json(&summary)
     } else {
-        print_transformed_record_values(
+        let allowed_fields = field_metadata::field_names(&report_command_path(preset_name));
+        print_records_with_allowed_fields(
             &trades,
-            TradeRecordKind::Trade,
             TRADE_HEADERS,
             flags.fields.as_deref(),
             flags.all_fields,
+            allowed_fields.as_deref(),
         )
     };
 

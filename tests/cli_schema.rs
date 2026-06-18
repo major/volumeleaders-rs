@@ -270,9 +270,9 @@ fn schema_emits_structured_command_examples() {
             && example["command"] == "volumeleaders-agent trade list NVDA"
     }));
     assert!(examples.iter().any(|example| {
-        example["command"]
-            .as_str()
-            .is_some_and(|command| command.contains("--fields Ticker,DateTime,Price,Dollars"))
+        example["command"].as_str().is_some_and(|command| {
+            command.contains("--fields FullTimeString24,Volume,Price,Dollars")
+        })
     }));
 
     let mut failures = Vec::new();

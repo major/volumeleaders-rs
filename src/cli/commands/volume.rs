@@ -7,11 +7,10 @@ use tracing::instrument;
 use crate::cli::VolumeArgs;
 use crate::cli::common::auth::make_client;
 use crate::cli::common::tickers::parse_tickers;
-use crate::cli::common::trade_transforms::TradeRecordKind;
 use crate::cli::common::types::OrderDirection;
 use crate::cli::error::CliExit;
 use crate::cli::field_metadata::{self, VOLUME_HEADERS};
-use crate::cli::output::{finish_output, print_transformed_record_values_with_allowed_fields};
+use crate::cli::output::{finish_output, print_records_with_allowed_fields};
 
 /// Shared volume command flags.
 #[derive(Debug, Args)]
@@ -36,7 +35,7 @@ pub struct VolumeOptions {
     #[arg(long, conflicts_with = "all_fields")]
     pub fields: Option<String>,
 
-    /// Return every field after semantic trade transforms.
+    /// Return every raw API field.
     #[arg(long)]
     pub all_fields: bool,
 }
@@ -131,9 +130,8 @@ fn output_records<T: serde::Serialize>(
     all_fields: bool,
 ) -> Result<(), CliExit> {
     let allowed_fields = field_metadata::field_names("volume institutional");
-    finish_output(print_transformed_record_values_with_allowed_fields(
+    finish_output(print_records_with_allowed_fields(
         records,
-        TradeRecordKind::Trade,
         VOLUME_HEADERS,
         fields,
         all_fields,

@@ -333,11 +333,11 @@ fn command_preset_name_returns_correct_names() {
 #[test]
 fn validate_report_fields_uses_preset_metadata() {
     validate_report_fields("top-100-rank", Some("Ticker,Dollars")).unwrap();
-    validate_report_fields("top-10-rank", Some("RelativeSize")).unwrap();
+    validate_report_fields("top-10-rank", Some("DollarsMultiplier")).unwrap();
 
-    let multiplier_err =
-        validate_report_fields("top-10-rank", Some("DollarsMultiplier")).unwrap_err();
-    assert!(multiplier_err.to_string().contains("DollarsMultiplier"));
+    let relative_size_err =
+        validate_report_fields("top-10-rank", Some("RelativeSize")).unwrap_err();
+    assert!(relative_size_err.to_string().contains("RelativeSize"));
 
     let err = validate_report_fields("top-100-rank", Some("ticker")).unwrap_err();
 
