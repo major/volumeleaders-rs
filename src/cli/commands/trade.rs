@@ -701,8 +701,7 @@ async fn execute_dashboard(args: &DashboardArgs) -> Result<(), CliExit> {
 
 #[instrument(skip_all)]
 async fn execute_sentiment(args: &SentimentArgs) -> Result<(), CliExit> {
-    let (start, end) =
-        resolve_required_range(&args.dates).map_err(usage_error)?;
+    let (start, end) = resolve_required_range(&args.dates).map_err(usage_error)?;
     let mut filters = default_trade_filters(args.ranges.min_dollars.unwrap_or(5_000_000.0), 97);
     apply_trade_ranges(&mut filters, &args.ranges, 5_000_000.0);
     apply_trade_filter_args(&mut filters, &args.filters);
@@ -722,8 +721,7 @@ async fn execute_sentiment(args: &SentimentArgs) -> Result<(), CliExit> {
 
 #[instrument(skip_all)]
 async fn execute_clusters(args: &ClustersArgs) -> Result<(), CliExit> {
-    let (start, end) =
-        resolve_required_range(&args.dates).map_err(usage_error)?;
+    let (start, end) = resolve_required_range(&args.dates).map_err(usage_error)?;
     let request = TradeClustersRequest::new()
         .with_start(args.page.start)
         .with_length(DEFAULT_CLUSTER_LENGTH)
@@ -748,8 +746,7 @@ async fn execute_clusters(args: &ClustersArgs) -> Result<(), CliExit> {
 
 #[instrument(skip_all)]
 async fn execute_cluster_bombs(args: &ClusterBombsArgs) -> Result<(), CliExit> {
-    let (start, end) =
-        resolve_required_range(&args.dates).map_err(usage_error)?;
+    let (start, end) = resolve_required_range(&args.dates).map_err(usage_error)?;
     let request = TradeClusterBombsRequest::new()
         .with_start(args.page.start)
         .with_length(DEFAULT_CLUSTER_BOMB_LENGTH)
@@ -847,8 +844,7 @@ async fn execute_level_touches(args: &LevelTouchesArgs) -> Result<(), CliExit> {
             "--length must be between 1 and 50 for trade level touch retrieval",
         ));
     }
-    let (start, end) =
-        resolve_required_range(&args.dates).map_err(usage_error)?;
+    let (start, end) = resolve_required_range(&args.dates).map_err(usage_error)?;
     let ticker = parse_single_ticker(&args.ticker);
     let request = TradeLevelTouchesRequest::new()
         .with_start(args.page.start)
