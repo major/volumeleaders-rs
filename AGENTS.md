@@ -6,7 +6,7 @@ Rust 2024 single-crate project for VolumeLeaders access. The package is `rusty-v
 
 ## DOC FRESHNESS
 
-- Keep `AGENTS.md`, `README.md`, and `SKILL.md` current in the same change that modifies commands, public APIs, auth/session behavior, fixtures, CI, release flow, or project layout.
+- Keep `AGENTS.md`, `README.md`, and `skills/volumeleaders/SKILL.md` current in the same change that modifies commands, public APIs, auth/session behavior, fixtures, CI, release flow, or project layout.
 - Stale docs are worse than missing docs here. If code and docs disagree, update docs or remove the inaccurate claim.
 - Keep AGENTS files short and progressively disclosed. Parent coverage is preferred; add deeper files only when a subdirectory has distinct rules.
 
@@ -20,7 +20,7 @@ volumeleaders-rs/
 ├── codecov.yml                # Codecov project and patch coverage gates
 ├── README.md                  # Human project overview and commands
 ├── AGENTS.md                  # Project rules for agents
-├── SKILL.md                   # LLM-facing CLI operation and development contract
+├── skills/volumeleaders/      # Installable agent skill (npx skills add)
 ├── src/                       # API client library modules
 ├── src/cli/                   # CLI parser, commands, output, and helpers
 ├── tests/fixtures/            # JSON payload fixtures
@@ -47,7 +47,7 @@ volumeleaders-rs/
 | CLI help topics | `src/cli/help.rs` | Built-in operational help topics for auth, environment, exit codes, discovery, and examples |
 | CLI schema | `src/cli/schema.rs` | Machine-readable command metadata generated from the live clap tree, including mutating safety metadata, semantic arguments, and structured examples parsed from command help |
 | CLI drift tests | `src/cli/args.rs`, `src/cli/command_list.rs`, `src/cli/schema.rs` | Tests that keep clap leaves, command discovery, schema metadata, aliases, global flags, option descriptions, and help examples aligned |
-| LLM CLI contract | `SKILL.md` | Concise self-discovery, invocation, auth, flags, command catalog, examples, and development guide |
+| LLM CLI and data skill | `skills/volumeleaders/SKILL.md` | Installable agent skill: CLI invocation, auth, command catalog, field glossary, significance thresholds, and analysis patterns |
 | Fixtures | `tests/fixtures/` | JSON payload contracts used by tests |
 | Local commands | `Makefile` | `make check` runs fmt, clippy, test, doc; `make patch-coverage` checks changed-line coverage; `make machete` checks unused dependencies |
 | CI behavior | `.github/workflows/ci.yml` | Linux, macOS, Windows test and clippy matrix |
@@ -88,7 +88,7 @@ volumeleaders-rs/
 - Mutating alert and watchlist commands support `--dry-run`; delete commands require `--yes` for live deletion, and schema metadata marks `mutating`, `supports_dry_run`, and `requires_confirmation`.
 - CLI drift tests assert every visible clap leaf appears in `commands` and `schema`, every public option has help text, every leaf has examples, structured schema examples stay valid, aliases retain canonical preferred paths with explicit alias metadata, and global flags plus semantic argument metadata appear in schema metadata.
 - `trade levels --trade-level-count` and `trade level-touches --trade-level-count` accept only `5`, `10`, `20`, or `50`; schema exposes those values while runtime validation keeps structured `usage_error` JSON for invalid values.
-- `SKILL.md` is the concise LLM-facing CLI contract; keep it aligned with discovery commands, field metadata, stdout/stderr behavior, auth, global flags, command catalog, examples, and CLI development checks.
+- `skills/volumeleaders/SKILL.md` is the installable agent skill; keep it aligned with discovery commands, field metadata, stdout/stderr behavior, auth, global flags, command catalog, examples, and CLI development checks.
 - Semantic CLI exit codes are `0` success, `2` usage error, `3` auth error, `4` HTTP transport error, `5` API error, `6` JSON parse or output transformation error, and `7` strict empty result.
 - Library consumers that do not need the CLI should use `rusty-volumeleaders = { version = "0.4.0", default-features = false }` to avoid clap and CLI-only dependencies.
 - Formatting follows `cargo fmt --all` and `.editorconfig`: UTF-8, 4-space indent, final newline, trim trailing whitespace except Markdown.
@@ -135,5 +135,5 @@ cargo doc --no-default-features --no-deps
 - `dist-workspace.toml` configures cargo-dist for the `volumeleaders-agent` binary installers. Regenerate `.github/workflows/release.yml` after changing dist settings, then reapply the Rust toolchain update and OIDC publish job if cargo-dist drops them.
 - `.github/workflows/release.yml` publishes the single `rusty-volumeleaders` crate through OIDC trusted publishing after cargo-dist creates the GitHub Release. Keep the `rust-lang/crates-io-auth-action` pin comment on the explicit release tag so Renovate does not report a floating-tag digest lookup failure.
 - The first crates.io release of `rusty-volumeleaders` must be published manually with a crates.io API token. After that, configure crates.io Trusted Publishing for repo `major/volumeleaders-rs`, workflow file `release.yml`, and package `rusty-volumeleaders`.
-- If a code change modifies public CLI behavior, update README examples, `SKILL.md`, and this file.
+- If a code change modifies public CLI behavior, update README examples, `skills/volumeleaders/SKILL.md`, and this file.
 - If a code change modifies request fields, response models, auth, fixtures, or pagination, update README scope notes and this file.
