@@ -150,7 +150,7 @@ pub fn empty_result(message: impl AsRef<str>) -> CliExit {
     CliExit(render_error(CliErrorKind::EmptyResult, message))
 }
 
-/// Writes a structured client error and returns its semantic `CliExit`.
+/// Writes a structured client error and returns its semantic exit code as `i32`.
 pub fn client_error(err: &ClientError) -> i32 {
     render_error(client_error_kind(err), err.to_string())
 }
