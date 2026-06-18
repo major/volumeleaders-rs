@@ -20,13 +20,12 @@ use crate::cli::common::DATE_FMT;
 use crate::cli::common::auth::make_client;
 use crate::cli::common::dates::resolve_date_range;
 use crate::cli::common::tickers::{parse_single_ticker, parse_tickers};
-use crate::cli::common::trade_record_kind::TradeRecordKind;
 use crate::cli::common::types::{OrderDirection, SummaryGroup, TriStateFilter};
 use crate::cli::error::{CliExit, usage_error};
 use crate::cli::field_metadata::{
-    self, ALERT_HEADERS, BOMB_HEADERS, CLUSTER_HEADERS, LEVEL_HEADERS, TRADE_HEADERS,
+    ALERT_HEADERS, BOMB_HEADERS, CLUSTER_HEADERS, LEVEL_HEADERS, TRADE_HEADERS,
 };
-use crate::cli::output::{finish_output, print_json, print_records_with_allowed_fields};
+use crate::cli::output::{finish_output, print_json, print_records_for_command};
 
 use self::dashboard::{TradeDashboard, dashboard_output_value};
 use self::filters::{
@@ -649,7 +648,6 @@ async fn execute_list(args: &ListArgs) -> Result<(), CliExit> {
     } else {
         print_trade_records(
             &trades,
-            TradeRecordKind::Trade,
             TRADE_HEADERS,
             args.fields.as_deref(),
             args.all_fields,
@@ -734,7 +732,6 @@ async fn execute_clusters(args: &ClustersArgs) -> Result<(), CliExit> {
     let response = client.get_trade_clusters(&request).await?;
     output_trade_records(
         &response.data,
-        TradeRecordKind::Cluster,
         CLUSTER_HEADERS,
         args.fields.as_deref(),
         args.all_fields,
@@ -759,11 +756,10 @@ async fn execute_cluster_bombs(args: &ClusterBombsArgs) -> Result<(), CliExit> {
     let response = client.get_trade_cluster_bombs(&request).await?;
     output_trade_records(
         &response.data,
-        TradeRecordKind::ClusterBomb,
         BOMB_HEADERS,
         args.fields.as_deref(),
         args.all_fields,
-        "trade clusters",
+        "trade cluster-bombs",
     )
 }
 
@@ -778,7 +774,6 @@ async fn execute_alerts(args: &AlertsArgs) -> Result<(), CliExit> {
     let response = client.get_trade_alerts(&request).await?;
     output_trade_records(
         &response.data,
-        TradeRecordKind::Trade,
         ALERT_HEADERS,
         args.fields.as_deref(),
         args.all_fields,
@@ -797,7 +792,6 @@ async fn execute_cluster_alerts(args: &AlertsArgs) -> Result<(), CliExit> {
     let response = client.get_trade_cluster_alerts(&request).await?;
     output_trade_records(
         &response.data,
-        TradeRecordKind::Cluster,
         CLUSTER_HEADERS,
         args.fields.as_deref(),
         args.all_fields,
@@ -822,7 +816,6 @@ async fn execute_levels(args: &LevelsArgs) -> Result<(), CliExit> {
     levels.truncate(args.trade_level_count);
     output_trade_records(
         &levels,
-        TradeRecordKind::Level,
         LEVEL_HEADERS,
         args.fields.as_deref(),
         args.all_fields,
@@ -853,7 +846,6 @@ async fn execute_level_touches(args: &LevelTouchesArgs) -> Result<(), CliExit> {
     let response = client.get_trade_level_touches(&request).await?;
     output_trade_records(
         &response.data,
-        TradeRecordKind::Level,
         LEVEL_HEADERS,
         args.fields.as_deref(),
         args.all_fields,
@@ -863,7 +855,6 @@ async fn execute_level_touches(args: &LevelTouchesArgs) -> Result<(), CliExit> {
 
 fn output_trade_records<T: Serialize>(
     records: &[T],
-    kind: TradeRecordKind,
     headers: &[&str],
     fields: Option<&str>,
     all_fields: bool,
@@ -871,7 +862,6 @@ fn output_trade_records<T: Serialize>(
 ) -> Result<(), CliExit> {
     Ok(print_trade_records(
         records,
-        kind,
         headers,
         fields,
         all_fields,
@@ -897,29 +887,12 @@ fn cluster_bomb_order_name(order_col: i32) -> &'static str {
 
 fn print_trade_records<T: Serialize>(
     records: &[T],
-    kind: TradeRecordKind,
     headers: &[&str],
     fields: Option<&str>,
     all_fields: bool,
     command_path: &str,
 ) -> std::io::Result<()> {
-    let allowed_fields = trade_output_field_names(kind, command_path);
-    print_records_with_allowed_fields(
-        records,
-        headers,
-        fields,
-        all_fields,
-        allowed_fields.as_deref(),
-    )
-}
-
-fn trade_output_field_names(kind: TradeRecordKind, command_path: &str) -> Option<Vec<String>> {
-    let command_path = if matches!(kind, TradeRecordKind::ClusterBomb) {
-        "trade cluster-bombs"
-    } else {
-        command_path
-    };
-    field_metadata::field_names(command_path)
+    print_records_for_command(records, headers, fields, all_fields, command_path)
 }
 
 /// Clamp an arbitrary count to the nearest API-supported level count.

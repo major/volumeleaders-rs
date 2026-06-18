@@ -1,7 +1,6 @@
 //! Trade cluster endpoints for `/TradeClusters/GetTradeClusters` and
 //! `/TradeClusterBombs/GetTradeClusterBombs` DataTables APIs.
 
-use crate::client::FormPairs;
 use crate::datatables::{
     DataTablesColumn, DataTablesRequest, impl_datatables_client_methods,
     impl_datatables_request_methods,
@@ -39,11 +38,6 @@ impl TradeClustersRequest {
         self.0 = self.0.with_extra_values(filters);
         self
     }
-
-    /// Return raw key-value pairs for form submission.
-    pub(crate) fn to_pairs(&self) -> FormPairs {
-        self.0.to_pairs()
-    }
 }
 
 impl Default for TradeClustersRequest {
@@ -76,11 +70,6 @@ impl TradeClusterBombsRequest {
     pub fn with_cluster_bomb_filters(mut self, filters: Vec<(String, String)>) -> Self {
         self.0 = self.0.with_extra_values(filters);
         self
-    }
-
-    /// Return raw key-value pairs for form submission.
-    pub(crate) fn to_pairs(&self) -> FormPairs {
-        self.0.to_pairs()
     }
 }
 

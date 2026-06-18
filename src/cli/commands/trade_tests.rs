@@ -3,6 +3,7 @@ use std::collections::BTreeSet;
 use crate::{Trade, TradeCluster, TradeClusterAlert, TradeClusterBomb, TradeLevel};
 use serde_json::json;
 
+use crate::cli::field_metadata;
 use crate::cli::output::write_record_values;
 
 use super::*;
@@ -500,15 +501,8 @@ fn trade_output_accepts_discovered_metadata_field_absent_from_rows() {
         "Dollars": 10_000_000.0
     }))];
 
-    print_trade_records(
-        &records,
-        TradeRecordKind::Trade,
-        TRADE_HEADERS,
-        Some("Price"),
-        false,
-        "trade list",
-    )
-    .expect("discovered trade fields validate before row filtering");
+    print_trade_records(&records, TRADE_HEADERS, Some("Price"), false, "trade list")
+        .expect("discovered trade fields validate before row filtering");
 }
 
 #[test]
@@ -522,7 +516,6 @@ fn trade_output_rejects_field_missing_from_metadata() {
 
     let err = print_trade_records(
         &records,
-        TradeRecordKind::Trade,
         TRADE_HEADERS,
         Some("NotAField"),
         false,
@@ -544,15 +537,7 @@ fn output_trade_records_finishes_metadata_validated_output() {
     }))];
 
     assert!(
-        output_trade_records(
-            &records,
-            TradeRecordKind::Trade,
-            TRADE_HEADERS,
-            Some("Price"),
-            false,
-            "trade list",
-        )
-        .is_ok()
+        output_trade_records(&records, TRADE_HEADERS, Some("Price"), false, "trade list",).is_ok()
     );
 }
 
@@ -568,7 +553,6 @@ fn cluster_bomb_output_accepts_cluster_bomb_rank_metadata() {
 
     print_trade_records(
         &records,
-        TradeRecordKind::ClusterBomb,
         BOMB_HEADERS,
         Some("TradeClusterBombRank"),
         false,

@@ -9,8 +9,8 @@ use crate::cli::common::auth::make_client;
 use crate::cli::common::tickers::parse_tickers;
 use crate::cli::common::types::OrderDirection;
 use crate::cli::error::CliExit;
-use crate::cli::field_metadata::{self, VOLUME_HEADERS};
-use crate::cli::output::{finish_output, print_records_with_allowed_fields};
+use crate::cli::field_metadata::VOLUME_HEADERS;
+use crate::cli::output::{finish_output, print_records_for_command};
 
 /// Shared volume command flags.
 #[derive(Debug, Args)]
@@ -129,13 +129,12 @@ fn output_records<T: serde::Serialize>(
     fields: Option<&str>,
     all_fields: bool,
 ) -> Result<(), CliExit> {
-    let allowed_fields = field_metadata::field_names("volume institutional");
-    finish_output(print_records_with_allowed_fields(
+    finish_output(print_records_for_command(
         records,
         VOLUME_HEADERS,
         fields,
         all_fields,
-        allowed_fields.as_deref(),
+        "volume institutional",
     ))
 }
 

@@ -45,11 +45,6 @@ impl WatchListConfigsRequest {
             ..DataTablesRequest::default()
         })
     }
-
-    /// Return raw key-value pairs for form submission.
-    pub(crate) fn to_pairs(&self) -> FormPairs {
-        self.0.to_pairs()
-    }
 }
 
 impl Default for WatchListConfigsRequest {
@@ -81,11 +76,6 @@ impl WatchListTickersRequest {
             .0
             .with_extra_value("WatchListKey", watch_list_key.to_string());
         self
-    }
-
-    /// Return raw key-value pairs for form submission.
-    pub(crate) fn to_pairs(&self) -> FormPairs {
-        self.0.to_pairs()
     }
 }
 
