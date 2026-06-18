@@ -25,7 +25,7 @@ GitHub releases also provide cargo-dist archives and shell or PowerShell install
 ├── .github/workflows/        # CI, audit, release-plz, cargo-dist releases
 ├── .github/instructions/     # GitHub Copilot review guidance for release automation
 ├── AGENTS.md                 # Project knowledge base for coding agents
-├── SKILL.md                  # LLM-facing CLI operation and development contract
+├── skills/volumeleaders/     # Installable agent skill (npx skills add)
 ├── codecov.yml               # Codecov project and patch coverage gates
 ├── dist-workspace.toml       # cargo-dist release artifact configuration
 ├── Makefile                  # Local development commands
@@ -72,7 +72,7 @@ Use `doctor` for a safe local readiness check before running live data commands.
 
 Use `help <topic>` for built-in operational guidance when README access is unavailable. Topics are `agent`, `auth`, `environment`, `exit-codes`, `schema`, `examples`, and `workflows`; regular clap help remains available with `--help` on the root or any subcommand. The `agent` topic summarizes the recommended non-interactive automation flow, and `workflows` gives copy-paste starts for common agent tasks.
 
-Use `SKILL.md` as the concise LLM-facing contract for tool-calling agents. It focuses on self-discovery commands, stdout/stderr behavior, auth recovery, global flags, argument shapes, command catalog entries, examples, and CLI development checks.
+Install the agent skill with `npx skills add major/volumeleaders-rs` for CLI invocation guidance, field glossary, significance thresholds, and analysis patterns. The skill lives in `skills/volumeleaders/SKILL.md`.
 
 Every leaf command also includes an `Examples:` section in its command-specific `--help` output, and schema command entries expose those examples as structured machine-readable discovery. Use those examples for copy-pasteable minimal and filtered invocations.
 
@@ -185,4 +185,4 @@ CLI drift tests assert that every visible clap leaf appears in `commands` and `s
 
 ## Documentation freshness
 
-Keep `README.md`, `AGENTS.md`, and `SKILL.md` updated in the same change as code. Update docs when commands, public APIs, auth/session behavior, fixtures, CI, release flow, or project layout change. Inaccurate docs are worse than no docs.
+Keep `AGENTS.md`, `README.md`, and `skills/volumeleaders/SKILL.md` updated in the same change as code. Update docs when commands, public APIs, auth/session behavior, fixtures, CI, release flow, or project layout change. Inaccurate docs are worse than no docs.
