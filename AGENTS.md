@@ -45,7 +45,7 @@ volumeleaders-rs/
 | CLI runtime errors | `src/cli/error.rs` | Structured JSON stderr envelope and semantic exit-code mapping |
 | CLI doctor | `src/cli/doctor.rs` | Local auth and environment readiness diagnostics, plus explicit `--live` connectivity checks |
 | CLI help topics | `src/cli/help.rs` | Built-in operational help topics for auth, environment, exit codes, discovery, and examples |
-| CLI schema | `src/cli/schema.rs` | Machine-readable command metadata generated from the live clap tree, including mutating safety metadata, semantic arguments, and structured command examples |
+| CLI schema | `src/cli/schema.rs` | Machine-readable command metadata generated from the live clap tree, including mutating safety metadata, semantic arguments, and structured examples parsed from command help |
 | CLI drift tests | `src/cli/args.rs`, `src/cli/command_list.rs`, `src/cli/schema.rs` | Tests that keep clap leaves, command discovery, schema metadata, aliases, global flags, option descriptions, and help examples aligned |
 | LLM CLI contract | `SKILL.md` | Concise self-discovery, invocation, auth, flags, command catalog, examples, and development guide |
 | Fixtures | `tests/fixtures/` | JSON payload contracts used by tests |
@@ -84,7 +84,7 @@ volumeleaders-rs/
 - `volumeleaders-agent doctor` emits local credential-based readiness diagnostics as compact JSON, including `auth.actions` recovery steps for LLM callers, and skips live network checks by default; `volumeleaders-agent doctor --live` adds a low-cost authenticated connectivity check.
 - `volumeleaders-agent help <topic>` emits plain-text operational guidance for agent automation, auth, environment, exit codes, discovery, examples, and workflow-oriented common agent tasks. Root and command clap help remain available through `--help`.
 - Every visible leaf command includes a concise `about` and command-specific `long_about` with an `Examples:` section containing at least two `volumeleaders-agent` invocations.
-- `volumeleaders-agent schema` emits machine-readable discovery metadata from `Cli::command()` so command paths, help text, structured examples, aliases, auth requirements, mutating and dry-run safety metadata, stable argument names, semantic argument hints, known custom validation `possible_values`, and boolean flag versus option shape cannot drift from clap definitions.
+- `volumeleaders-agent schema` emits machine-readable discovery metadata from `Cli::command()` so command paths, help text, help-derived structured examples, aliases, auth requirements, mutating and dry-run safety metadata, stable argument names, semantic argument hints, known custom validation `possible_values`, and boolean flag versus option shape cannot drift from clap definitions.
 - Mutating alert and watchlist commands support `--dry-run`; delete commands require `--yes` for live deletion, and schema metadata marks `mutating`, `supports_dry_run`, and `requires_confirmation`.
 - CLI drift tests assert every visible clap leaf appears in `commands` and `schema`, every public option has help text, every leaf has examples, structured schema examples stay valid, aliases retain canonical preferred paths with explicit alias metadata, and global flags plus semantic argument metadata appear in schema metadata.
 - `trade levels --trade-level-count` and `trade level-touches --trade-level-count` accept only `5`, `10`, `20`, or `50`; schema exposes those values while runtime validation keeps structured `usage_error` JSON for invalid values.

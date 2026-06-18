@@ -2,8 +2,6 @@
 
 /// Clap argument definitions and top-level command structs.
 pub mod args;
-/// Structured command examples for machine-readable schema output.
-pub mod command_examples;
 /// Human-readable command discovery output.
 pub mod command_list;
 /// Command handlers for each CLI subcommand group.

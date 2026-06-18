@@ -3,9 +3,7 @@ use serde_json::Value;
 
 use crate::cli::Cli;
 
-use crate::cli::command_examples::examples_for_path;
-
-use super::{CommandSchema, add_alias_commands, build_schema, parser_name};
+use super::{CommandSchema, add_alias_commands, build_schema, examples_from_command, parser_name};
 
 fn schema_value() -> Value {
     serde_json::to_value(build_schema()).unwrap()
@@ -201,7 +199,7 @@ fn alias_generation_skips_missing_canonical_commands() {
         requires_confirmation: false,
         about: Some("List trades".to_string()),
         long_about: Some("List trades.\n\nExamples:\n  volumeleaders-agent trade list NVDA\n  volumeleaders-agent trade list AAPL".to_string()),
-        examples: examples_for_path(&["trade".to_string(), "list".to_string()]).to_vec(),
+        examples: Vec::new(),
         args: Vec::new(),
     }];
 
@@ -213,6 +211,13 @@ fn alias_generation_skips_missing_canonical_commands() {
             .iter()
             .all(|command| command.path != ["dashboard"] && command.path != ["levels"])
     );
+}
+
+#[test]
+fn examples_from_command_returns_empty_without_long_about() {
+    let command = Command::new("local");
+
+    assert!(examples_from_command(&command, &["local".to_string()]).is_empty());
 }
 
 #[test]

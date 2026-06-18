@@ -264,7 +264,9 @@ fn schema_emits_structured_command_examples() {
     let examples = trade_list["examples"].as_array().unwrap();
 
     assert!(examples.iter().any(|example| {
-        example["description"] == "List recent trades for a ticker"
+        example["description"]
+            .as_str()
+            .is_some_and(|description| !description.is_empty())
             && example["command"] == "volumeleaders-agent trade list NVDA"
     }));
     assert!(examples.iter().any(|example| {

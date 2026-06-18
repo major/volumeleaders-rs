@@ -4,7 +4,6 @@ use clap::{Arg, ArgAction, Command, CommandFactory};
 use serde::Serialize;
 
 use crate::cli::Cli;
-use crate::cli::command_examples::{CommandExample, examples_for_path};
 use crate::cli::error::CliExit;
 use crate::cli::output::{finish_output, print_json};
 
@@ -30,6 +29,14 @@ struct AuthSchema {
     kind: &'static str,
     sources: [&'static str; 3],
     network_required_for_doctor: bool,
+}
+
+#[derive(Clone, Debug, Serialize)]
+struct CommandExample {
+    description: String,
+    command: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    notes: Option<String>,
 }
 
 #[derive(Debug, Serialize)]
@@ -149,9 +156,28 @@ fn command_schema(command: &Command, path: &[String], global_args: &[ArgSchema])
         requires_confirmation: requires_confirmation(path),
         about: command.get_about().map(ToString::to_string),
         long_about: command.get_long_about().map(ToString::to_string),
-        examples: examples_for_path(path).to_vec(),
+        examples: examples_from_command(command, path),
         args,
     }
+}
+
+fn examples_from_command(command: &Command, path: &[String]) -> Vec<CommandExample> {
+    let Some(long_about) = command.get_long_about() else {
+        return Vec::new();
+    };
+    let preferred_path = path.join(" ");
+    long_about
+        .to_string()
+        .lines()
+        .map(str::trim)
+        .filter(|line| line.starts_with(BINARY_NAME))
+        .enumerate()
+        .map(|(index, line)| CommandExample {
+            description: format!("Example {} for {preferred_path}", index + 1),
+            command: line.to_string(),
+            notes: None,
+        })
+        .collect()
 }
 
 fn add_alias_commands(commands: &mut Vec<CommandSchema>) {
