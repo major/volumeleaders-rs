@@ -651,7 +651,7 @@ async fn execute_preset(args: &ReportArgs) -> i32 {
         print_transformed_record_values(
             &trades,
             TradeRecordKind::Trade,
-            &TRADE_HEADERS,
+            TRADE_HEADERS,
             flags.fields.as_deref(),
             flags.all_fields,
         )

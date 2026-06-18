@@ -7,34 +7,31 @@ use crate::cli::field_metadata;
 use super::{DashboardArgs, DateRange};
 
 const DASHBOARD_TOP_LEVEL_FIELDS: [&str; 4] = ["ticker", "date_range", "count", "sections"];
-const DASHBOARD_COMPACT_TRADE_FIELDS: [&str; 9] = [
+const DASHBOARD_COMPACT_TRADE_FIELDS: &[&str] = &[
     "Date",
-    "FullTimeString24",
+    "Time",
     "Price",
     "Dollars",
     "TradeRank",
     "TradeCount",
     "type",
     "venue",
-    "events",
 ];
-const DASHBOARD_COMPACT_CLUSTER_FIELDS: [&str; 7] = [
+const DASHBOARD_COMPACT_CLUSTER_FIELDS: &[&str] = &[
     "Date",
     "Price",
     "Dollars",
     "TradeCount",
     "TradeClusterRank",
     "window",
-    "events",
 ];
-const DASHBOARD_COMPACT_LEVEL_FIELDS: [&str; 4] = ["Price", "Dollars", "Trades", "TradeLevelRank"];
-const DASHBOARD_COMPACT_BOMB_FIELDS: [&str; 6] = [
+const DASHBOARD_COMPACT_LEVEL_FIELDS: &[&str] = &["Price", "Dollars", "Trades", "TradeLevelRank"];
+const DASHBOARD_COMPACT_BOMB_FIELDS: &[&str] = &[
     "Date",
     "Dollars",
     "TradeCount",
     "TradeClusterBombRank",
     "window",
-    "events",
 ];
 
 #[derive(Debug, Serialize)]
@@ -135,10 +132,10 @@ pub(super) fn parse_dashboard_fields(fields: &str) -> Result<DashboardFieldSelec
 
 fn apply_compact_dashboard_fields(map: &mut Map<String, Value>) {
     retain_dashboard_top_level(map);
-    filter_dashboard_section(map, "trades", &DASHBOARD_COMPACT_TRADE_FIELDS, true);
-    filter_dashboard_section(map, "clusters", &DASHBOARD_COMPACT_CLUSTER_FIELDS, true);
-    filter_dashboard_section(map, "levels", &DASHBOARD_COMPACT_LEVEL_FIELDS, true);
-    filter_dashboard_section(map, "cluster_bombs", &DASHBOARD_COMPACT_BOMB_FIELDS, true);
+    filter_dashboard_section(map, "trades", DASHBOARD_COMPACT_TRADE_FIELDS, true);
+    filter_dashboard_section(map, "clusters", DASHBOARD_COMPACT_CLUSTER_FIELDS, true);
+    filter_dashboard_section(map, "levels", DASHBOARD_COMPACT_LEVEL_FIELDS, true);
+    filter_dashboard_section(map, "cluster_bombs", DASHBOARD_COMPACT_BOMB_FIELDS, true);
 }
 
 fn apply_selected_dashboard_fields(

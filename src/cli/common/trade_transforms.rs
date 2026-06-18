@@ -16,40 +16,13 @@ pub enum TradeRecordKind {
     ClusterBomb,
 }
 
-const CURRENCY_FIELDS: &[&str] = &[
-    "Price",
-    "Dollars",
-    "ClosePrice",
-    "Bid",
-    "Ask",
-    "AverageBlockSizeDollars",
-    "AHInstitutionalDollars",
-    "TotalInstitutionalDollars",
-    "ClosingTradeDollars",
-    "TotalDollars",
-];
-
-const NON_CURRENCY_FLOAT_FIELDS: &[&str] = &[
-    "DollarsMultiplier",
-    "RelativeSize",
-    "CumulativeDistribution",
-    "RSI",
-];
-
-const RANK_SENTINEL_FIELDS: &[&str] = &[
-    "TradeRank",
-    "TradeClusterRank",
-    "TradeLevelRank",
-    "TradeClusterBombRank",
-];
-
-const CALENDAR_EVENT_FIELDS: &[&str] = &["EOM", "EOQ", "EOY", "OPEX", "VOLEX"];
+const DROPPED_FIELDS: &[&str] = &["EOM", "EOQ", "EOY", "OPEX", "VOLEX", "RSIDay", "RSIHour"];
 
 /// Default compact column headers for trade-shaped output.
 ///
 /// Shared by commands that display individual institutional trades (e.g. `trade
 /// list` and `report` presets).
-pub const TRADE_HEADERS: [&str; 14] = [
+pub const TRADE_HEADERS: &[&str] = &[
     "Ticker",
     "Date",
     "Time",
@@ -58,12 +31,10 @@ pub const TRADE_HEADERS: [&str; 14] = [
     "RelativeSize",
     "CumulativeDistribution",
     "TradeRank",
-    "RSI",
     "type",
     "venue",
     "Sector",
     "Industry",
-    "events",
 ];
 
 /// Serialize records and apply the transforms for their trade-shaped row kind.
@@ -110,7 +81,6 @@ pub fn transform_trade_row(row: &mut Map<String, Value>, kind: TradeRecordKind) 
         TradeRecordKind::Trade => {
             collapse_trade_type(row);
             collapse_venue(row);
-            omit_redundant_time(row);
             rename_trade_time_fields(row);
         }
         TradeRecordKind::Cluster | TradeRecordKind::ClusterBomb => {
@@ -119,26 +89,19 @@ pub fn transform_trade_row(row: &mut Map<String, Value>, kind: TradeRecordKind) 
         }
         TradeRecordKind::Level => {}
     }
-    normalize_rsi(row);
+    drop_noisy_fields(row);
     strip_question_marks(row);
     if kind == TradeRecordKind::Trade {
         alias_trade_relative_size(row);
-    }
-    collapse_calendar_events(row);
-    omit_sentinel_ranks(row);
-    round_currency_fields(row);
-    round_float_fields(row);
-    if kind == TradeRecordKind::Trade {
         omit_trade_dollars_multiplier(row);
     }
     compact_date_timezone(row);
 }
 
-/// Rename `RSIDay` to `RSI` and remove `RSIHour`.
-fn normalize_rsi(row: &mut Map<String, Value>) {
-    row.remove("RSIHour");
-    if let Some(value) = row.remove("RSIDay") {
-        row.insert("RSI".to_string(), value);
+/// Remove calendar marker and RSI fields from CLI output.
+fn drop_noisy_fields(row: &mut Map<String, Value>) {
+    for &field in DROPPED_FIELDS {
+        row.remove(field);
     }
 }
 
@@ -205,19 +168,6 @@ fn collapse_venue(row: &mut Map<String, Value>) {
     row.insert("venue".to_string(), Value::String(venue.to_string()));
 }
 
-/// Remove `FullTimeString24` when its value is implied by the trade type.
-fn omit_redundant_time(row: &mut Map<String, Value>) {
-    let trade_type = row.get("type").and_then(Value::as_str);
-    let time = row.get("FullTimeString24").and_then(Value::as_str);
-    let redundant = matches!(
-        (trade_type, time),
-        (Some("closing"), Some("16:00:00")) | (Some("opening"), Some("09:30:01"))
-    );
-    if redundant {
-        row.remove("FullTimeString24");
-    }
-}
-
 /// Rename verbose trade time fields to shorter display names.
 ///
 /// `FullTimeString24` -> `Time`, `FullDateTime` -> `DateTime`.
@@ -243,59 +193,6 @@ fn rename_cluster_time_fields(row: &mut Map<String, Value>) {
     ] {
         if let Some(v) = row.remove(old) {
             row.insert(new.to_string(), v);
-        }
-    }
-}
-
-/// Collapse calendar-marker booleans into an `"events"` array.
-fn collapse_calendar_events(row: &mut Map<String, Value>) {
-    let mut events = Vec::new();
-    for &field in CALENDAR_EVENT_FIELDS {
-        let is_true = row.remove(field).and_then(|v| v.as_bool()).unwrap_or(false);
-        if is_true {
-            events.push(Value::String(field.to_string()));
-        }
-    }
-    if !events.is_empty() {
-        row.insert("events".to_string(), Value::Array(events));
-    }
-}
-
-/// Remove rank fields whose value is a sentinel (9999 or 0 both mean unranked).
-fn omit_sentinel_ranks(row: &mut Map<String, Value>) {
-    for &field in RANK_SENTINEL_FIELDS {
-        let is_sentinel = row
-            .get(field)
-            .and_then(Value::as_i64)
-            .is_some_and(|n| n == 9999 || n == 0);
-        if is_sentinel {
-            row.remove(field);
-        }
-    }
-}
-
-/// Round currency fields to 2 decimal places.
-fn round_currency_fields(row: &mut Map<String, Value>) {
-    for &field in CURRENCY_FIELDS {
-        let rounded = row
-            .get(field)
-            .and_then(Value::as_f64)
-            .map(|f| (f * 100.0).round() / 100.0);
-        if let Some(n) = rounded.and_then(serde_json::Number::from_f64) {
-            row.insert(field.to_string(), Value::Number(n));
-        }
-    }
-}
-
-/// Round non-currency float fields to 2 decimal places.
-fn round_float_fields(row: &mut Map<String, Value>) {
-    for &field in NON_CURRENCY_FLOAT_FIELDS {
-        let rounded = row
-            .get(field)
-            .and_then(Value::as_f64)
-            .map(|f| (f * 100.0).round() / 100.0);
-        if let Some(n) = rounded.and_then(serde_json::Number::from_f64) {
-            row.insert(field.to_string(), Value::Number(n));
         }
     }
 }
@@ -365,16 +262,17 @@ mod tests {
         let row = value.as_object_mut().unwrap();
         transform_trade_row(row, TradeRecordKind::Trade);
 
-        assert_eq!(row["Dollars"], 10.13);
+        assert_eq!(row["Dollars"], 10.126);
         assert_eq!(row["type"], "closing");
         assert_eq!(row["venue"], "dark_pool_sweep");
-        assert_eq!(row["events"], json!(["OPEX"]));
-        assert_eq!(row["RSI"], 72.46);
+        assert!(!row.contains_key("events"));
+        assert!(!row.contains_key("OPEX"));
+        assert!(!row.contains_key("EOM"));
         assert!(!row.contains_key("RSIDay"));
         assert!(!row.contains_key("RSIHour"));
         assert!(!row.contains_key("FullTimeString24"));
-        assert!(!row.contains_key("Time"));
-        assert!(!row.contains_key("TradeRank"));
+        assert_eq!(row["Time"], "16:00:00");
+        assert_eq!(row["TradeRank"], 9999);
         assert!(!row.contains_key("DarkPool"));
         assert!(!row.contains_key("Sweep"));
         assert!(!row.contains_key("ClosingTrade"));
@@ -390,7 +288,7 @@ mod tests {
         let row = value.as_object_mut().unwrap();
         transform_trade_row(row, TradeRecordKind::Trade);
 
-        assert_eq!(row["RelativeSize"], 8.04);
+        assert_eq!(row["RelativeSize"], 8.041);
         assert!(!row.contains_key("DollarsMultiplier"));
     }
 
@@ -447,30 +345,20 @@ mod tests {
     }
 
     #[test]
-    fn normalize_rsi_renames_day_and_removes_hour() {
+    fn drop_noisy_fields_removes_calendar_and_rsi_fields() {
         let mut value = json!({
             "RSIDay": 55.5,
             "RSIHour": 42.0,
+            "EOM": true,
             "Ticker": "AAPL"
         });
         let row = value.as_object_mut().unwrap();
-        normalize_rsi(row);
+        drop_noisy_fields(row);
 
-        assert_eq!(row["RSI"], 55.5);
         assert!(!row.contains_key("RSIDay"));
         assert!(!row.contains_key("RSIHour"));
+        assert!(!row.contains_key("EOM"));
         assert_eq!(row["Ticker"], "AAPL");
-    }
-
-    #[test]
-    fn normalize_rsi_handles_missing_fields() {
-        let mut value = json!({"Ticker": "AMD"});
-        let row = value.as_object_mut().unwrap();
-        normalize_rsi(row);
-
-        assert!(!row.contains_key("RSI"));
-        assert!(!row.contains_key("RSIDay"));
-        assert!(!row.contains_key("RSIHour"));
     }
 
     #[test]

@@ -12,7 +12,7 @@ use crate::cli::common::types::OrderDirection;
 use crate::cli::field_metadata;
 use crate::cli::output::{finish_output, print_transformed_record_values_with_allowed_fields};
 
-const VOLUME_HEADERS: [&str; 16] = [
+const VOLUME_HEADERS: &[&str] = &[
     "Date",
     "FullDateTime",
     "Ticker",
@@ -28,7 +28,6 @@ const VOLUME_HEADERS: [&str; 16] = [
     "LatePrint",
     "SignaturePrint",
     "PhantomPrint",
-    "events",
 ];
 
 /// Shared volume command flags.
@@ -172,7 +171,7 @@ fn output_records<T: serde::Serialize>(
     finish_output(print_transformed_record_values_with_allowed_fields(
         records,
         TradeRecordKind::Trade,
-        &VOLUME_HEADERS,
+        VOLUME_HEADERS,
         fields,
         all_fields,
         allowed_fields.as_deref(),
@@ -252,7 +251,7 @@ mod tests {
             "Dollars": 10_000_000.0
         }))];
 
-        assert_eq!(output_records(&records, Some("events"), false), 0);
+        assert_eq!(output_records(&records, Some("Price"), false), 0);
     }
 
     #[test]
