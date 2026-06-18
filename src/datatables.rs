@@ -242,6 +242,37 @@ macro_rules! impl_datatables_request_methods {
 
 pub(crate) use impl_datatables_request_methods;
 
+/// Implement paired one-page and paginated DataTables client methods.
+///
+/// `$request_type` must be a tuple struct whose field 0 is a
+/// [`DataTablesRequest`] and must expose `to_pairs() -> Vec<(String, String)>`.
+macro_rules! impl_datatables_client_methods {
+    ($post_name:ident, $limit_name:ident, $request_type:ty, $response_type:ty, $path:expr) => {
+        impl $crate::client::Client {
+            /// Post a DataTables request and return the typed response envelope.
+            #[tracing::instrument(skip_all)]
+            pub async fn $post_name(
+                &self,
+                request: &$request_type,
+            ) -> $crate::error::Result<$crate::datatables::DataTablesResponse<$response_type>> {
+                self.post_datatables($path, request.to_pairs()).await
+            }
+
+            /// Fetch up to `limit` records by paginating a DataTables endpoint.
+            #[tracing::instrument(skip_all)]
+            pub async fn $limit_name(
+                &self,
+                request: &$request_type,
+                limit: usize,
+            ) -> $crate::error::Result<Vec<$response_type>> {
+                self.fetch_limit($path, request.0.clone(), limit).await
+            }
+        }
+    };
+}
+
+pub(crate) use impl_datatables_client_methods;
+
 /// Typed server-side DataTables JSON envelope.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]

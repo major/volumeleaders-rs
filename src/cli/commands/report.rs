@@ -33,9 +33,63 @@ pub struct ReportPreset {
     pub display_name: &'static str,
     /// Short description shown in help text.
     pub short: &'static str,
-    /// API filter key-value pairs sent as extra form values.
-    pub filters: &'static [(&'static str, &'static str)],
+    /// API filter key-value pairs that replace or extend the shared defaults.
+    pub overrides: &'static [(&'static str, &'static str)],
+    /// Shared default filter keys omitted by this preset.
+    pub omitted_filters: &'static [&'static str],
 }
+
+impl ReportPreset {
+    /// Return the complete API filter set for this preset.
+    #[must_use]
+    pub fn filters(&self) -> Vec<(&'static str, &'static str)> {
+        let mut filters = BASE_REPORT_FILTERS
+            .iter()
+            .copied()
+            .filter(|(key, _)| !self.omitted_filters.contains(key))
+            .collect::<Vec<_>>();
+
+        for &(key, value) in self.overrides {
+            if let Some((_, existing)) = filters.iter_mut().find(|(existing, _)| existing == &key) {
+                *existing = value;
+            } else {
+                filters.push((key, value));
+            }
+        }
+
+        filters
+    }
+}
+
+/// Shared report filter defaults. Presets list only their differences below.
+const BASE_REPORT_FILTERS: &[(&str, &str)] = &[
+    ("Conditions", "IgnoreOBD,IgnoreOBH,IgnoreOSD,IgnoreOSH"),
+    ("DarkPools", "-1"),
+    ("EvenShared", "-1"),
+    ("IncludeAH", "1"),
+    ("IncludeClosing", "1"),
+    ("IncludeOffsetting", "-1"),
+    ("IncludeOpening", "1"),
+    ("IncludePhantom", "-1"),
+    ("IncludePremarket", "1"),
+    ("IncludeRTH", "1"),
+    ("LatePrints", "-1"),
+    ("MarketCap", "0"),
+    ("MaxDollars", "100000000000"),
+    ("MaxPrice", "100000"),
+    ("MaxVolume", "2000000000"),
+    ("MinDollars", "500000"),
+    ("MinPrice", "0"),
+    ("MinVolume", "10000"),
+    ("RelativeSize", "0"),
+    ("SecurityTypeKey", "-1"),
+    ("SignaturePrints", "-1"),
+    ("Sweeps", "-1"),
+    ("TradeCount", "3"),
+    ("TradeRank", "100"),
+    ("TradeRankSnapshot", "-1"),
+    ("VCD", "0"),
+];
 
 /// All available report presets, ported from the Go source.
 pub static REPORT_PRESETS: &[ReportPreset] = &[
@@ -43,307 +97,108 @@ pub static REPORT_PRESETS: &[ReportPreset] = &[
         use_name: "top-100-rank",
         display_name: "Top 100 Rank",
         short: "Top 100 ranked institutional trades",
-        filters: &[
-            ("Conditions", "IgnoreOBD,IgnoreOBH,IgnoreOSD,IgnoreOSH"),
-            ("DarkPools", "-1"),
-            ("EvenShared", "-1"),
-            ("IncludeAH", "1"),
-            ("IncludeClosing", "1"),
-            ("IncludeOffsetting", "-1"),
-            ("IncludeOpening", "1"),
-            ("IncludePhantom", "-1"),
-            ("IncludePremarket", "1"),
-            ("IncludeRTH", "1"),
-            ("LatePrints", "-1"),
-            ("MarketCap", "0"),
-            ("MaxDollars", "100000000000"),
-            ("MaxPrice", "100000"),
-            ("MaxVolume", "2000000000"),
-            ("MinDollars", "500000"),
-            ("MinPrice", "0"),
-            ("MinVolume", "10000"),
-            ("RelativeSize", "0"),
-            ("SecurityTypeKey", "-1"),
-            ("SignaturePrints", "-1"),
-            ("Sweeps", "-1"),
-            ("TradeCount", "3"),
-            ("TradeRank", "100"),
-            ("TradeRankSnapshot", "-1"),
-            ("VCD", "0"),
-        ],
+        overrides: &[],
+        omitted_filters: &[],
     },
     ReportPreset {
         use_name: "top-10-rank",
         display_name: "Top 10 Rank",
         short: "Top 10 ranked institutional trades",
-        filters: &[
-            ("Conditions", "IgnoreOBD,IgnoreOBH,IgnoreOSD,IgnoreOSH"),
-            ("DarkPools", "-1"),
-            ("EvenShared", "-1"),
-            ("IncludeAH", "1"),
-            ("IncludeClosing", "1"),
-            ("IncludeOffsetting", "-1"),
-            ("IncludeOpening", "1"),
-            ("IncludePhantom", "-1"),
-            ("IncludePremarket", "1"),
-            ("IncludeRTH", "1"),
-            ("LatePrints", "-1"),
-            ("MarketCap", "0"),
-            ("MaxDollars", "100000000000"),
-            ("MaxPrice", "100000"),
-            ("MaxVolume", "2000000000"),
-            ("MinDollars", "500000"),
-            ("MinPrice", "0"),
-            ("MinVolume", "10000"),
-            ("RelativeSize", "0"),
-            ("SecurityTypeKey", "-1"),
-            ("SignaturePrints", "-1"),
-            ("Sweeps", "-1"),
-            ("TradeCount", "3"),
-            ("TradeRank", "10"),
-            ("TradeRankSnapshot", "-1"),
-            ("VCD", "0"),
-        ],
+        overrides: &[("TradeRank", "10")],
+        omitted_filters: &[],
     },
     ReportPreset {
         use_name: "dark-pool-sweeps",
         display_name: "Dark Pool Sweeps",
         short: "Dark pool sweep trades",
-        filters: &[
-            ("Conditions", "IgnoreOBD,IgnoreOBH,IgnoreOSD,IgnoreOSH"),
+        overrides: &[
             ("DarkPools", "1"),
-            ("EvenShared", "-1"),
             ("IncludeAH", "0"),
             ("IncludeClosing", "0"),
-            ("IncludeOffsetting", "-1"),
             ("IncludeOpening", "0"),
             ("IncludePhantom", "0"),
-            ("IncludePremarket", "1"),
-            ("IncludeRTH", "1"),
-            ("LatePrints", "-1"),
-            ("MarketCap", "0"),
-            ("MaxDollars", "100000000000"),
-            ("MaxPrice", "100000"),
-            ("MaxVolume", "2000000000"),
-            ("MinDollars", "500000"),
-            ("MinPrice", "0"),
-            ("MinVolume", "10000"),
-            ("RelativeSize", "0"),
-            ("SecurityTypeKey", "-1"),
             ("SignaturePrints", "0"),
             ("Sweeps", "1"),
-            ("TradeCount", "3"),
-            ("TradeRank", "100"),
-            ("TradeRankSnapshot", "-1"),
-            ("VCD", "0"),
         ],
+        omitted_filters: &[],
     },
     ReportPreset {
         use_name: "disproportionately-large",
         display_name: "Disproportionately Large",
         short: "Disproportionately large trades relative to average",
-        filters: &[
+        overrides: &[
             ("Conditions", "-1"),
-            ("DarkPools", "-1"),
-            ("EvenShared", "-1"),
-            ("IncludeAH", "1"),
-            ("IncludeClosing", "1"),
             ("IncludeOffsetting", "1"),
-            ("IncludeOpening", "1"),
             ("IncludePhantom", "1"),
-            ("IncludePremarket", "1"),
-            ("IncludeRTH", "1"),
-            ("LatePrints", "-1"),
-            ("MarketCap", "0"),
             ("MaxDollars", "30000000000"),
-            ("MaxPrice", "100000"),
-            ("MaxVolume", "2000000000"),
-            ("MinDollars", "500000"),
-            ("MinPrice", "0"),
             ("MinVolume", "0"),
             ("RelativeSize", "5"),
-            ("SecurityTypeKey", "-1"),
-            ("SignaturePrints", "-1"),
-            ("Sweeps", "-1"),
             ("TradeRank", "-1"),
-            ("TradeRankSnapshot", "-1"),
-            ("VCD", "0"),
         ],
+        omitted_filters: &["TradeCount"],
     },
     ReportPreset {
         use_name: "leveraged-etfs",
         display_name: "Leveraged ETFs",
         short: "Institutional trades in leveraged ETFs",
-        filters: &[
-            ("Conditions", "IgnoreOBD,IgnoreOBH,IgnoreOSD,IgnoreOSH"),
-            ("DarkPools", "-1"),
-            ("EvenShared", "-1"),
-            ("IncludeAH", "1"),
-            ("IncludeClosing", "1"),
-            ("IncludeOffsetting", "-1"),
-            ("IncludeOpening", "1"),
-            ("IncludePhantom", "-1"),
-            ("IncludePremarket", "1"),
-            ("IncludeRTH", "1"),
-            ("LatePrints", "-1"),
-            ("MarketCap", "0"),
-            ("MaxDollars", "1000000000000"),
-            ("MaxPrice", "100000"),
-            ("MaxVolume", "2000000000"),
-            ("MinDollars", "500000"),
-            ("MinPrice", "0"),
-            ("MinVolume", "10000"),
-            ("RelativeSize", "0"),
-            ("SectorIndustry", "X B"),
-            ("SecurityTypeKey", "-1"),
-            ("SignaturePrints", "-1"),
-            ("Sweeps", "-1"),
-            ("TradeCount", "3"),
-            ("TradeRank", "100"),
-            ("TradeRankSnapshot", "-1"),
-            ("VCD", "0"),
-        ],
+        overrides: &[("MaxDollars", "1000000000000"), ("SectorIndustry", "X B")],
+        omitted_filters: &[],
     },
     ReportPreset {
         use_name: "rsi-overbought",
         display_name: "RSI Overbought",
         short: "Trades with overbought RSI conditions",
-        filters: &[
+        overrides: &[
             ("Conditions", "OBD,OBH"),
-            ("DarkPools", "-1"),
-            ("EvenShared", "-1"),
-            ("IncludeAH", "1"),
-            ("IncludeClosing", "1"),
-            ("IncludeOffsetting", "-1"),
-            ("IncludeOpening", "1"),
-            ("IncludePhantom", "-1"),
-            ("IncludePremarket", "1"),
-            ("IncludeRTH", "1"),
-            ("LatePrints", "-1"),
-            ("MarketCap", "0"),
             ("MaxDollars", "10000000000"),
-            ("MaxPrice", "100000"),
-            ("MaxVolume", "2000000000"),
-            ("MinDollars", "500000"),
-            ("MinPrice", "0"),
-            ("MinVolume", "10000"),
             ("RelativeSize", "5"),
-            ("SecurityTypeKey", "-1"),
             ("SignaturePrints", "0"),
-            ("Sweeps", "-1"),
-            ("TradeCount", "3"),
-            ("TradeRank", "100"),
-            ("TradeRankSnapshot", "-1"),
-            ("VCD", "0"),
         ],
+        omitted_filters: &[],
     },
     ReportPreset {
         use_name: "rsi-oversold",
         display_name: "RSI Oversold",
         short: "Trades with oversold RSI conditions",
-        filters: &[
+        overrides: &[
             ("Conditions", "OSD,OSH"),
-            ("DarkPools", "-1"),
-            ("EvenShared", "-1"),
-            ("IncludeAH", "1"),
-            ("IncludeClosing", "1"),
-            ("IncludeOffsetting", "-1"),
-            ("IncludeOpening", "1"),
-            ("IncludePhantom", "-1"),
-            ("IncludePremarket", "1"),
-            ("IncludeRTH", "1"),
-            ("LatePrints", "-1"),
-            ("MarketCap", "0"),
             ("MaxDollars", "10000000000"),
-            ("MaxPrice", "100000"),
-            ("MaxVolume", "2000000000"),
-            ("MinDollars", "500000"),
-            ("MinPrice", "0"),
-            ("MinVolume", "10000"),
             ("RelativeSize", "5"),
-            ("SecurityTypeKey", "-1"),
             ("SignaturePrints", "0"),
-            ("Sweeps", "-1"),
-            ("TradeCount", "3"),
-            ("TradeRank", "100"),
-            ("TradeRankSnapshot", "-1"),
-            ("VCD", "0"),
         ],
+        omitted_filters: &[],
     },
     ReportPreset {
         use_name: "dark-pool-20x",
         display_name: "Dark Pool 20x",
         short: "Dark pool trades at 20x relative size",
-        filters: &[
-            ("Conditions", "IgnoreOBD,IgnoreOBH,IgnoreOSD,IgnoreOSH"),
+        overrides: &[
             ("DarkPools", "1"),
-            ("EvenShared", "-1"),
-            ("IncludeAH", "1"),
-            ("IncludeClosing", "1"),
-            ("IncludeOffsetting", "-1"),
-            ("IncludeOpening", "1"),
-            ("IncludePhantom", "-1"),
-            ("IncludePremarket", "1"),
-            ("IncludeRTH", "1"),
-            ("LatePrints", "-1"),
-            ("MarketCap", "0"),
             ("MaxDollars", "10000000000"),
-            ("MaxPrice", "100000"),
-            ("MaxVolume", "2000000000"),
-            ("MinDollars", "500000"),
-            ("MinPrice", "0"),
-            ("MinVolume", "10000"),
             ("RelativeSize", "20"),
-            ("SecurityTypeKey", "-1"),
             ("SignaturePrints", "0"),
-            ("Sweeps", "-1"),
-            ("TradeCount", "3"),
-            ("TradeRank", "100"),
-            ("TradeRankSnapshot", "-1"),
-            ("VCD", "0"),
         ],
+        omitted_filters: &[],
     },
     ReportPreset {
         use_name: "top-30-rank-10x-99th",
         display_name: "Top 30 Rank 10x 99th Percentile",
         short: "Top 30 ranked trades at 10x size in the 99th percentile",
-        filters: &[
-            ("Conditions", "IgnoreOBD,IgnoreOBH,IgnoreOSD,IgnoreOSH"),
-            ("DarkPools", "-1"),
-            ("EvenShared", "-1"),
-            ("IncludeAH", "1"),
-            ("IncludeClosing", "1"),
-            ("IncludeOffsetting", "-1"),
-            ("IncludeOpening", "1"),
-            ("IncludePhantom", "-1"),
-            ("IncludePremarket", "1"),
-            ("IncludeRTH", "1"),
-            ("LatePrints", "-1"),
-            ("MarketCap", "0"),
+        overrides: &[
             ("MaxDollars", "10000000000"),
-            ("MaxPrice", "100000"),
-            ("MaxVolume", "2000000000"),
-            ("MinDollars", "500000"),
-            ("MinPrice", "0"),
-            ("MinVolume", "10000"),
             ("RelativeSize", "10"),
-            ("SecurityTypeKey", "-1"),
             ("SignaturePrints", "0"),
-            ("Sweeps", "-1"),
-            ("TradeCount", "3"),
             ("TradeRank", "30"),
-            ("TradeRankSnapshot", "-1"),
             ("VCD", "99"),
         ],
+        omitted_filters: &[],
     },
     ReportPreset {
         use_name: "phantom-trades",
         display_name: "Phantom Trades",
         short: "Phantom print trades (dark pool only)",
-        filters: &[
-            ("Conditions", "IgnoreOBD,IgnoreOBH,IgnoreOSD,IgnoreOSH"),
+        overrides: &[
             ("DarkPools", "1"),
-            ("EvenShared", "-1"),
             ("IncludeAH", "0"),
             ("IncludeClosing", "0"),
             ("IncludeOffsetting", "0"),
@@ -351,32 +206,17 @@ pub static REPORT_PRESETS: &[ReportPreset] = &[
             ("IncludePhantom", "1"),
             ("IncludePremarket", "0"),
             ("IncludeRTH", "0"),
-            ("LatePrints", "-1"),
-            ("MarketCap", "0"),
-            ("MaxDollars", "100000000000"),
-            ("MaxPrice", "100000"),
-            ("MaxVolume", "2000000000"),
-            ("MinDollars", "500000"),
-            ("MinPrice", "0"),
             ("MinVolume", "0"),
-            ("RelativeSize", "0"),
-            ("SecurityTypeKey", "-1"),
             ("SignaturePrints", "0"),
-            ("Sweeps", "-1"),
-            ("TradeCount", "3"),
             ("TradeRank", "-1"),
-            ("TradeRankSnapshot", "-1"),
-            ("VCD", "0"),
         ],
+        omitted_filters: &[],
     },
     ReportPreset {
         use_name: "offsetting-trades",
         display_name: "Offsetting Trades",
         short: "Offsetting institutional trades",
-        filters: &[
-            ("Conditions", "IgnoreOBD,IgnoreOBH,IgnoreOSD,IgnoreOSH"),
-            ("DarkPools", "-1"),
-            ("EvenShared", "-1"),
+        overrides: &[
             ("IncludeAH", "0"),
             ("IncludeClosing", "0"),
             ("IncludeOffsetting", "1"),
@@ -384,26 +224,13 @@ pub static REPORT_PRESETS: &[ReportPreset] = &[
             ("IncludePhantom", "0"),
             ("IncludePremarket", "0"),
             ("IncludeRTH", "0"),
-            ("LatePrints", "-1"),
-            ("MarketCap", "0"),
-            ("MaxDollars", "100000000000"),
-            ("MaxPrice", "100000"),
-            ("MaxVolume", "2000000000"),
-            ("MinDollars", "500000"),
-            ("MinPrice", "0"),
             ("MinVolume", "0"),
-            ("RelativeSize", "0"),
-            ("SecurityTypeKey", "-1"),
             ("SignaturePrints", "0"),
-            ("Sweeps", "-1"),
-            ("TradeCount", "3"),
             ("TradeRank", "-1"),
-            ("TradeRankSnapshot", "-1"),
-            ("VCD", "0"),
         ],
+        omitted_filters: &[],
     },
 ];
-
 /// Report subcommands: list presets or run a specific preset.
 #[derive(Debug, Subcommand)]
 pub enum ReportCommand {
@@ -605,7 +432,7 @@ async fn execute_preset(args: &ReportArgs) -> i32 {
 
     // Build the trade filters first, then hand them to the client request builder.
     let mut filters = preset
-        .filters
+        .filters()
         .iter()
         .map(|&(key, value)| (key.to_string(), value.to_string()))
         .collect::<Vec<_>>();
@@ -865,14 +692,26 @@ mod tests {
     }
 
     #[test]
-    fn preset_filters_are_non_empty() {
-        for preset in REPORT_PRESETS {
-            assert!(
-                !preset.filters.is_empty(),
-                "preset '{}' must have filters",
-                preset.use_name
-            );
-        }
+    fn preset_filters_are_base_defaults_plus_overrides() {
+        let top_10 = REPORT_PRESETS
+            .iter()
+            .find(|p| p.use_name == "top-10-rank")
+            .expect("top-10-rank preset must exist");
+
+        assert_eq!(top_10.overrides, &[("TradeRank", "10")]);
+        assert!(top_10.omitted_filters.is_empty());
+        assert_eq!(top_10.filters().len(), BASE_REPORT_FILTERS.len());
+    }
+
+    #[test]
+    fn preset_omitted_filters_removes_base_keys() {
+        let preset = REPORT_PRESETS
+            .iter()
+            .find(|p| p.use_name == "disproportionately-large")
+            .expect("disproportionately-large preset must exist");
+
+        assert_eq!(preset.omitted_filters, &["TradeCount"]);
+        assert!(!preset.filters().iter().any(|&(key, _)| key == "TradeCount"));
     }
 
     #[test]
@@ -882,7 +721,7 @@ mod tests {
             .find(|p| p.use_name == "top-100-rank")
             .expect("top-100-rank preset must exist");
         let rank = preset
-            .filters
+            .filters()
             .iter()
             .find(|&&(k, _)| k == "TradeRank")
             .map(|&(_, v)| v);
@@ -896,7 +735,7 @@ mod tests {
             .find(|p| p.use_name == "top-10-rank")
             .expect("top-10-rank preset must exist");
         let rank = preset
-            .filters
+            .filters()
             .iter()
             .find(|&&(k, _)| k == "TradeRank")
             .map(|&(_, v)| v);
@@ -910,12 +749,12 @@ mod tests {
             .find(|p| p.use_name == "dark-pool-sweeps")
             .expect("dark-pool-sweeps preset must exist");
         let dark_pools = preset
-            .filters
+            .filters()
             .iter()
             .find(|&&(k, _)| k == "DarkPools")
             .map(|&(_, v)| v);
         let sweeps = preset
-            .filters
+            .filters()
             .iter()
             .find(|&&(k, _)| k == "Sweeps")
             .map(|&(_, v)| v);
@@ -930,7 +769,7 @@ mod tests {
             .find(|p| p.use_name == "leveraged-etfs")
             .expect("leveraged-etfs preset must exist");
         let si = preset
-            .filters
+            .filters()
             .iter()
             .find(|&&(k, _)| k == "SectorIndustry")
             .map(|&(_, v)| v);
@@ -944,17 +783,17 @@ mod tests {
             .find(|p| p.use_name == "top-30-rank-10x-99th")
             .expect("top-30-rank-10x-99th preset must exist");
         let vcd = preset
-            .filters
+            .filters()
             .iter()
             .find(|&&(k, _)| k == "VCD")
             .map(|&(_, v)| v);
         let rank = preset
-            .filters
+            .filters()
             .iter()
             .find(|&&(k, _)| k == "TradeRank")
             .map(|&(_, v)| v);
         let rs = preset
-            .filters
+            .filters()
             .iter()
             .find(|&&(k, _)| k == "RelativeSize")
             .map(|&(_, v)| v);

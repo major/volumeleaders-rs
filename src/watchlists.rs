@@ -5,7 +5,8 @@ use tracing::instrument;
 
 use crate::client::{Client, multipart_form_from_fields, push_bool_field};
 use crate::datatables::{
-    DataTablesColumn, DataTablesRequest, DataTablesResponse, impl_datatables_request_methods,
+    DataTablesColumn, DataTablesRequest, impl_datatables_client_methods,
+    impl_datatables_request_methods,
 };
 use crate::error::Result;
 use crate::models::{WatchListConfig, WatchListTicker};
@@ -323,57 +324,22 @@ pub fn watchlist_tickers_columns() -> Vec<DataTablesColumn> {
     ]
 }
 
+impl_datatables_client_methods!(
+    get_watchlist_configs,
+    get_watchlist_configs_limit,
+    WatchListConfigsRequest,
+    WatchListConfig,
+    WATCH_LIST_CONFIGS_GET_WATCH_LISTS_PATH
+);
+impl_datatables_client_methods!(
+    get_watchlist_tickers,
+    get_watchlist_tickers_limit,
+    WatchListTickersRequest,
+    WatchListTicker,
+    WATCH_LISTS_GET_WATCH_LIST_TICKERS_PATH
+);
+
 impl Client {
-    /// Post a DataTables request to `/WatchListConfigs/GetWatchLists`.
-    #[instrument(skip_all)]
-    pub async fn get_watchlist_configs(
-        &self,
-        request: &WatchListConfigsRequest,
-    ) -> Result<DataTablesResponse<WatchListConfig>> {
-        self.post_datatables(WATCH_LIST_CONFIGS_GET_WATCH_LISTS_PATH, request.to_pairs())
-            .await
-    }
-
-    /// Fetch up to `limit` watchlist configurations by paginating the endpoint.
-    #[instrument(skip_all)]
-    pub async fn get_watchlist_configs_limit(
-        &self,
-        request: &WatchListConfigsRequest,
-        limit: usize,
-    ) -> Result<Vec<WatchListConfig>> {
-        self.fetch_limit(
-            WATCH_LIST_CONFIGS_GET_WATCH_LISTS_PATH,
-            request.0.clone(),
-            limit,
-        )
-        .await
-    }
-
-    /// Post a DataTables request to `/WatchLists/GetWatchListTickers`.
-    #[instrument(skip_all)]
-    pub async fn get_watchlist_tickers(
-        &self,
-        request: &WatchListTickersRequest,
-    ) -> Result<DataTablesResponse<WatchListTicker>> {
-        self.post_datatables(WATCH_LISTS_GET_WATCH_LIST_TICKERS_PATH, request.to_pairs())
-            .await
-    }
-
-    /// Fetch up to `limit` watchlist tickers by paginating the endpoint.
-    #[instrument(skip_all)]
-    pub async fn get_watchlist_tickers_limit(
-        &self,
-        request: &WatchListTickersRequest,
-        limit: usize,
-    ) -> Result<Vec<WatchListTicker>> {
-        self.fetch_limit(
-            WATCH_LISTS_GET_WATCH_LIST_TICKERS_PATH,
-            request.0.clone(),
-            limit,
-        )
-        .await
-    }
-
     /// Post a multipart create or edit request to `/WatchListConfig`.
     #[instrument(skip_all)]
     pub async fn save_watchlist_config(&self, request: SaveWatchListConfigRequest) -> Result<()> {

@@ -1,12 +1,9 @@
 //! Trades endpoint for the `/Trades/GetTrades` DataTables API.
 
-use tracing::instrument;
-
-use crate::client::Client;
 use crate::datatables::{
-    DataTablesColumn, DataTablesRequest, DataTablesResponse, impl_datatables_request_methods,
+    DataTablesColumn, DataTablesRequest, impl_datatables_client_methods,
+    impl_datatables_request_methods,
 };
-use crate::error::Result;
 use crate::models::Trade;
 
 /// Browser endpoint path for institutional trades.
@@ -85,25 +82,13 @@ pub fn trades_columns() -> Vec<DataTablesColumn> {
     ]
 }
 
-impl Client {
-    /// Post a DataTables request to `/Trades/GetTrades` and return the
-    /// typed response envelope.
-    #[instrument(skip_all)]
-    pub async fn get_trades(&self, request: &TradesRequest) -> Result<DataTablesResponse<Trade>> {
-        self.post_datatables(TRADES_PATH, request.to_pairs()).await
-    }
-
-    /// Fetch up to `limit` trades by paginating `/Trades/GetTrades`.
-    #[instrument(skip_all)]
-    pub async fn get_trades_limit(
-        &self,
-        request: &TradesRequest,
-        limit: usize,
-    ) -> Result<Vec<Trade>> {
-        self.fetch_limit(TRADES_PATH, request.0.clone(), limit)
-            .await
-    }
-}
+impl_datatables_client_methods!(
+    get_trades,
+    get_trades_limit,
+    TradesRequest,
+    Trade,
+    TRADES_PATH
+);
 
 #[cfg(test)]
 mod tests {

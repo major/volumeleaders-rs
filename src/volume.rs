@@ -1,12 +1,9 @@
 //! Volume leaderboard endpoints for institutional, after-hours, and total volume.
 
-use tracing::instrument;
-
-use crate::client::Client;
 use crate::datatables::{
-    DataTablesColumn, DataTablesRequest, DataTablesResponse, impl_datatables_request_methods,
+    DataTablesColumn, DataTablesRequest, impl_datatables_client_methods,
+    impl_datatables_request_methods,
 };
-use crate::error::Result;
 use crate::models::Trade;
 
 /// Browser endpoint path for institutional volume.
@@ -149,76 +146,27 @@ pub fn total_volume_columns() -> Vec<DataTablesColumn> {
     volume_columns("TotalVolume", "TotalDollars", "TotalDollarsRank")
 }
 
-impl Client {
-    /// Post a DataTables request to `/InstitutionalVolume/GetInstitutionalVolume`
-    /// and return the typed response envelope.
-    #[instrument(skip_all)]
-    pub async fn get_institutional_volume(
-        &self,
-        request: &VolumeRequest,
-    ) -> Result<DataTablesResponse<Trade>> {
-        self.post_datatables(INSTITUTIONAL_VOLUME_PATH, request.to_pairs())
-            .await
-    }
-
-    /// Fetch up to `limit` trades by paginating
-    /// `/InstitutionalVolume/GetInstitutionalVolume`.
-    #[instrument(skip_all)]
-    pub async fn get_institutional_volume_limit(
-        &self,
-        request: &VolumeRequest,
-        limit: usize,
-    ) -> Result<Vec<Trade>> {
-        self.fetch_limit(INSTITUTIONAL_VOLUME_PATH, request.0.clone(), limit)
-            .await
-    }
-
-    /// Post a DataTables request to
-    /// `/AHInstitutionalVolume/GetAHInstitutionalVolume` and return the typed
-    /// response envelope.
-    #[instrument(skip_all)]
-    pub async fn get_ah_institutional_volume(
-        &self,
-        request: &VolumeRequest,
-    ) -> Result<DataTablesResponse<Trade>> {
-        self.post_datatables(AH_INSTITUTIONAL_VOLUME_PATH, request.to_pairs())
-            .await
-    }
-
-    /// Fetch up to `limit` trades by paginating
-    /// `/AHInstitutionalVolume/GetAHInstitutionalVolume`.
-    #[instrument(skip_all)]
-    pub async fn get_ah_institutional_volume_limit(
-        &self,
-        request: &VolumeRequest,
-        limit: usize,
-    ) -> Result<Vec<Trade>> {
-        self.fetch_limit(AH_INSTITUTIONAL_VOLUME_PATH, request.0.clone(), limit)
-            .await
-    }
-
-    /// Post a DataTables request to `/TotalVolume/GetTotalVolume` and return
-    /// the typed response envelope.
-    #[instrument(skip_all)]
-    pub async fn get_total_volume(
-        &self,
-        request: &VolumeRequest,
-    ) -> Result<DataTablesResponse<Trade>> {
-        self.post_datatables(TOTAL_VOLUME_PATH, request.to_pairs())
-            .await
-    }
-
-    /// Fetch up to `limit` trades by paginating `/TotalVolume/GetTotalVolume`.
-    #[instrument(skip_all)]
-    pub async fn get_total_volume_limit(
-        &self,
-        request: &VolumeRequest,
-        limit: usize,
-    ) -> Result<Vec<Trade>> {
-        self.fetch_limit(TOTAL_VOLUME_PATH, request.0.clone(), limit)
-            .await
-    }
-}
+impl_datatables_client_methods!(
+    get_institutional_volume,
+    get_institutional_volume_limit,
+    VolumeRequest,
+    Trade,
+    INSTITUTIONAL_VOLUME_PATH
+);
+impl_datatables_client_methods!(
+    get_ah_institutional_volume,
+    get_ah_institutional_volume_limit,
+    VolumeRequest,
+    Trade,
+    AH_INSTITUTIONAL_VOLUME_PATH
+);
+impl_datatables_client_methods!(
+    get_total_volume,
+    get_total_volume_limit,
+    VolumeRequest,
+    Trade,
+    TOTAL_VOLUME_PATH
+);
 
 #[cfg(test)]
 mod tests {
