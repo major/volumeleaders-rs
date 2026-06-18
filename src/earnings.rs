@@ -1,33 +1,23 @@
 //! Earnings endpoint for `/Earnings/GetEarnings` DataTables API.
 
 use crate::datatables::{
-    DataTablesColumn, DataTablesRequest, impl_datatables_client_methods,
-    impl_datatables_request_methods,
+    DataTablesColumn, DataTablesRequest, define_datatables_request, impl_datatables_client_methods,
 };
 use crate::models::Earning;
 
 /// Browser endpoint path for `/Earnings/GetEarnings`.
 pub(crate) const EARNINGS_GET_EARNINGS_PATH: &str = "/Earnings/GetEarnings";
 
-/// Request parameters for the `/Earnings/GetEarnings` endpoint.
-///
-/// Wraps a [`DataTablesRequest`] with pre-configured column definitions
-/// matching the VolumeLeaders earnings table.
-#[derive(Clone, Debug)]
-pub struct EarningsRequest(pub(crate) DataTablesRequest);
-
-impl_datatables_request_methods!(EarningsRequest);
+define_datatables_request!(
+    /// Request parameters for the `/Earnings/GetEarnings` endpoint.
+    ///
+    /// Wraps a [`DataTablesRequest`] with pre-configured column definitions
+    /// matching the VolumeLeaders earnings table.
+    EarningsRequest,
+    earnings_columns
+);
 
 impl EarningsRequest {
-    /// Create a new earnings request with default column definitions.
-    #[must_use]
-    pub fn new() -> Self {
-        Self(DataTablesRequest {
-            columns: earnings_columns(),
-            ..DataTablesRequest::default()
-        })
-    }
-
     /// Set the date range filters used by the earnings endpoint.
     #[must_use]
     pub fn with_date_range(mut self, start: impl Into<String>, end: impl Into<String>) -> Self {
@@ -36,12 +26,6 @@ impl EarningsRequest {
             .with_extra_value("StartDate", start)
             .with_extra_value("EndDate", end);
         self
-    }
-}
-
-impl Default for EarningsRequest {
-    fn default() -> Self {
-        Self::new()
     }
 }
 

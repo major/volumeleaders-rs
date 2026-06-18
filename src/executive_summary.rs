@@ -10,8 +10,7 @@ use tracing::instrument;
 
 use crate::client::Client;
 use crate::datatables::{
-    DataTablesColumn, DataTablesRequest, impl_datatables_client_methods,
-    impl_datatables_request_methods,
+    DataTablesColumn, DataTablesRequest, define_datatables_request, impl_datatables_client_methods,
 };
 use crate::error::Result;
 use crate::models::{ExhaustionScore, Trade, TradeCluster};
@@ -39,57 +38,23 @@ pub struct ExhaustionScoresRequest {
     pub date: String,
 }
 
-/// Request parameters for `/ExecutiveSummary/GetWelcomeTrades`.
-///
-/// Wraps a [`DataTablesRequest`] with pre-configured column definitions
-/// matching the VolumeLeaders welcome trades table.
-#[derive(Clone, Debug)]
-pub struct WelcomeTradesRequest(pub(crate) DataTablesRequest);
+define_datatables_request!(
+    /// Request parameters for `/ExecutiveSummary/GetWelcomeTrades`.
+    ///
+    /// Wraps a [`DataTablesRequest`] with pre-configured column definitions
+    /// matching the VolumeLeaders welcome trades table.
+    WelcomeTradesRequest,
+    welcome_trades_columns
+);
 
-impl_datatables_request_methods!(WelcomeTradesRequest);
-
-impl WelcomeTradesRequest {
-    /// Create a welcome trades request with default column definitions.
-    #[must_use]
-    pub fn new() -> Self {
-        Self(DataTablesRequest {
-            columns: welcome_trades_columns(),
-            ..DataTablesRequest::default()
-        })
-    }
-}
-
-impl Default for WelcomeTradesRequest {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-/// Request parameters for `/ExecutiveSummary/GetWelcomeTradeClusters`.
-///
-/// Wraps a [`DataTablesRequest`] with pre-configured column definitions
-/// matching the VolumeLeaders welcome trade clusters table.
-#[derive(Clone, Debug)]
-pub struct WelcomeTradeClustersRequest(pub(crate) DataTablesRequest);
-
-impl_datatables_request_methods!(WelcomeTradeClustersRequest);
-
-impl WelcomeTradeClustersRequest {
-    /// Create a welcome trade clusters request with default column definitions.
-    #[must_use]
-    pub fn new() -> Self {
-        Self(DataTablesRequest {
-            columns: welcome_trade_clusters_columns(),
-            ..DataTablesRequest::default()
-        })
-    }
-}
-
-impl Default for WelcomeTradeClustersRequest {
-    fn default() -> Self {
-        Self::new()
-    }
-}
+define_datatables_request!(
+    /// Request parameters for `/ExecutiveSummary/GetWelcomeTradeClusters`.
+    ///
+    /// Wraps a [`DataTablesRequest`] with pre-configured column definitions
+    /// matching the VolumeLeaders welcome trade clusters table.
+    WelcomeTradeClustersRequest,
+    welcome_trade_clusters_columns
+);
 
 /// Return the DataTables column definitions for the welcome trades table.
 ///

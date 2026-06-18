@@ -2,8 +2,7 @@
 //! `/TradeClusterBombs/GetTradeClusterBombs` DataTables APIs.
 
 use crate::datatables::{
-    DataTablesColumn, DataTablesRequest, impl_datatables_client_methods,
-    impl_datatables_request_methods,
+    DataTablesColumn, DataTablesRequest, define_datatables_request, impl_datatables_client_methods,
 };
 use crate::models::{TradeCluster, TradeClusterBomb};
 
@@ -13,25 +12,16 @@ pub(crate) const TRADE_CLUSTERS_PATH: &str = "/TradeClusters/GetTradeClusters";
 /// Browser endpoint path for trade cluster bombs.
 pub(crate) const TRADE_CLUSTER_BOMBS_PATH: &str = "/TradeClusterBombs/GetTradeClusterBombs";
 
-/// Request parameters for the `/TradeClusters/GetTradeClusters` endpoint.
-///
-/// Wraps a [`DataTablesRequest`] with pre-configured column definitions
-/// matching the VolumeLeaders trade clusters table.
-#[derive(Clone, Debug)]
-pub struct TradeClustersRequest(pub(crate) DataTablesRequest);
-
-impl_datatables_request_methods!(TradeClustersRequest);
+define_datatables_request!(
+    /// Request parameters for the `/TradeClusters/GetTradeClusters` endpoint.
+    ///
+    /// Wraps a [`DataTablesRequest`] with pre-configured column definitions
+    /// matching the VolumeLeaders trade clusters table.
+    TradeClustersRequest,
+    trade_clusters_columns
+);
 
 impl TradeClustersRequest {
-    /// Create a new trade clusters request with default column definitions.
-    #[must_use]
-    pub fn new() -> Self {
-        Self(DataTablesRequest {
-            columns: trade_clusters_columns(),
-            ..DataTablesRequest::default()
-        })
-    }
-
     /// Set endpoint filters for the trade clusters table.
     #[must_use]
     pub fn with_cluster_filters(mut self, filters: Vec<(String, String)>) -> Self {
@@ -40,42 +30,21 @@ impl TradeClustersRequest {
     }
 }
 
-impl Default for TradeClustersRequest {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-/// Request parameters for the `/TradeClusterBombs/GetTradeClusterBombs` endpoint.
-///
-/// Wraps a [`DataTablesRequest`] with pre-configured column definitions
-/// matching the VolumeLeaders trade cluster bombs table.
-#[derive(Clone, Debug)]
-pub struct TradeClusterBombsRequest(pub(crate) DataTablesRequest);
-
-impl_datatables_request_methods!(TradeClusterBombsRequest);
+define_datatables_request!(
+    /// Request parameters for the `/TradeClusterBombs/GetTradeClusterBombs` endpoint.
+    ///
+    /// Wraps a [`DataTablesRequest`] with pre-configured column definitions
+    /// matching the VolumeLeaders trade cluster bombs table.
+    TradeClusterBombsRequest,
+    trade_cluster_bombs_columns
+);
 
 impl TradeClusterBombsRequest {
-    /// Create a new trade cluster bombs request with default column definitions.
-    #[must_use]
-    pub fn new() -> Self {
-        Self(DataTablesRequest {
-            columns: trade_cluster_bombs_columns(),
-            ..DataTablesRequest::default()
-        })
-    }
-
     /// Set endpoint filters for the trade cluster bombs table.
     #[must_use]
     pub fn with_cluster_bomb_filters(mut self, filters: Vec<(String, String)>) -> Self {
         self.0 = self.0.with_extra_values(filters);
         self
-    }
-}
-
-impl Default for TradeClusterBombsRequest {
-    fn default() -> Self {
-        Self::new()
     }
 }
 

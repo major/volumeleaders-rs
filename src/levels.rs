@@ -3,8 +3,7 @@
 //! `/TradeLevelTouches/GetTradeLevelTouches` DataTables APIs.
 
 use crate::datatables::{
-    DataTablesColumn, DataTablesRequest, impl_datatables_client_methods,
-    impl_datatables_request_methods,
+    DataTablesColumn, DataTablesRequest, define_datatables_request, impl_datatables_client_methods,
 };
 use crate::models::TradeLevel;
 
@@ -20,26 +19,17 @@ pub(crate) const TRADE_LEVELS_GET_TRADE_LEVELS_PATH: &str = "/TradeLevels/GetTra
 /// Browser endpoint path for `/TradeLevelTouches/GetTradeLevelTouches`.
 pub(crate) const TRADE_LEVEL_TOUCHES_PATH: &str = "/TradeLevelTouches/GetTradeLevelTouches";
 
-/// Request parameters for trade level endpoints (`/Chart/GetTradeLevels`,
-/// `/Chart0/GetTradeLevels`, `/TradeLevels/GetTradeLevels`).
-///
-/// Wraps a [`DataTablesRequest`] with pre-configured column definitions
-/// matching the VolumeLeaders trade levels table.
-#[derive(Clone, Debug)]
-pub struct TradeLevelsRequest(pub(crate) DataTablesRequest);
-
-impl_datatables_request_methods!(TradeLevelsRequest);
+define_datatables_request!(
+    /// Request parameters for trade level endpoints (`/Chart/GetTradeLevels`,
+    /// `/Chart0/GetTradeLevels`, `/TradeLevels/GetTradeLevels`).
+    ///
+    /// Wraps a [`DataTablesRequest`] with pre-configured column definitions
+    /// matching the VolumeLeaders trade levels table.
+    TradeLevelsRequest,
+    trade_levels_columns
+);
 
 impl TradeLevelsRequest {
-    /// Create a new trade levels request with default column definitions.
-    #[must_use]
-    pub fn new() -> Self {
-        Self(DataTablesRequest {
-            columns: trade_levels_columns(),
-            ..DataTablesRequest::default()
-        })
-    }
-
     /// Set chart filters for trade level retrieval.
     #[must_use]
     pub fn with_chart_filters(
@@ -59,43 +49,22 @@ impl TradeLevelsRequest {
     }
 }
 
-impl Default for TradeLevelsRequest {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-/// Request parameters for the `/TradeLevelTouches/GetTradeLevelTouches`
-/// endpoint.
-///
-/// Wraps a [`DataTablesRequest`] with pre-configured column definitions
-/// matching the VolumeLeaders trade level touches table.
-#[derive(Clone, Debug)]
-pub struct TradeLevelTouchesRequest(pub(crate) DataTablesRequest);
-
-impl_datatables_request_methods!(TradeLevelTouchesRequest);
+define_datatables_request!(
+    /// Request parameters for the `/TradeLevelTouches/GetTradeLevelTouches`
+    /// endpoint.
+    ///
+    /// Wraps a [`DataTablesRequest`] with pre-configured column definitions
+    /// matching the VolumeLeaders trade level touches table.
+    TradeLevelTouchesRequest,
+    trade_level_touches_columns
+);
 
 impl TradeLevelTouchesRequest {
-    /// Create a new trade level touches request with default column definitions.
-    #[must_use]
-    pub fn new() -> Self {
-        Self(DataTablesRequest {
-            columns: trade_level_touches_columns(),
-            ..DataTablesRequest::default()
-        })
-    }
-
     /// Set endpoint filters for trade level touches.
     #[must_use]
     pub fn with_level_touch_filters(mut self, filters: Vec<(String, String)>) -> Self {
         self.0 = self.0.with_extra_values(filters);
         self
-    }
-}
-
-impl Default for TradeLevelTouchesRequest {
-    fn default() -> Self {
-        Self::new()
     }
 }
 

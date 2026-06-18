@@ -247,6 +247,42 @@ macro_rules! impl_datatables_request_methods {
 
 pub(crate) use impl_datatables_request_methods;
 
+/// Defines a [`DataTablesRequest`] newtype with standard `new()`, `Default`,
+/// and delegated builder methods.
+///
+/// Emits the tuple struct, [`impl_datatables_request_methods!`] delegation,
+/// a `new()` constructor that installs the given column definitions, and a
+/// manual [`Default`] forwarding to `new()`. Endpoint-specific builder
+/// methods remain on manual `impl` blocks after the macro call.
+macro_rules! define_datatables_request {
+    ($(#[$meta:meta])* $name:ident, $columns_fn:path) => {
+        $(#[$meta])*
+        #[derive(Clone, Debug)]
+        pub struct $name(pub(crate) DataTablesRequest);
+
+        $crate::datatables::impl_datatables_request_methods!($name);
+
+        impl $name {
+            /// Create a new request with default column definitions.
+            #[must_use]
+            pub fn new() -> Self {
+                Self(DataTablesRequest {
+                    columns: $columns_fn(),
+                    ..DataTablesRequest::default()
+                })
+            }
+        }
+
+        impl Default for $name {
+            fn default() -> Self {
+                Self::new()
+            }
+        }
+    };
+}
+
+pub(crate) use define_datatables_request;
+
 /// Implement paired one-page and paginated DataTables client methods.
 ///
 /// `$request_type` must be a tuple struct whose field 0 is a

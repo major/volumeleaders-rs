@@ -1,44 +1,28 @@
 //! Trades endpoint for the `/Trades/GetTrades` DataTables API.
 
 use crate::datatables::{
-    DataTablesColumn, DataTablesRequest, impl_datatables_client_methods,
-    impl_datatables_request_methods,
+    DataTablesColumn, DataTablesRequest, define_datatables_request, impl_datatables_client_methods,
 };
 use crate::models::Trade;
 
 /// Browser endpoint path for institutional trades.
 pub(crate) const TRADES_PATH: &str = "/Trades/GetTrades";
 
-/// Request parameters for the `/Trades/GetTrades` endpoint.
-///
-/// Wraps a [`DataTablesRequest`] with pre-configured column definitions
-/// matching the VolumeLeaders trades table.
-#[derive(Clone, Debug)]
-pub struct TradesRequest(pub(crate) DataTablesRequest);
-
-impl_datatables_request_methods!(TradesRequest);
+define_datatables_request!(
+    /// Request parameters for the `/Trades/GetTrades` endpoint.
+    ///
+    /// Wraps a [`DataTablesRequest`] with pre-configured column definitions
+    /// matching the VolumeLeaders trades table.
+    TradesRequest,
+    trades_columns
+);
 
 impl TradesRequest {
-    /// Create a new trades request with default column definitions.
-    #[must_use]
-    pub fn new() -> Self {
-        Self(DataTablesRequest {
-            columns: trades_columns(),
-            ..DataTablesRequest::default()
-        })
-    }
-
     /// Set endpoint filters for the trades table.
     #[must_use]
     pub fn with_trade_filters(mut self, filters: Vec<(String, String)>) -> Self {
         self.0 = self.0.with_extra_values(filters);
         self
-    }
-}
-
-impl Default for TradesRequest {
-    fn default() -> Self {
-        Self::new()
     }
 }
 

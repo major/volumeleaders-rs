@@ -5,8 +5,7 @@ use tracing::instrument;
 
 use crate::client::{Client, FormPairs, multipart_form_from_fields, push_bool_field};
 use crate::datatables::{
-    DataTablesColumn, DataTablesRequest, impl_datatables_client_methods,
-    impl_datatables_request_methods,
+    DataTablesColumn, DataTablesRequest, define_datatables_request, impl_datatables_client_methods,
 };
 use crate::error::Result;
 use crate::models::{AlertConfig, TradeAlert, TradeClusterAlert};
@@ -30,45 +29,19 @@ pub(crate) const TRADE_CLUSTER_ALERTS_GET_TRADE_CLUSTER_ALERTS_PATH: &str =
 /// Redirect path VolumeLeaders uses after a successful alert configuration save.
 const ALERT_CONFIGS_SUCCESS_REDIRECT: &str = "/AlertConfigs";
 
-/// Request parameters for `/AlertConfigs/GetAlertConfigs`.
-#[derive(Clone, Debug)]
-pub struct AlertConfigsRequest(pub(crate) DataTablesRequest);
+define_datatables_request!(
+    /// Request parameters for `/AlertConfigs/GetAlertConfigs`.
+    AlertConfigsRequest,
+    alert_configs_columns
+);
 
-impl_datatables_request_methods!(AlertConfigsRequest);
-
-impl AlertConfigsRequest {
-    /// Create an alert configs request with default column definitions.
-    #[must_use]
-    pub fn new() -> Self {
-        Self(DataTablesRequest {
-            columns: alert_configs_columns(),
-            ..DataTablesRequest::default()
-        })
-    }
-}
-
-impl Default for AlertConfigsRequest {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-/// Request parameters for `/TradeAlerts/GetTradeAlerts`.
-#[derive(Clone, Debug)]
-pub struct TradeAlertsRequest(pub(crate) DataTablesRequest);
-
-impl_datatables_request_methods!(TradeAlertsRequest);
+define_datatables_request!(
+    /// Request parameters for `/TradeAlerts/GetTradeAlerts`.
+    TradeAlertsRequest,
+    trade_alerts_columns
+);
 
 impl TradeAlertsRequest {
-    /// Create a trade alerts request with default column definitions.
-    #[must_use]
-    pub fn new() -> Self {
-        Self(DataTablesRequest {
-            columns: trade_alerts_columns(),
-            ..DataTablesRequest::default()
-        })
-    }
-
     /// Set the alert date filter.
     #[must_use]
     pub fn with_date(mut self, date: impl Into<String>) -> Self {
@@ -77,39 +50,18 @@ impl TradeAlertsRequest {
     }
 }
 
-impl Default for TradeAlertsRequest {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-/// Request parameters for `/TradeClusterAlerts/GetTradeClusterAlerts`.
-#[derive(Clone, Debug)]
-pub struct TradeClusterAlertsRequest(pub(crate) DataTablesRequest);
-
-impl_datatables_request_methods!(TradeClusterAlertsRequest);
+define_datatables_request!(
+    /// Request parameters for `/TradeClusterAlerts/GetTradeClusterAlerts`.
+    TradeClusterAlertsRequest,
+    trade_cluster_alerts_columns
+);
 
 impl TradeClusterAlertsRequest {
-    /// Create a trade cluster alerts request with default column definitions.
-    #[must_use]
-    pub fn new() -> Self {
-        Self(DataTablesRequest {
-            columns: trade_cluster_alerts_columns(),
-            ..DataTablesRequest::default()
-        })
-    }
-
     /// Set the alert date filter.
     #[must_use]
     pub fn with_date(mut self, date: impl Into<String>) -> Self {
         self.0 = self.0.with_extra_value("Date", date);
         self
-    }
-}
-
-impl Default for TradeClusterAlertsRequest {
-    fn default() -> Self {
-        Self::new()
     }
 }
 

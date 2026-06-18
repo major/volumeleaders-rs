@@ -5,8 +5,7 @@ use tracing::instrument;
 
 use crate::client::{Client, FormPairs, multipart_form_from_fields, push_bool_field};
 use crate::datatables::{
-    DataTablesColumn, DataTablesRequest, impl_datatables_client_methods,
-    impl_datatables_request_methods,
+    DataTablesColumn, DataTablesRequest, define_datatables_request, impl_datatables_client_methods,
 };
 use crate::error::Result;
 use crate::models::{WatchListConfig, WatchListTicker};
@@ -30,45 +29,19 @@ pub(crate) const CHART0_UPDATE_WATCH_LIST_PATH: &str = "/Chart0/UpdateWatchList"
 /// Redirect path VolumeLeaders uses after a successful watchlist save.
 const WATCH_LIST_CONFIGS_SUCCESS_REDIRECT: &str = "/WatchListConfigs";
 
-/// Request parameters for `/WatchListConfigs/GetWatchLists`.
-#[derive(Clone, Debug)]
-pub struct WatchListConfigsRequest(pub(crate) DataTablesRequest);
+define_datatables_request!(
+    /// Request parameters for `/WatchListConfigs/GetWatchLists`.
+    WatchListConfigsRequest,
+    watchlist_configs_columns
+);
 
-impl_datatables_request_methods!(WatchListConfigsRequest);
-
-impl WatchListConfigsRequest {
-    /// Create a watchlist configs request with default column definitions.
-    #[must_use]
-    pub fn new() -> Self {
-        Self(DataTablesRequest {
-            columns: watchlist_configs_columns(),
-            ..DataTablesRequest::default()
-        })
-    }
-}
-
-impl Default for WatchListConfigsRequest {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-/// Request parameters for `/WatchLists/GetWatchListTickers`.
-#[derive(Clone, Debug)]
-pub struct WatchListTickersRequest(pub(crate) DataTablesRequest);
-
-impl_datatables_request_methods!(WatchListTickersRequest);
+define_datatables_request!(
+    /// Request parameters for `/WatchLists/GetWatchListTickers`.
+    WatchListTickersRequest,
+    watchlist_tickers_columns
+);
 
 impl WatchListTickersRequest {
-    /// Create a watchlist tickers request with default column definitions.
-    #[must_use]
-    pub fn new() -> Self {
-        Self(DataTablesRequest {
-            columns: watchlist_tickers_columns(),
-            ..DataTablesRequest::default()
-        })
-    }
-
     /// Set the watchlist key filter.
     #[must_use]
     pub fn with_watch_list_key(mut self, watch_list_key: i64) -> Self {
@@ -76,12 +49,6 @@ impl WatchListTickersRequest {
             .0
             .with_extra_value("WatchListKey", watch_list_key.to_string());
         self
-    }
-}
-
-impl Default for WatchListTickersRequest {
-    fn default() -> Self {
-        Self::new()
     }
 }
 
