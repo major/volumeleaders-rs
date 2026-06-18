@@ -218,7 +218,7 @@ Recommended first command: `volumeleaders-agent trade dashboard NVDA`
 Copy-paste examples:
 volumeleaders-agent trade dashboard NVDA
 volumeleaders-agent fields trade dashboard
-volumeleaders-agent trade dashboard NVDA --fields trades.TradeRank,trades.events,clusters.window,levels.TradeLevelRank,cluster_bombs.TradeCount
+volumeleaders-agent trade dashboard NVDA --fields trades.TradeRank,clusters.window,levels.TradeLevelRank,cluster_bombs.TradeCount
 volumeleaders-agent trade list NVDA
 volumeleaders-agent fields trade list
 volumeleaders-agent trade list NVDA --fields Ticker,DateTime,Price,Dollars,venue,type
@@ -247,7 +247,7 @@ Recommended first command: `volumeleaders-agent trade cluster-bombs NVDA`
 Copy-paste examples:
 volumeleaders-agent trade cluster-bombs NVDA
 volumeleaders-agent fields trade cluster-bombs
-volumeleaders-agent trade cluster-bombs NVDA --fields Ticker,TradeClusterBombRank,TradeCount,Dollars,window,events
+volumeleaders-agent trade cluster-bombs NVDA --fields Ticker,TradeClusterBombRank,TradeCount,Dollars,window
 
 7. Repeated activity near a price
 Recommended first command: `volumeleaders-agent trade clusters NVDA`
@@ -280,7 +280,7 @@ Recommended first command: `volumeleaders-agent volume institutional`
 Copy-paste examples:
 volumeleaders-agent volume institutional
 volumeleaders-agent fields volume institutional
-volumeleaders-agent volume institutional --date 2026-05-27 --limit 50 --fields Ticker,Dollars,events
+volumeleaders-agent volume institutional --date 2026-05-27 --limit 50 --fields Ticker,Dollars
 
 11. Inspect or plan mutating alert and watchlist changes
 Recommended first command: `volumeleaders-agent alert configs`

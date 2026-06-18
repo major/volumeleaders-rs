@@ -28,7 +28,6 @@ pub(crate) enum FieldType {
     Boolean,
     Date,
     Datetime,
-    Array,
     Unknown,
 }
 
@@ -120,7 +119,6 @@ const TRADE_FIELDS: &[FieldMetadata] = &[
         "Trade rank from VolumeLeaders.",
         FieldType::Number
     ),
-    field!("RSI", "Daily RSI value when available.", FieldType::Number),
     field!(
         "type",
         "Opening or closing trade classification.",
@@ -133,7 +131,6 @@ const TRADE_FIELDS: &[FieldMetadata] = &[
     ),
     field!("Sector", "Issuer sector.", FieldType::String),
     field!("Industry", "Issuer industry.", FieldType::String),
-    field!("events", "Calendar event markers.", FieldType::Array),
 ];
 
 const DASHBOARD_FIELDS: &[FieldMetadata] = &[
@@ -398,11 +395,6 @@ const DASHBOARD_FIELDS: &[FieldMetadata] = &[
         FieldType::Number
     ),
     field!(
-        "trades.RSI",
-        "Dashboard trade daily RSI value.",
-        FieldType::Number
-    ),
-    field!(
         "trades.TotalRows",
         "Dashboard trade total row count.",
         FieldType::Number
@@ -451,11 +443,6 @@ const DASHBOARD_FIELDS: &[FieldMetadata] = &[
         "trades.type",
         "Dashboard trade opening or closing classification.",
         FieldType::String
-    ),
-    field!(
-        "trades.events",
-        "Dashboard trade calendar event markers.",
-        FieldType::Array
     ),
     field!("clusters.Date", "Dashboard cluster date.", FieldType::Date),
     field!(
@@ -597,11 +584,6 @@ const DASHBOARD_FIELDS: &[FieldMetadata] = &[
         "clusters.window",
         "Collapsed min and max dashboard cluster time window.",
         FieldType::String
-    ),
-    field!(
-        "clusters.events",
-        "Dashboard cluster calendar event markers.",
-        FieldType::Array
     ),
     field!(
         "levels.Ticker",
@@ -830,11 +812,6 @@ const DASHBOARD_FIELDS: &[FieldMetadata] = &[
         "Collapsed min and max dashboard cluster-bomb time window.",
         FieldType::String
     ),
-    field!(
-        "cluster_bombs.events",
-        "Dashboard cluster-bomb calendar event markers.",
-        FieldType::Array
-    ),
 ];
 
 const CLUSTER_FIELDS: &[FieldMetadata] = &[
@@ -867,7 +844,6 @@ const CLUSTER_FIELDS: &[FieldMetadata] = &[
         "Collapsed min and max cluster time window.",
         FieldType::String
     ),
-    field!("events", "Calendar event markers.", FieldType::Array),
 ];
 
 const LEVEL_FIELDS: &[FieldMetadata] = &[
@@ -921,7 +897,6 @@ const BOMB_FIELDS: &[FieldMetadata] = &[
         "Collapsed min and max cluster-bomb time window.",
         FieldType::String
     ),
-    field!("events", "Calendar event markers.", FieldType::Array),
 ];
 
 const TRADE_ALERT_FIELDS: &[FieldMetadata] = &[
@@ -952,7 +927,6 @@ const TRADE_ALERT_FIELDS: &[FieldMetadata] = &[
         "Dark-pool or sweep venue classification.",
         FieldType::String
     ),
-    field!("events", "Calendar event markers.", FieldType::Array),
 ];
 
 const VOLUME_FIELDS: &[FieldMetadata] = &[
@@ -1003,7 +977,6 @@ const VOLUME_FIELDS: &[FieldMetadata] = &[
         "Whether the row is a phantom print.",
         FieldType::Boolean
     ),
-    field!("events", "Calendar event markers.", FieldType::Array),
 ];
 
 const EARNINGS_FIELDS: &[FieldMetadata] = &[
@@ -1157,7 +1130,6 @@ mod tests {
         let names = field_names("trade list").unwrap();
 
         assert!(names.iter().any(|name| name == "Ticker"));
-        assert!(names.iter().any(|name| name == "events"));
         assert!(!names.iter().any(|name| name == "ticker"));
     }
 }

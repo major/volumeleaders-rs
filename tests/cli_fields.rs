@@ -39,7 +39,6 @@ fn fields_volume_institutional_emits_non_trade_metadata() {
     let fields = discovery["fields"].as_array().unwrap();
     assert_field(fields, "Ticker", "string");
     assert_field(fields, "LatePrint", "boolean");
-    assert_field(fields, "events", "array");
 }
 
 #[test]
@@ -58,7 +57,6 @@ fn fields_trade_dashboard_emits_nested_section_metadata() {
 
     let fields = discovery["fields"].as_array().unwrap();
     assert_field(fields, "trades.TradeRank", "number");
-    assert_field(fields, "trades.events", "array");
     assert_field(fields, "clusters.TradeClusterRank", "number");
     assert_field(fields, "clusters.window", "string");
     assert_field(fields, "levels.TradeLevelRank", "number");

@@ -73,7 +73,7 @@ pub fn print_json<T: Serialize>(value: &T) -> io::Result<()> {
 ///
 /// Empty input and `all` both mean no filtering. Field names are case-sensitive.
 /// Raw record output uses VolumeLeaders JSON keys; transformed output may expose
-/// semantic keys such as `type`, `venue`, `events`, and `window` instead.
+/// semantic keys such as `type`, `venue`, and `window` instead.
 pub fn selected_fields(fields: Option<&str>) -> Option<Vec<String>> {
     let fields = fields?.trim();
     if fields.is_empty() || fields.eq_ignore_ascii_case("all") {

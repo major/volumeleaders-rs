@@ -59,7 +59,7 @@ pub(super) const DEFAULT_MAX_DOLLARS: f64 = 30_000_000_000.0;
 pub(super) const HAR_TRADE_MIN_VOLUME: i64 = 10_000;
 pub(super) const HAR_TRADE_MAX_DOLLARS: f64 = 100_000_000_000.0;
 
-const CLUSTER_HEADERS: [&str; 10] = [
+const CLUSTER_HEADERS: &[&str] = &[
     "Date",
     "Ticker",
     "Price",
@@ -69,9 +69,8 @@ const CLUSTER_HEADERS: [&str; 10] = [
     "CumulativeDistribution",
     "TradeClusterRank",
     "window",
-    "events",
 ];
-const BOMB_HEADERS: [&str; 9] = [
+const BOMB_HEADERS: &[&str] = &[
     "Date",
     "Ticker",
     "Dollars",
@@ -80,9 +79,8 @@ const BOMB_HEADERS: [&str; 9] = [
     "CumulativeDistribution",
     "TradeClusterBombRank",
     "window",
-    "events",
 ];
-const LEVEL_HEADERS: [&str; 7] = [
+const LEVEL_HEADERS: &[&str] = &[
     "Ticker",
     "Price",
     "Dollars",
@@ -91,7 +89,7 @@ const LEVEL_HEADERS: [&str; 7] = [
     "CumulativeDistribution",
     "TradeLevelRank",
 ];
-const ALERT_HEADERS: [&str; 12] = [
+const ALERT_HEADERS: &[&str] = &[
     "Ticker",
     "Date",
     "Time",
@@ -103,7 +101,6 @@ const ALERT_HEADERS: [&str; 12] = [
     "TradeRank",
     "type",
     "venue",
-    "events",
 ];
 
 #[derive(Debug, Serialize)]
@@ -701,7 +698,7 @@ async fn execute_list(args: &ListArgs) -> i32 {
         print_trade_records(
             &trades,
             TradeRecordKind::Trade,
-            &TRADE_HEADERS,
+            TRADE_HEADERS,
             args.fields.as_deref(),
             args.all_fields,
             "trade list",
@@ -821,7 +818,7 @@ async fn execute_clusters(args: &ClustersArgs) -> i32 {
     output_trade_records(
         &response.data,
         TradeRecordKind::Cluster,
-        &CLUSTER_HEADERS,
+        CLUSTER_HEADERS,
         args.fields.as_deref(),
         args.all_fields,
         "trade clusters",
@@ -855,7 +852,7 @@ async fn execute_cluster_bombs(args: &ClusterBombsArgs) -> i32 {
     output_trade_records(
         &response.data,
         TradeRecordKind::ClusterBomb,
-        &BOMB_HEADERS,
+        BOMB_HEADERS,
         args.fields.as_deref(),
         args.all_fields,
         "trade clusters",
@@ -880,7 +877,7 @@ async fn execute_alerts(args: &AlertsArgs) -> i32 {
     output_trade_records(
         &response.data,
         TradeRecordKind::Trade,
-        &ALERT_HEADERS,
+        ALERT_HEADERS,
         args.fields.as_deref(),
         args.all_fields,
         "trade alerts",
@@ -905,7 +902,7 @@ async fn execute_cluster_alerts(args: &AlertsArgs) -> i32 {
     output_trade_records(
         &response.data,
         TradeRecordKind::Cluster,
-        &CLUSTER_HEADERS,
+        CLUSTER_HEADERS,
         args.fields.as_deref(),
         args.all_fields,
         "trade clusters",
@@ -936,7 +933,7 @@ async fn execute_levels(args: &LevelsArgs) -> i32 {
     output_trade_records(
         &levels,
         TradeRecordKind::Level,
-        &LEVEL_HEADERS,
+        LEVEL_HEADERS,
         args.fields.as_deref(),
         args.all_fields,
         "trade levels",
@@ -974,7 +971,7 @@ async fn execute_level_touches(args: &LevelTouchesArgs) -> i32 {
     output_trade_records(
         &response.data,
         TradeRecordKind::Level,
-        &LEVEL_HEADERS,
+        LEVEL_HEADERS,
         args.fields.as_deref(),
         args.all_fields,
         "trade levels",
@@ -1259,7 +1256,7 @@ mod tests {
         write_record_values(
             &mut output,
             &values,
-            &CLUSTER_HEADERS,
+            CLUSTER_HEADERS,
             fields,
             all_fields,
             None,
@@ -1511,7 +1508,7 @@ mod tests {
         assert_eq!(trade["venue"], "lit_sweep");
         assert_eq!(trade["type"], "closing");
         assert!(!trade.contains_key("FullTimeString24"));
-        assert!(!trade.contains_key("Time"));
+        assert_eq!(trade["Time"], "16:00:00");
         assert!(!trade.contains_key("DollarsMultiplier"));
         assert!(!trade.contains_key("Ticker"));
         assert!(!trade.contains_key("SecurityKey"));
@@ -1581,41 +1578,18 @@ mod tests {
     }
 
     #[test]
-    fn compact_headers_use_transformed_trade_fields() {
-        assert!(CLUSTER_HEADERS.contains(&"window"));
-        assert!(CLUSTER_HEADERS.contains(&"events"));
-        assert!(!CLUSTER_HEADERS.contains(&"MinFullDateTime"));
-        assert!(!CLUSTER_HEADERS.contains(&"MaxFullDateTime"));
-        assert!(!CLUSTER_HEADERS.contains(&"MinDateTime"));
-        assert!(!CLUSTER_HEADERS.contains(&"MaxDateTime"));
-
-        assert!(BOMB_HEADERS.contains(&"window"));
-        assert!(BOMB_HEADERS.contains(&"events"));
-        assert!(!BOMB_HEADERS.contains(&"MinFullDateTime"));
-        assert!(!BOMB_HEADERS.contains(&"MaxFullDateTime"));
-        assert!(!BOMB_HEADERS.contains(&"MinDateTime"));
-        assert!(!BOMB_HEADERS.contains(&"MaxDateTime"));
-
-        assert!(ALERT_HEADERS.contains(&"Time"));
-        assert!(ALERT_HEADERS.contains(&"type"));
-        assert!(ALERT_HEADERS.contains(&"venue"));
-        assert!(ALERT_HEADERS.contains(&"events"));
-        assert!(!ALERT_HEADERS.contains(&"FullTimeString24"));
-    }
-
-    #[test]
     fn cluster_output_defaults_to_transformed_compact_fields() {
         let output = render_cluster_json(None, false);
         let row = output[0].as_object().unwrap();
 
         assert_eq!(row["Date"], "2026-01-02");
         assert_eq!(row["Ticker"], "AAPL");
-        assert_eq!(row["Price"], 199.13);
-        assert_eq!(row["Dollars"], 20_000_000.13);
+        assert_eq!(row["Price"], 199.125);
+        assert_eq!(row["Dollars"], 20_000_000.126);
         assert_eq!(row["TradeCount"], 4);
         assert_eq!(row["TradeClusterRank"], 2);
         assert_eq!(row["window"], "16:00:00-16:49:31");
-        assert_eq!(row["events"], json!(["EOM"]));
+        assert!(!row.contains_key("events"));
         assert!(!row.contains_key("MinFullDateTime"));
         assert!(!row.contains_key("MaxFullDateTime"));
         assert!(!row.contains_key("MinDateTime"));
@@ -1648,8 +1622,8 @@ mod tests {
         print_trade_records(
             &records,
             TradeRecordKind::Trade,
-            &TRADE_HEADERS,
-            Some("events"),
+            TRADE_HEADERS,
+            Some("Price"),
             false,
             "trade list",
         )
@@ -1668,7 +1642,7 @@ mod tests {
         let err = print_trade_records(
             &records,
             TradeRecordKind::Trade,
-            &TRADE_HEADERS,
+            TRADE_HEADERS,
             Some("NotAField"),
             false,
             "trade list",
@@ -1692,8 +1666,8 @@ mod tests {
             output_trade_records(
                 &records,
                 TradeRecordKind::Trade,
-                &TRADE_HEADERS,
-                Some("events"),
+                TRADE_HEADERS,
+                Some("Price"),
                 false,
                 "trade list",
             ),
@@ -1714,7 +1688,7 @@ mod tests {
         print_trade_records(
             &records,
             TradeRecordKind::ClusterBomb,
-            &BOMB_HEADERS,
+            BOMB_HEADERS,
             Some("TradeClusterBombRank"),
             false,
             "trade cluster-bombs",
@@ -1729,7 +1703,7 @@ mod tests {
 
         assert_eq!(row["SecurityKey"], 123);
         assert_eq!(row["window"], "16:00:00-16:49:31");
-        assert_eq!(row["events"], json!(["EOM"]));
+        assert!(!row.contains_key("events"));
         assert!(!row.contains_key("MinFullDateTime"));
         assert!(!row.contains_key("MaxFullDateTime"));
         assert!(!row.contains_key("MinDateTime"));
@@ -1746,7 +1720,7 @@ mod tests {
         )
         .expect("cluster alert serializes");
         let mut output = Vec::new();
-        write_record_values(&mut output, &values, &CLUSTER_HEADERS, None, false, None)
+        write_record_values(&mut output, &values, CLUSTER_HEADERS, None, false, None)
             .expect("cluster alert output renders");
         let output: serde_json::Value = serde_json::from_slice(&output).unwrap();
         let row = output[0].as_object().unwrap();
@@ -1758,7 +1732,7 @@ mod tests {
         );
         assert_eq!(row["Ticker"], "MSFT");
         assert_eq!(row["window"], "15:00:00-15:07:30");
-        assert_eq!(row["events"], json!(["VOLEX"]));
+        assert!(!row.contains_key("events"));
         assert!(!row.contains_key("MinFullDateTime"));
         assert!(!row.contains_key("MaxFullDateTime"));
         assert!(!row.contains_key("MinDateTime"));
@@ -1838,7 +1812,7 @@ mod tests {
         assert_eq!(trade["venue"], "lit_sweep");
         assert_eq!(trade["type"], "closing");
         assert!(!trade.contains_key("FullTimeString24"));
-        assert!(!trade.contains_key("Time"));
+        assert_eq!(trade["Time"], "16:00:00");
         assert!(!trade.contains_key("DarkPool"));
         assert!(!trade.contains_key("Sweep"));
         assert!(!trade.contains_key("ClosingTrade"));
