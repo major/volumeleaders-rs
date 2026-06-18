@@ -2,11 +2,14 @@
 
 use serde::Serialize;
 
+use crate::cli::commands::report::REPORT_PRESETS;
+use crate::cli::common::trade_transforms::TradeRecordKind;
+
 /// Machine-readable field discovery response for one command path.
 #[derive(Debug, Serialize)]
 pub(crate) struct FieldDiscovery {
-    pub(crate) command_path: &'static str,
-    pub(crate) preferred_path: &'static str,
+    pub(crate) command_path: String,
+    pub(crate) preferred_path: String,
     pub(crate) fields: &'static [FieldMetadata],
 }
 
@@ -48,8 +51,8 @@ pub(crate) fn discover(command_path: &[String]) -> Option<FieldDiscovery> {
     let (command_path, fields) = fields_for_path(path.as_str())?;
 
     Some(FieldDiscovery {
-        command_path,
-        preferred_path: command_path,
+        command_path: command_path.to_string(),
+        preferred_path: command_path.to_string(),
         fields,
     })
 }
@@ -61,37 +64,55 @@ pub(crate) fn field_names(command_path: &str) -> Option<Vec<String>> {
         .map(|(_, fields)| fields.iter().map(|field| field.name.to_string()).collect())
 }
 
-fn fields_for_path(path: &str) -> Option<(&'static str, &'static [FieldMetadata])> {
+fn fields_for_path(path: &str) -> Option<(&str, &'static [FieldMetadata])> {
+    if let Some(kind) = trade_record_kind_for_path(path) {
+        return Some((path, fields_for_trade_record_kind(kind)));
+    }
+
+    if let Some(preset_name) = path.strip_prefix("report ")
+        && REPORT_PRESETS
+            .iter()
+            .any(|preset| preset.use_name == preset_name)
+    {
+        return Some((path, fields_for_trade_record_kind(TradeRecordKind::Trade)));
+    }
+
+    FIELD_TABLES
+        .iter()
+        .find(|(command_path, _)| *command_path == path)
+        .map(|(command_path, fields)| (*command_path, *fields))
+}
+
+fn trade_record_kind_for_path(path: &str) -> Option<TradeRecordKind> {
     match path {
-        "trade list" => Some(("trade list", TRADE_FIELDS)),
-        "trade dashboard" => Some(("trade dashboard", DASHBOARD_FIELDS)),
-        "trade levels" => Some(("trade levels", LEVEL_FIELDS)),
-        "trade clusters" => Some(("trade clusters", CLUSTER_FIELDS)),
-        "trade cluster-bombs" => Some(("trade cluster-bombs", BOMB_FIELDS)),
-        "trade alerts" => Some(("trade alerts", TRADE_ALERT_FIELDS)),
-        "report top-100-rank" => Some(("report top-100-rank", TRADE_FIELDS)),
-        "report top-10-rank" => Some(("report top-10-rank", TRADE_FIELDS)),
-        "report dark-pool-sweeps" => Some(("report dark-pool-sweeps", TRADE_FIELDS)),
-        "report disproportionately-large" => {
-            Some(("report disproportionately-large", TRADE_FIELDS))
-        }
-        "report leveraged-etfs" => Some(("report leveraged-etfs", TRADE_FIELDS)),
-        "report rsi-overbought" => Some(("report rsi-overbought", TRADE_FIELDS)),
-        "report rsi-oversold" => Some(("report rsi-oversold", TRADE_FIELDS)),
-        "report dark-pool-20x" => Some(("report dark-pool-20x", TRADE_FIELDS)),
-        "report top-30-rank-10x-99th" => Some(("report top-30-rank-10x-99th", TRADE_FIELDS)),
-        "report phantom-trades" => Some(("report phantom-trades", TRADE_FIELDS)),
-        "report offsetting-trades" => Some(("report offsetting-trades", TRADE_FIELDS)),
-        "volume institutional" => Some(("volume institutional", VOLUME_FIELDS)),
-        "volume ah-institutional" => Some(("volume ah-institutional", VOLUME_FIELDS)),
-        "volume total" => Some(("volume total", VOLUME_FIELDS)),
-        "market earnings" => Some(("market earnings", EARNINGS_FIELDS)),
-        "watchlist configs" => Some(("watchlist configs", WATCHLIST_CONFIG_FIELDS)),
-        "watchlist tickers" => Some(("watchlist tickers", WATCHLIST_TICKER_FIELDS)),
-        "alert configs" => Some(("alert configs", ALERT_CONFIG_FIELDS)),
+        "trade list" => Some(TradeRecordKind::Trade),
+        "trade levels" => Some(TradeRecordKind::Level),
+        "trade clusters" => Some(TradeRecordKind::Cluster),
+        "trade cluster-bombs" => Some(TradeRecordKind::ClusterBomb),
         _ => None,
     }
 }
+
+fn fields_for_trade_record_kind(kind: TradeRecordKind) -> &'static [FieldMetadata] {
+    match kind {
+        TradeRecordKind::Trade => TRADE_FIELDS,
+        TradeRecordKind::Cluster => CLUSTER_FIELDS,
+        TradeRecordKind::Level => LEVEL_FIELDS,
+        TradeRecordKind::ClusterBomb => BOMB_FIELDS,
+    }
+}
+
+const FIELD_TABLES: &[(&str, &[FieldMetadata])] = &[
+    ("trade dashboard", DASHBOARD_FIELDS),
+    ("trade alerts", TRADE_ALERT_FIELDS),
+    ("volume institutional", VOLUME_FIELDS),
+    ("volume ah-institutional", VOLUME_FIELDS),
+    ("volume total", VOLUME_FIELDS),
+    ("market earnings", EARNINGS_FIELDS),
+    ("watchlist configs", WATCHLIST_CONFIG_FIELDS),
+    ("watchlist tickers", WATCHLIST_TICKER_FIELDS),
+    ("alert configs", ALERT_CONFIG_FIELDS),
+];
 
 const TRADE_FIELDS: &[FieldMetadata] = &[
     field!("Ticker", "Ticker symbol.", FieldType::String),
@@ -1077,7 +1098,9 @@ const ALERT_CONFIG_FIELDS: &[FieldMetadata] = &[
 
 #[cfg(test)]
 mod tests {
-    use super::{discover, field_names};
+    use super::{discover, field_names, fields_for_path, fields_for_trade_record_kind};
+    use crate::cli::commands::report::REPORT_PRESETS;
+    use crate::cli::common::trade_transforms::TradeRecordKind;
 
     #[test]
     fn discovers_required_issue_command_paths() {
@@ -1115,6 +1138,20 @@ mod tests {
 
             assert_eq!(discovery.preferred_path, path);
             assert!(!discovery.fields.is_empty(), "empty fields for {path}");
+        }
+    }
+
+    #[test]
+    fn report_fields_are_derived_from_report_presets() {
+        for preset in REPORT_PRESETS {
+            let path = format!("report {}", preset.use_name);
+            let (preferred_path, fields) = fields_for_path(&path).expect("report fields exist");
+
+            assert_eq!(preferred_path, path);
+            assert!(std::ptr::eq(
+                fields,
+                fields_for_trade_record_kind(TradeRecordKind::Trade)
+            ));
         }
     }
 
