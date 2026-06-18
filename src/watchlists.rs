@@ -168,7 +168,7 @@ pub struct DeleteWatchListRequest {
 pub fn watchlist_configs_columns() -> Vec<DataTablesColumn> {
     vec![
         DataTablesColumn::new("Name", "", true, false),
-        DataTablesColumn::new("Name", "Name", true, true),
+        DataTablesColumn::id("Name"),
         DataTablesColumn::new("Tickers", "Tickers", true, false),
         DataTablesColumn::new("Criteria", "Criteria", true, false),
     ]
@@ -178,21 +178,11 @@ pub fn watchlist_configs_columns() -> Vec<DataTablesColumn> {
 #[must_use]
 pub fn watchlist_tickers_columns() -> Vec<DataTablesColumn> {
     vec![
-        DataTablesColumn::new("Ticker", "Ticker", true, true),
-        DataTablesColumn::new("Price", "Price", true, true),
-        DataTablesColumn::new("NearestTop10TradeDate", "NearestTop10TradeDate", true, true),
-        DataTablesColumn::new(
-            "NearestTop10TradeClusterDate",
-            "NearestTop10TradeClusterDate",
-            true,
-            true,
-        ),
-        DataTablesColumn::new(
-            "NearestTop10TradeLevel",
-            "NearestTop10TradeLevel",
-            true,
-            true,
-        ),
+        DataTablesColumn::id("Ticker"),
+        DataTablesColumn::id("Price"),
+        DataTablesColumn::id("NearestTop10TradeDate"),
+        DataTablesColumn::id("NearestTop10TradeClusterDate"),
+        DataTablesColumn::id("NearestTop10TradeLevel"),
         DataTablesColumn::new("Ticker", "Charts", true, false),
     ]
 }
@@ -265,10 +255,7 @@ mod tests {
 
         assert_eq!(columns.len(), 4);
         assert_eq!(columns[0], DataTablesColumn::new("Name", "", true, false));
-        assert_eq!(
-            columns[1],
-            DataTablesColumn::new("Name", "Name", true, true)
-        );
+        assert_eq!(columns[1], DataTablesColumn::id("Name"));
         assert_eq!(
             columns[2],
             DataTablesColumn::new("Tickers", "Tickers", true, false)
@@ -284,19 +271,8 @@ mod tests {
         let columns = watchlist_tickers_columns();
 
         assert_eq!(columns.len(), 6);
-        assert_eq!(
-            columns[0],
-            DataTablesColumn::new("Ticker", "Ticker", true, true)
-        );
-        assert_eq!(
-            columns[4],
-            DataTablesColumn::new(
-                "NearestTop10TradeLevel",
-                "NearestTop10TradeLevel",
-                true,
-                true
-            )
-        );
+        assert_eq!(columns[0], DataTablesColumn::id("Ticker"));
+        assert_eq!(columns[4], DataTablesColumn::id("NearestTop10TradeLevel"));
         assert_eq!(
             columns[5],
             DataTablesColumn::new("Ticker", "Charts", true, false)

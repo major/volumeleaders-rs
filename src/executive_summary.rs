@@ -63,10 +63,10 @@ define_datatables_request!(
 #[must_use]
 pub fn welcome_trades_columns() -> Vec<DataTablesColumn> {
     vec![
-        DataTablesColumn::new("Ticker", "Ticker", true, true),
-        DataTablesColumn::new("TradeRank", "R", true, true),
-        DataTablesColumn::new("DollarsMultiplier", "RS", true, true),
-        DataTablesColumn::new("CumulativeDistribution", "PCT", true, true),
+        DataTablesColumn::id("Ticker"),
+        DataTablesColumn::searchable("TradeRank", "R"),
+        DataTablesColumn::searchable("DollarsMultiplier", "RS"),
+        DataTablesColumn::searchable("CumulativeDistribution", "PCT"),
         DataTablesColumn::new("LastComparibleTradeDate", "Charts", true, false),
     ]
 }
@@ -79,10 +79,10 @@ pub fn welcome_trades_columns() -> Vec<DataTablesColumn> {
 #[must_use]
 pub fn welcome_trade_clusters_columns() -> Vec<DataTablesColumn> {
     vec![
-        DataTablesColumn::new("Ticker", "Ticker", true, true),
-        DataTablesColumn::new("TradeClusterRank", "R", true, true),
-        DataTablesColumn::new("DollarsMultiplier", "RS", true, true),
-        DataTablesColumn::new("CumulativeDistribution", "PCT", true, true),
+        DataTablesColumn::id("Ticker"),
+        DataTablesColumn::searchable("TradeClusterRank", "R"),
+        DataTablesColumn::searchable("DollarsMultiplier", "RS"),
+        DataTablesColumn::searchable("CumulativeDistribution", "PCT"),
         DataTablesColumn::new("LastComparibleTradeClusterDate", "Charts", true, false),
     ]
 }

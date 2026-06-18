@@ -36,14 +36,14 @@ impl EarningsRequest {
 #[must_use]
 pub fn earnings_columns() -> Vec<DataTablesColumn> {
     vec![
-        DataTablesColumn::new("Date", "Earnings Date", true, true),
-        DataTablesColumn::new("Ticker", "Ticker", true, true),
+        DataTablesColumn::searchable("Date", "Earnings Date"),
+        DataTablesColumn::id("Ticker"),
         DataTablesColumn::new("Current", "Current", true, false),
-        DataTablesColumn::new("Sector", "Sector", true, true),
-        DataTablesColumn::new("Industry", "Industry", true, true),
-        DataTablesColumn::new("TradeCount", "Recent Top-100 Trades", true, true),
-        DataTablesColumn::new("TradeClusterCount", "Recent Top-100 Clusters", true, true),
-        DataTablesColumn::new("TradeClusterBombCount", "Recent Top-100 Bombs", true, true),
+        DataTablesColumn::id("Sector"),
+        DataTablesColumn::id("Industry"),
+        DataTablesColumn::searchable("TradeCount", "Recent Top-100 Trades"),
+        DataTablesColumn::searchable("TradeClusterCount", "Recent Top-100 Clusters"),
+        DataTablesColumn::searchable("TradeClusterBombCount", "Recent Top-100 Bombs"),
         DataTablesColumn::new("Ticker", "Charts", true, false),
     ]
 }

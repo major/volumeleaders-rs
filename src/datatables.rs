@@ -67,6 +67,18 @@ impl DataTablesColumn {
             orderable,
         }
     }
+
+    /// Searchable and orderable column (the common case).
+    #[must_use]
+    pub const fn searchable(data: &'static str, name: &'static str) -> Self {
+        Self::new(data, name, true, true)
+    }
+
+    /// Identity column where `data == name`, searchable and orderable.
+    #[must_use]
+    pub const fn id(field: &'static str) -> Self {
+        Self::new(field, field, true, true)
+    }
 }
 
 /// One DataTables sort instruction.

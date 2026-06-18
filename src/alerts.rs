@@ -176,8 +176,8 @@ pub struct DeleteAlertConfigRequest {
 pub fn alert_configs_columns() -> Vec<DataTablesColumn> {
     vec![
         DataTablesColumn::new("Name", "", true, false),
-        DataTablesColumn::new("Name", "Name", true, true),
-        DataTablesColumn::new("Tickers", "Tickers", true, true),
+        DataTablesColumn::id("Name"),
+        DataTablesColumn::id("Tickers"),
         DataTablesColumn::new("Conditions", "Conditions", true, false),
     ]
 }
@@ -248,14 +248,8 @@ mod tests {
 
         assert_eq!(columns.len(), 4);
         assert_eq!(columns[0], DataTablesColumn::new("Name", "", true, false));
-        assert_eq!(
-            columns[1],
-            DataTablesColumn::new("Name", "Name", true, true)
-        );
-        assert_eq!(
-            columns[2],
-            DataTablesColumn::new("Tickers", "Tickers", true, true)
-        );
+        assert_eq!(columns[1], DataTablesColumn::id("Name"));
+        assert_eq!(columns[2], DataTablesColumn::id("Tickers"));
         assert_eq!(
             columns[3],
             DataTablesColumn::new("Conditions", "Conditions", true, false)

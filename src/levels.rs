@@ -75,13 +75,13 @@ impl TradeLevelTouchesRequest {
 #[must_use]
 pub fn trade_levels_columns() -> Vec<DataTablesColumn> {
     vec![
-        DataTablesColumn::new("Price", "Price", true, true),
-        DataTablesColumn::new("Dollars", "$$", true, true),
-        DataTablesColumn::new("Volume", "Shares", true, true),
-        DataTablesColumn::new("Trades", "Trades", true, true),
-        DataTablesColumn::new("RelativeSize", "RS", true, true),
-        DataTablesColumn::new("CumulativeDistribution", "PCT", true, true),
-        DataTablesColumn::new("TradeLevelRank", "Level Rank", true, true),
+        DataTablesColumn::id("Price"),
+        DataTablesColumn::searchable("Dollars", "$$"),
+        DataTablesColumn::searchable("Volume", "Shares"),
+        DataTablesColumn::id("Trades"),
+        DataTablesColumn::searchable("RelativeSize", "RS"),
+        DataTablesColumn::searchable("CumulativeDistribution", "PCT"),
+        DataTablesColumn::searchable("TradeLevelRank", "Level Rank"),
         DataTablesColumn::new("Dates", "Level Date Range", true, false),
     ]
 }
@@ -93,17 +93,17 @@ pub fn trade_levels_columns() -> Vec<DataTablesColumn> {
 #[must_use]
 pub fn trade_level_touches_columns() -> Vec<DataTablesColumn> {
     vec![
-        DataTablesColumn::new("FullDateTime", "Date/Time", true, true),
-        DataTablesColumn::new("Ticker", "Ticker", true, true),
-        DataTablesColumn::new("Sector", "Sector", true, true),
-        DataTablesColumn::new("Industry", "Industry", true, true),
-        DataTablesColumn::new("Dollars", "$$", true, true),
-        DataTablesColumn::new("Volume", "Shares", true, true),
-        DataTablesColumn::new("Trades", "Trades", true, true),
-        DataTablesColumn::new("Price", "Price", true, true),
-        DataTablesColumn::new("RelativeSize", "RS", true, true),
-        DataTablesColumn::new("CumulativeDistribution", "PCT", true, true),
-        DataTablesColumn::new("TradeLevelRank", "Level Rank", true, true),
+        DataTablesColumn::searchable("FullDateTime", "Date/Time"),
+        DataTablesColumn::id("Ticker"),
+        DataTablesColumn::id("Sector"),
+        DataTablesColumn::id("Industry"),
+        DataTablesColumn::searchable("Dollars", "$$"),
+        DataTablesColumn::searchable("Volume", "Shares"),
+        DataTablesColumn::id("Trades"),
+        DataTablesColumn::id("Price"),
+        DataTablesColumn::searchable("RelativeSize", "RS"),
+        DataTablesColumn::searchable("CumulativeDistribution", "PCT"),
+        DataTablesColumn::searchable("TradeLevelRank", "Level Rank"),
         DataTablesColumn::new("Dates", "Level Date Range", true, false),
         DataTablesColumn::new("", "", true, false),
     ]
