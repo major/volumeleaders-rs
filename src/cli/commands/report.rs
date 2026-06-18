@@ -16,9 +16,7 @@ use crate::cli::common::types::SummaryGroup;
 use crate::cli::error::{CliExit, usage_error};
 use crate::cli::field_metadata;
 use crate::cli::field_metadata::TRADE_HEADERS;
-use crate::cli::output::{
-    finish_output, print_json, print_records_with_allowed_fields, selected_fields,
-};
+use crate::cli::output::{finish_output, print_json, print_records_for_command, selected_fields};
 
 /// Default trade limit when none is specified on the command line.
 const DEFAULT_LIMIT: usize = 500;
@@ -470,13 +468,12 @@ async fn execute_preset(args: &ReportArgs) -> Result<(), CliExit> {
         let summary = build_summary(&trades, group, &start, &end);
         print_json(&summary)
     } else {
-        let allowed_fields = field_metadata::field_names(&report_command_path(preset_name));
-        print_records_with_allowed_fields(
+        print_records_for_command(
             &trades,
             TRADE_HEADERS,
             flags.fields.as_deref(),
             flags.all_fields,
-            allowed_fields.as_deref(),
+            &report_command_path(preset_name),
         )
     };
 

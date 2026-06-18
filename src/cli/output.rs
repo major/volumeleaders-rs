@@ -5,6 +5,7 @@ use serde::Serialize;
 use serde_json::Value;
 
 use crate::cli::error::CliExit;
+use crate::cli::field_metadata;
 
 static STRICT_EMPTY_CONTEXT: LazyLock<Mutex<Option<EmptyResultContext>>> =
     LazyLock::new(|| Mutex::new(None));
@@ -229,6 +230,24 @@ pub(crate) fn print_records_with_allowed_fields<T: Serialize>(
         .unwrap_or(default_fields.as_slice());
     let values = records_to_values(records, Some(selected));
     print_json(&values)
+}
+
+/// Outputs records using the command's discovered field metadata for validation.
+pub(crate) fn print_records_for_command<T: Serialize>(
+    records: &[T],
+    compact_headers: &[&str],
+    fields: Option<&str>,
+    all_fields: bool,
+    command_path: &str,
+) -> io::Result<()> {
+    let allowed_fields = field_metadata::field_names(command_path);
+    print_records_with_allowed_fields(
+        records,
+        compact_headers,
+        fields,
+        all_fields,
+        allowed_fields.as_deref(),
+    )
 }
 
 fn available_record_fields<T: Serialize>(records: &[T]) -> io::Result<Vec<String>> {
