@@ -23,7 +23,8 @@ use crate::cli::common::tickers::{parse_single_ticker, parse_tickers};
 use crate::cli::common::types::{OrderDirection, SummaryGroup, TriStateFilter};
 use crate::cli::error::{CliExit, usage_error};
 use crate::cli::field_metadata::{
-    ALERT_HEADERS, BOMB_HEADERS, CLUSTER_HEADERS, LEVEL_HEADERS, TRADE_HEADERS,
+    ALERT_HEADERS, BOMB_HEADERS, CLUSTER_HEADERS, LEVEL_HEADERS, LEVEL_TOUCHES_HEADERS,
+    TRADE_HEADERS,
 };
 use crate::cli::output::{finish_output, print_json, print_records_for_command};
 
@@ -112,7 +113,7 @@ pub enum TradeCommand {
     /// Query trade events at notable price levels.
     #[command(
         name = "level-touches",
-        long_about = "Query trade events at notable price levels for a ticker.\n\nExamples:\n  volumeleaders-agent trade level-touches NVDA\n  volumeleaders-agent trade level-touches NVDA --start-date 2026-05-01 --end-date 2026-05-27 --trade-level-rank 5 --relative-size 10"
+        long_about = "Query trade events at notable price levels.\n\nOmit TICKER to query all tickers. Dates default to today.\n\nExamples:\n  volumeleaders-agent trade level-touches\n  volumeleaders-agent trade level-touches NVDA --days 30\n  volumeleaders-agent trade level-touches --trade-level-rank 1 --min-dollars 1000000000"
     )]
     LevelTouches(LevelTouchesArgs),
 }
@@ -299,14 +300,14 @@ pub struct LevelsArgs {
 #[allow(missing_docs)]
 #[derive(Debug, Args)]
 pub struct LevelTouchesArgs {
-    /// Ticker symbol.
-    pub ticker: String,
+    /// Ticker symbol; omit for all tickers.
+    pub ticker: Option<String>,
     #[command(flatten)]
     pub dates: OptionalDateRangeArgs,
     #[command(flatten)]
     pub ranges: TradeRangeArgs,
     /// Maximum trade-level rank to include; lower ranks are more significant.
-    #[arg(long = "trade-level-rank", default_value_t = 5)]
+    #[arg(long = "trade-level-rank", default_value_t = 10)]
     pub trade_level_rank: i32,
     /// Number of levels to include. Accepted values: 5, 10, 20, or 50.
     #[arg(long = "trade-level-count", default_value_t = DEFAULT_LEVEL_TOUCH_COUNT)]
@@ -318,7 +319,7 @@ pub struct LevelTouchesArgs {
     #[arg(long = "relative-size")]
     pub relative_size: Option<i32>,
     #[command(flatten)]
-    pub page: PageArgs,
+    pub page: LevelTouchesPageArgs,
     /// Exact, case-sensitive output fields to keep, comma-separated; discover with `fields trade levels`.
     #[arg(long, conflicts_with = "all_fields")]
     pub fields: Option<String>,
@@ -523,6 +524,26 @@ pub struct PageArgs {
     pub order_dir: OrderDirection,
 }
 
+/// DataTables page flags for level-touch queries.
+///
+/// Defaults sort by trade-level rank ascending (most significant first).
+#[allow(missing_docs)]
+#[derive(Debug, Args)]
+pub struct LevelTouchesPageArgs {
+    /// Zero-based row offset for paged API requests.
+    #[arg(long, default_value_t = 0)]
+    pub start: i32,
+    /// Number of rows to request from the API.
+    #[arg(long, default_value_t = 100)]
+    pub length: i32,
+    /// Zero-based API sort column index (10 = TradeLevelRank).
+    #[arg(long = "order-col", default_value_t = 10)]
+    pub order_col: i32,
+    /// API sort direction for the selected order column.
+    #[arg(long = "order-dir", value_enum, default_value = "asc")]
+    pub order_dir: OrderDirection,
+}
+
 /// DataTables page flags without length.
 #[allow(missing_docs)]
 #[derive(Debug, Args)]
@@ -585,6 +606,18 @@ fn resolve_required_range(args: &OptionalDateRangeArgs) -> Result<(String, Strin
         args.end_date.as_deref(),
         None,
     ))
+}
+
+fn resolve_level_touches_range(args: &OptionalDateRangeArgs) -> (String, String) {
+    if args.start_date.is_none() && args.end_date.is_none() && args.days.is_none() {
+        let today = chrono::Local::now().format("%Y-%m-%d").to_string();
+        return (today.clone(), today);
+    }
+    resolve_date_range(
+        args.start_date.as_deref(),
+        args.end_date.as_deref(),
+        args.days,
+    )
 }
 
 fn resolve_trade_list_range(args: &OptionalDateRangeArgs) -> (String, String) {
@@ -830,13 +863,17 @@ async fn execute_level_touches(args: &LevelTouchesArgs) -> Result<(), CliExit> {
             "--trade-level-count must be one of 5, 10, 20, or 50 for trade level retrieval",
         ));
     }
-    if !(1..=50).contains(&args.page.length) {
+    if !(1..=1000).contains(&args.page.length) {
         return Err(usage_error(
-            "--length must be between 1 and 50 for trade level touch retrieval",
+            "--length must be between 1 and 1000 for trade level touch retrieval",
         ));
     }
-    let (start, end) = resolve_required_range(&args.dates).map_err(usage_error)?;
-    let ticker = parse_single_ticker(&args.ticker);
+    let (start, end) = resolve_level_touches_range(&args.dates);
+    let ticker = args
+        .ticker
+        .as_deref()
+        .map(parse_single_ticker)
+        .unwrap_or_default();
     let request = TradeLevelTouchesRequest::new()
         .with_start(args.page.start)
         .with_length(args.page.length)
@@ -846,10 +883,10 @@ async fn execute_level_touches(args: &LevelTouchesArgs) -> Result<(), CliExit> {
     let response = client.get_trade_level_touches(&request).await?;
     output_trade_records(
         &response.data,
-        LEVEL_HEADERS,
+        LEVEL_TOUCHES_HEADERS,
         args.fields.as_deref(),
         args.all_fields,
-        "trade levels",
+        "trade level-touches",
     )
 }
 

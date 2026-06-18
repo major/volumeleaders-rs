@@ -243,6 +243,20 @@ fn trade_shaped_default_headers_are_raw_website_fields() {
             "Dates",
         ]
     );
+    assert_eq!(
+        LEVEL_TOUCHES_HEADERS,
+        [
+            "Ticker",
+            "FullTimeString24",
+            "Price",
+            "Dollars",
+            "Volume",
+            "Trades",
+            "RelativeSize",
+            "TradeLevelRank",
+            "Dates",
+        ]
+    );
 }
 
 #[test]
@@ -1145,15 +1159,6 @@ fn default_fixed_page() -> FixedPageArgs {
     }
 }
 
-fn default_page() -> PageArgs {
-    PageArgs {
-        start: 0,
-        length: 100,
-        order_col: 1,
-        order_dir: OrderDirection::Desc,
-    }
-}
-
 fn empty_trade_filter_args() -> TradeFilterArgs {
     TradeFilterArgs {
         conditions: None,
@@ -1211,16 +1216,25 @@ fn default_cluster_bombs_args() -> ClusterBombsArgs {
     }
 }
 
+fn default_level_touches_page() -> LevelTouchesPageArgs {
+    LevelTouchesPageArgs {
+        start: 0,
+        length: 100,
+        order_col: 10,
+        order_dir: OrderDirection::Asc,
+    }
+}
+
 fn default_level_touches_args() -> LevelTouchesArgs {
     LevelTouchesArgs {
-        ticker: "AAPL".to_string(),
+        ticker: Some("AAPL".to_string()),
         dates: empty_optional_dates(),
         ranges: empty_trade_ranges(),
-        trade_level_rank: 5,
+        trade_level_rank: 10,
         trade_level_count: DEFAULT_LEVEL_TOUCH_COUNT,
         vcd: None,
         relative_size: None,
-        page: default_page(),
+        page: default_level_touches_page(),
         fields: None,
         all_fields: false,
     }
@@ -1484,7 +1498,7 @@ fn level_touch_filters_includes_level_count() {
 
     let filters = level_touch_filters(&args, "AAPL", "2026-01-01", "2026-01-02");
 
-    assert!(has_filter(&filters, "TradeLevelRank", "5"));
+    assert!(has_filter(&filters, "TradeLevelRank", "10"));
     assert!(has_filter(
         &filters,
         "Levels",
