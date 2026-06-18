@@ -10,9 +10,9 @@ use tracing::instrument;
 
 use crate::cli::WatchlistArgs;
 use crate::cli::commands::scaffold::run_client_command;
-use crate::cli::common::auth::{handle_api_error, make_client};
+use crate::cli::common::auth::make_client;
 use crate::cli::dry_run::print_dry_run_plan;
-use crate::cli::error::usage_error;
+use crate::cli::error::{CliExit, usage_error};
 use crate::cli::output::{finish_output, print_json, print_records};
 
 const DEFAULT_CONFIGS_FIELDS: [&str; 4] = ["SearchTemplateKey", "Name", "Tickers", "Criteria"];
@@ -388,7 +388,7 @@ pub struct WatchlistConfigFlags {
 
 /// Handles the watchlist command group.
 #[instrument(skip_all)]
-pub async fn handle(args: &WatchlistArgs) -> i32 {
+pub async fn handle(args: &WatchlistArgs) -> Result<(), CliExit> {
     match &args.command {
         WatchlistCommand::Configs(a) => execute_configs(a).await,
         WatchlistCommand::Tickers(a) => execute_tickers(a).await,
@@ -400,19 +400,12 @@ pub async fn handle(args: &WatchlistArgs) -> i32 {
 }
 
 #[instrument(skip_all)]
-async fn execute_configs(args: &ConfigsArgs) -> i32 {
-    let client = match make_client().await {
-        Ok(c) => c,
-        Err(code) => return code,
-    };
+async fn execute_configs(args: &ConfigsArgs) -> Result<(), CliExit> {
+    let client = make_client().await?;
     let request = WatchListConfigsRequest::new();
-    let configs = match client
+    let configs = client
         .get_watchlist_configs_limit(&request, usize::MAX)
-        .await
-    {
-        Ok(c) => c,
-        Err(err) => return handle_api_error(err),
-    };
+        .await?;
 
     finish_output(print_records(
         &configs,
@@ -423,20 +416,13 @@ async fn execute_configs(args: &ConfigsArgs) -> i32 {
 }
 
 #[instrument(skip_all)]
-async fn execute_tickers(args: &TickersArgs) -> i32 {
-    let client = match make_client().await {
-        Ok(c) => c,
-        Err(code) => return code,
-    };
+async fn execute_tickers(args: &TickersArgs) -> Result<(), CliExit> {
+    let client = make_client().await?;
     let request = WatchListTickersRequest::new().with_watch_list_key(args.watchlist_key);
 
-    let tickers = match client
+    let tickers = client
         .get_watchlist_tickers_limit(&request, usize::MAX)
-        .await
-    {
-        Ok(t) => t,
-        Err(err) => return handle_api_error(err),
-    };
+        .await?;
 
     finish_output(print_records(
         &tickers,
@@ -447,7 +433,7 @@ async fn execute_tickers(args: &TickersArgs) -> i32 {
 }
 
 #[instrument(skip_all)]
-async fn execute_create(args: &CreateArgs) -> i32 {
+async fn execute_create(args: &CreateArgs) -> Result<(), CliExit> {
     let request = build_config_request(0, &args.name, &args.config);
     if args.dry_run {
         return print_dry_run_plan("watchlist create", "create", request.fields());
@@ -466,7 +452,7 @@ async fn execute_create(args: &CreateArgs) -> i32 {
 }
 
 #[instrument(skip_all)]
-async fn execute_edit(args: &EditArgs) -> i32 {
+async fn execute_edit(args: &EditArgs) -> Result<(), CliExit> {
     let key = args.key;
     let name = args.name.as_deref().unwrap_or("");
     let request = build_config_request(key, name, &args.config);
@@ -487,7 +473,7 @@ async fn execute_edit(args: &EditArgs) -> i32 {
 }
 
 #[instrument(skip_all)]
-async fn execute_delete(args: &DeleteArgs) -> i32 {
+async fn execute_delete(args: &DeleteArgs) -> Result<(), CliExit> {
     let key = args.key;
     let request = DeleteWatchListRequest {
         watch_list_key: key,
@@ -496,9 +482,9 @@ async fn execute_delete(args: &DeleteArgs) -> i32 {
         return print_dry_run_plan("watchlist delete", "delete", &request);
     }
     if !args.yes {
-        return usage_error(
+        return Err(usage_error(
             "watchlist delete requires --yes to confirm live deletion; use --dry-run to inspect the request",
-        );
+        ));
     }
 
     run_client_command(
@@ -514,7 +500,7 @@ async fn execute_delete(args: &DeleteArgs) -> i32 {
 }
 
 #[instrument(skip_all)]
-async fn execute_add_ticker(args: &AddTickerArgs) -> i32 {
+async fn execute_add_ticker(args: &AddTickerArgs) -> Result<(), CliExit> {
     let request = AddTickerToWatchListRequest {
         watch_list_key: args.watchlist_key,
         ticker: args.ticker.clone(),
@@ -742,7 +728,7 @@ mod tests {
             config: test_config_flags(),
         };
 
-        assert_eq!(execute_create(&args).await, 0);
+        assert!(execute_create(&args).await.is_ok());
     }
 
     #[tokio::test]
@@ -754,7 +740,7 @@ mod tests {
             config: test_config_flags(),
         };
 
-        assert_eq!(execute_edit(&args).await, 0);
+        assert!(execute_edit(&args).await.is_ok());
     }
 
     #[tokio::test]
@@ -765,7 +751,7 @@ mod tests {
             key: 42,
         };
 
-        assert_eq!(execute_delete(&args).await, 0);
+        assert!(execute_delete(&args).await.is_ok());
     }
 
     #[tokio::test]
@@ -776,10 +762,7 @@ mod tests {
             key: 42,
         };
 
-        assert_eq!(
-            execute_delete(&args).await,
-            crate::cli::error::EXIT_USAGE_ERROR
-        );
+        assert!(execute_delete(&args).await.is_err());
     }
 
     #[tokio::test]
@@ -790,7 +773,7 @@ mod tests {
             ticker: "NVDA".to_string(),
         };
 
-        assert_eq!(execute_add_ticker(&args).await, 0);
+        assert!(execute_add_ticker(&args).await.is_ok());
     }
 
     #[test]

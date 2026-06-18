@@ -7,8 +7,8 @@ use serde::Serialize;
 use crate::ResolvedCredentials;
 use crate::alerts::AlertConfigsRequest;
 use crate::cli::DoctorArgs;
-use crate::cli::error::{CliErrorKind, client_error_kind};
-use crate::cli::output::{finish_output, print_json};
+use crate::cli::error::{CliErrorKind, CliExit, client_error_kind};
+use crate::cli::output::print_json;
 use crate::client::{Client, ClientConfig};
 use crate::config::{ENV_PASSWORD, ENV_USERNAME, default_config_path};
 use crate::error::{ClientError, Result};
@@ -20,7 +20,7 @@ const LIVE_CONNECTIVITY_AUTH_REASON: &str = "authenticated live check could not 
 const LIVE_CONNECTIVITY_FAILURE_REASON: &str = "authenticated live check failed";
 
 /// Emit local or live readiness diagnostics as compact JSON.
-pub async fn handle(args: &DoctorArgs) -> i32 {
+pub async fn handle(args: &DoctorArgs) -> std::result::Result<(), CliExit> {
     let report = build_report(args.live).await;
     let exit_code = doctor_exit_code(&report);
     finish_doctor_output(print_json(&report), exit_code)
@@ -392,8 +392,8 @@ fn has_cookie(cookies: &[crate::session::Cookie], name: &str) -> bool {
         .any(|cookie| cookie.name() == name && !cookie.value().is_empty())
 }
 
-fn doctor_exit_code(report: &DoctorReport) -> i32 {
-    match report.live_connectivity.status {
+fn doctor_exit_code(report: &DoctorReport) -> CliExit {
+    let code = match report.live_connectivity.status {
         LiveConnectivityStatus::Ok | LiveConnectivityStatus::Skipped if report.ok => 0,
         LiveConnectivityStatus::AuthError | LiveConnectivityStatus::Skipped => {
             CliErrorKind::AuthError.exit_code()
@@ -402,13 +402,18 @@ fn doctor_exit_code(report: &DoctorReport) -> i32 {
         LiveConnectivityStatus::ApiError => CliErrorKind::ApiError.exit_code(),
         LiveConnectivityStatus::JsonError => CliErrorKind::JsonError.exit_code(),
         LiveConnectivityStatus::Ok => CliErrorKind::AuthError.exit_code(),
-    }
+    };
+    CliExit(code)
 }
 
-fn finish_doctor_output(result: io::Result<()>, exit_code: i32) -> i32 {
+fn finish_doctor_output(
+    result: io::Result<()>,
+    exit_code: CliExit,
+) -> std::result::Result<(), CliExit> {
     match result {
-        Ok(()) => exit_code,
-        Err(err) => finish_output(Err(err)),
+        Ok(()) if exit_code.code() == 0 => Ok(()),
+        Ok(()) => Err(exit_code),
+        Err(err) => Err(err.into()),
     }
 }
 
@@ -416,6 +421,7 @@ fn finish_doctor_output(result: io::Result<()>, exit_code: i32) -> i32 {
 mod tests {
     use serde_json::Value;
 
+    use crate::cli::error::CliExit;
     use crate::session::{COOKIE_DOMAIN, Cookie, FORMS_AUTH_COOKIE_NAME, SESSION_COOKIE_NAME};
     use crate::{
         ClientError, ClientError as Error, CredentialSource, Credentials, ResolvedCredentials,
@@ -570,10 +576,18 @@ mod tests {
 
     #[test]
     fn doctor_output_exit_code_follows_report_status_and_write_errors() {
-        assert_eq!(finish_doctor_output(Ok(()), 0), 0);
-        assert_eq!(finish_doctor_output(Ok(()), 3), 3);
+        assert!(finish_doctor_output(Ok(()), CliExit(0)).is_ok());
         assert_eq!(
-            finish_doctor_output(Err(std::io::Error::other("stdout closed")), 0),
+            finish_doctor_output(Ok(()), CliExit(3)).unwrap_err().code(),
+            3
+        );
+        assert_eq!(
+            finish_doctor_output(
+                Err(std::io::Error::other("stdout closed")),
+                CliExit(0)
+            )
+            .unwrap_err()
+            .code(),
             6
         );
     }
@@ -581,16 +595,16 @@ mod tests {
     #[test]
     fn doctor_exit_code_maps_live_statuses() {
         let mut report = build_report_with_live_status(LiveConnectivityStatus::HttpError, false);
-        assert_eq!(doctor_exit_code(&report), 4);
+        assert_eq!(doctor_exit_code(&report).code(), 4);
 
         report.live_connectivity.status = LiveConnectivityStatus::ApiError;
-        assert_eq!(doctor_exit_code(&report), 5);
+        assert_eq!(doctor_exit_code(&report).code(), 5);
 
         report.live_connectivity.status = LiveConnectivityStatus::JsonError;
-        assert_eq!(doctor_exit_code(&report), 6);
+        assert_eq!(doctor_exit_code(&report).code(), 6);
 
         report.live_connectivity.status = LiveConnectivityStatus::Ok;
-        assert_eq!(doctor_exit_code(&report), 3);
+        assert_eq!(doctor_exit_code(&report).code(), 3);
     }
 
     fn build_report_with_live_status(status: LiveConnectivityStatus, ok: bool) -> DoctorReport {

@@ -5,10 +5,11 @@ use clap::{Args, Subcommand};
 use tracing::instrument;
 
 use crate::cli::VolumeArgs;
-use crate::cli::common::auth::{handle_api_error, make_client};
+use crate::cli::common::auth::make_client;
 use crate::cli::common::tickers::parse_tickers;
 use crate::cli::common::trade_transforms::TradeRecordKind;
 use crate::cli::common::types::OrderDirection;
+use crate::cli::error::CliExit;
 use crate::cli::field_metadata;
 use crate::cli::output::{finish_output, print_transformed_record_values_with_allowed_fields};
 
@@ -90,7 +91,7 @@ pub enum VolumeCommand {
 
 /// Handles the volume command group.
 #[instrument(skip_all)]
-pub async fn handle(args: &VolumeArgs) -> i32 {
+pub async fn handle(args: &VolumeArgs) -> Result<(), CliExit> {
     match &args.command {
         VolumeCommand::Institutional { args } => execute_institutional(args).await,
         VolumeCommand::AhInstitutional { args } => execute_ah_institutional(args).await,
@@ -99,52 +100,32 @@ pub async fn handle(args: &VolumeArgs) -> i32 {
 }
 
 #[instrument(skip_all)]
-async fn execute_institutional(args: &VolumeOptions) -> i32 {
+async fn execute_institutional(args: &VolumeOptions) -> Result<(), CliExit> {
     let request = build_request(VolumeRequest::institutional(), args);
-    let client = match make_client().await {
-        Ok(client) => client,
-        Err(code) => return code,
-    };
-    let trades = match client
+    let client = make_client().await?;
+    let trades = client
         .get_institutional_volume_limit(&request, args.limit)
-        .await
-    {
-        Ok(trades) => trades,
-        Err(err) => return handle_api_error(err),
-    };
+        .await?;
 
     output_records(&trades, args.fields.as_deref(), args.all_fields)
 }
 
 #[instrument(skip_all)]
-async fn execute_ah_institutional(args: &VolumeOptions) -> i32 {
+async fn execute_ah_institutional(args: &VolumeOptions) -> Result<(), CliExit> {
     let request = build_request(VolumeRequest::ah_institutional(), args);
-    let client = match make_client().await {
-        Ok(client) => client,
-        Err(code) => return code,
-    };
-    let trades = match client
+    let client = make_client().await?;
+    let trades = client
         .get_ah_institutional_volume_limit(&request, args.limit)
-        .await
-    {
-        Ok(trades) => trades,
-        Err(err) => return handle_api_error(err),
-    };
+        .await?;
 
     output_records(&trades, args.fields.as_deref(), args.all_fields)
 }
 
 #[instrument(skip_all)]
-async fn execute_total(args: &VolumeOptions) -> i32 {
+async fn execute_total(args: &VolumeOptions) -> Result<(), CliExit> {
     let request = build_request(VolumeRequest::total(), args);
-    let client = match make_client().await {
-        Ok(client) => client,
-        Err(code) => return code,
-    };
-    let trades = match client.get_total_volume_limit(&request, args.limit).await {
-        Ok(trades) => trades,
-        Err(err) => return handle_api_error(err),
-    };
+    let client = make_client().await?;
+    let trades = client.get_total_volume_limit(&request, args.limit).await?;
 
     output_records(&trades, args.fields.as_deref(), args.all_fields)
 }
@@ -166,7 +147,7 @@ fn output_records<T: serde::Serialize>(
     records: &[T],
     fields: Option<&str>,
     all_fields: bool,
-) -> i32 {
+) -> Result<(), CliExit> {
     let allowed_fields = field_metadata::field_names("volume institutional");
     finish_output(print_transformed_record_values_with_allowed_fields(
         records,
@@ -251,7 +232,7 @@ mod tests {
             "Dollars": 10_000_000.0
         }))];
 
-        assert_eq!(output_records(&records, Some("Price"), false), 0);
+        assert!(output_records(&records, Some("Price"), false).is_ok());
     }
 
     #[test]
@@ -263,9 +244,6 @@ mod tests {
             "Dollars": 10_000_000.0
         }))];
 
-        assert_eq!(
-            output_records(&records, Some("NotAField"), false),
-            crate::cli::error::EXIT_USAGE_ERROR
-        );
+        assert!(output_records(&records, Some("NotAField"), false).is_err());
     }
 }

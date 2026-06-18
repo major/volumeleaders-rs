@@ -1,6 +1,6 @@
 use tracing::{debug, warn};
 
-use crate::cli::error::client_error;
+use crate::cli::error::{CliExit, client_error};
 use crate::{Client, ClientError, Session, resolve_credentials};
 
 /// Cookie domain used for VolumeLeaders authentication.
@@ -15,7 +15,7 @@ pub const VL_DOMAIN: &str = "volumeleaders.com";
 ///    environment variables or XDG config.
 /// 4. Logs in with resolved credentials and saves the new session to the cache.
 /// 5. Returns an authenticated [`Client`] ready for API calls.
-pub async fn make_client_from_env() -> Result<Client, i32> {
+pub async fn make_client_from_env() -> Result<Client, CliExit> {
     if let Some(client) = client_from_cached_session().await? {
         return Ok(client);
     }
@@ -33,11 +33,11 @@ pub async fn make_client_from_env() -> Result<Client, i32> {
 }
 
 /// Build a VolumeLeaders client from explicit credentials.
-async fn make_client_with_creds(username: &str, password: &str) -> Result<Client, i32> {
+async fn make_client_with_creds(username: &str, password: &str) -> Result<Client, CliExit> {
     debug!("logging in with credentials");
     let session = match crate::login(username, password).await {
         Ok(s) => s,
-        Err(err) => return Err(client_error(&err)),
+        Err(err) => return Err(CliExit(client_error(&err))),
     };
 
     if let Err(err) = crate::save_session(&session) {
@@ -46,10 +46,10 @@ async fn make_client_with_creds(username: &str, password: &str) -> Result<Client
 
     build_client_from_session(session)
         .await
-        .map_err(|err| client_error(&err))
+        .map_err(|err| CliExit(client_error(&err)))
 }
 
-async fn client_from_cached_session() -> Result<Option<Client>, i32> {
+async fn client_from_cached_session() -> Result<Option<Client>, CliExit> {
     if let Some(session) = crate::load_cached_session() {
         debug!("using cached session");
         match build_client_from_session(session).await {
@@ -80,13 +80,13 @@ fn should_clear_cached_session(err: &ClientError) -> bool {
 /// Build a VolumeLeaders client from environment-variable credentials.
 ///
 /// Kept for backward compatibility in tests; prefer [`make_client_from_env`].
-pub async fn make_client() -> Result<Client, i32> {
+pub async fn make_client() -> Result<Client, CliExit> {
     make_client_from_env().await
 }
 
 /// Convert API errors into CLI exit codes and messages.
-pub fn handle_api_error(err: ClientError) -> i32 {
-    client_error(&err)
+pub fn handle_api_error(err: ClientError) -> CliExit {
+    err.into()
 }
 
 /// Build an authenticated client from a session, refreshing the XSRF token.
@@ -109,20 +109,20 @@ mod tests {
 
     #[test]
     fn handle_api_error_maps_auth_error() {
-        let code = handle_api_error(ClientError::SessionValidation {
+        let exit = handle_api_error(ClientError::SessionValidation {
             message: "test".into(),
         });
-        assert_eq!(code, 3);
+        assert_eq!(exit.code(), 3);
     }
 
     #[test]
     fn handle_api_error_maps_http_error() {
-        let code = handle_api_error(ClientError::Status {
+        let exit = handle_api_error(ClientError::Status {
             code: 500,
             url: "https://example.com".into(),
             body: "error".into(),
         });
-        assert_eq!(code, 5);
+        assert_eq!(exit.code(), 5);
     }
 
     #[test]
@@ -245,7 +245,7 @@ mod tests {
         username: &str,
         password: &str,
         config: crate::client::ClientConfig,
-    ) -> Result<Client, i32> {
+    ) -> Result<Client, CliExit> {
         let session = login_with_base(&config.base_url, username, password)
             .await
             .map_err(|err| client_error(&err))?;

@@ -3,15 +3,16 @@
 use serde::Serialize;
 use serde_json::json;
 
-use crate::cli::output::{finish_output, print_json};
+use crate::cli::error::CliExit;
+use crate::cli::output::print_json;
 
 /// Writes a compact JSON dry-run plan to stdout.
 pub(crate) fn print_dry_run_plan<T: Serialize + ?Sized>(
     command: &'static str,
     operation: &'static str,
     request: &T,
-) -> i32 {
-    finish_output(print_json(&dry_run_plan(command, operation, request)))
+) -> Result<(), CliExit> {
+    Ok(print_json(&dry_run_plan(command, operation, request))?)
 }
 
 fn dry_run_plan<T: Serialize + ?Sized>(

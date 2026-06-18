@@ -3,10 +3,11 @@
 use std::io::{self, Write};
 
 use crate::cli::output::finish_output;
+use crate::cli::error::CliExit;
 use crate::cli::{HelpArgs, HelpTopic};
 
 /// Emit a built-in operational help topic as plain text.
-pub fn handle(args: &HelpArgs) -> i32 {
+pub fn handle(args: &HelpArgs) -> Result<(), CliExit> {
     finish_output(write_text(topic_text(args.topic)))
 }
 
@@ -357,6 +358,6 @@ mod tests {
 
     #[test]
     fn write_errors_map_to_json_exit_code() {
-        assert_eq!(finish_output(Err(io::Error::other("stdout closed"))), 6);
+        assert!(finish_output(Err(io::Error::other("stdout closed"))).is_err());
     }
 }

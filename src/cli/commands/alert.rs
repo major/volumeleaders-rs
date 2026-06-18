@@ -8,9 +8,9 @@ use tracing::instrument;
 
 use crate::cli::AlertArgs;
 use crate::cli::commands::scaffold::run_client_command;
-use crate::cli::common::auth::{handle_api_error, make_client};
+use crate::cli::common::auth::make_client;
 use crate::cli::dry_run::print_dry_run_plan;
-use crate::cli::error::usage_error;
+use crate::cli::error::{CliExit, usage_error};
 use crate::cli::output::{finish_output, print_json, print_records};
 
 const DEFAULT_CONFIGS_FIELDS: [&str; 9] = [
@@ -395,7 +395,7 @@ pub struct DeleteArgs {
 
 /// Handles the alert command group.
 #[instrument(skip_all)]
-pub async fn handle(args: &AlertArgs) -> i32 {
+pub async fn handle(args: &AlertArgs) -> Result<(), CliExit> {
     match &args.command {
         AlertCommand::Configs(a) => execute_configs(a).await,
         AlertCommand::Create(a) => execute_create(a).await,
@@ -405,16 +405,10 @@ pub async fn handle(args: &AlertArgs) -> i32 {
 }
 
 #[instrument(skip_all)]
-async fn execute_configs(args: &ConfigsArgs) -> i32 {
-    let client = match make_client().await {
-        Ok(c) => c,
-        Err(code) => return code,
-    };
+async fn execute_configs(args: &ConfigsArgs) -> Result<(), CliExit> {
+    let client = make_client().await?;
     let request = AlertConfigsRequest::new();
-    let configs = match client.get_alert_configs_limit(&request, usize::MAX).await {
-        Ok(c) => c,
-        Err(err) => return handle_api_error(err),
-    };
+    let configs = client.get_alert_configs_limit(&request, usize::MAX).await?;
 
     finish_output(print_records(
         &configs,
@@ -425,7 +419,7 @@ async fn execute_configs(args: &ConfigsArgs) -> i32 {
 }
 
 #[instrument(skip_all)]
-async fn execute_create(args: &CreateArgs) -> i32 {
+async fn execute_create(args: &CreateArgs) -> Result<(), CliExit> {
     let request = build_create_request(args);
     if args.dry_run {
         return print_dry_run_plan("alert create", "create", request.fields());
@@ -444,7 +438,7 @@ async fn execute_create(args: &CreateArgs) -> i32 {
 }
 
 #[instrument(skip_all)]
-async fn execute_edit(args: &EditArgs) -> i32 {
+async fn execute_edit(args: &EditArgs) -> Result<(), CliExit> {
     let request = build_edit_request(args);
     let key = args.key;
     if args.dry_run {
@@ -464,7 +458,7 @@ async fn execute_edit(args: &EditArgs) -> i32 {
 }
 
 #[instrument(skip_all)]
-async fn execute_delete(args: &DeleteArgs) -> i32 {
+async fn execute_delete(args: &DeleteArgs) -> Result<(), CliExit> {
     let key = args.key;
     let request = DeleteAlertConfigRequest {
         alert_config_key: key,
@@ -473,9 +467,9 @@ async fn execute_delete(args: &DeleteArgs) -> i32 {
         return print_dry_run_plan("alert delete", "delete", &request);
     }
     if !args.yes {
-        return usage_error(
+        return Err(usage_error(
             "alert delete requires --yes to confirm live deletion; use --dry-run to inspect the request",
-        );
+        ));
     }
 
     run_client_command(
@@ -745,14 +739,14 @@ mod tests {
     async fn create_dry_run_finishes_without_auth() {
         let args = test_create_args(true);
 
-        assert_eq!(execute_create(&args).await, 0);
+        assert!(execute_create(&args).await.is_ok());
     }
 
     #[tokio::test]
     async fn edit_dry_run_finishes_without_auth() {
         let args = test_edit_args(true);
 
-        assert_eq!(execute_edit(&args).await, 0);
+        assert!(execute_edit(&args).await.is_ok());
     }
 
     #[tokio::test]
@@ -763,7 +757,7 @@ mod tests {
             key: 42,
         };
 
-        assert_eq!(execute_delete(&args).await, 0);
+        assert!(execute_delete(&args).await.is_ok());
     }
 
     #[tokio::test]
@@ -774,10 +768,7 @@ mod tests {
             key: 42,
         };
 
-        assert_eq!(
-            execute_delete(&args).await,
-            crate::cli::error::EXIT_USAGE_ERROR
-        );
+        assert!(execute_delete(&args).await.is_err());
     }
 
     #[test]

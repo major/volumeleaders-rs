@@ -6,6 +6,46 @@ use serde::Serialize;
 
 use crate::ClientError;
 
+/// A semantic CLI exit code that has already been rendered to stderr.
+///
+/// Converting from `io::Error`, `ClientError`, or `i32` renders the structured
+/// JSON error envelope to stderr and captures the exit code.  `?` on a
+/// `Result<_, CliExit>` in command handlers therefore handles both auth/client
+/// errors and output errors in a single operator.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct CliExit(pub i32);
+
+impl CliExit {
+    /// Return the raw exit code.  Only the dispatch boundary should call this.
+    #[must_use]
+    pub const fn code(self) -> i32 {
+        self.0
+    }
+}
+
+impl From<i32> for CliExit {
+    fn from(code: i32) -> Self {
+        // i32 values flowing into CliExit must have already been rendered.
+        Self(code)
+    }
+}
+
+impl From<ClientError> for CliExit {
+    fn from(err: ClientError) -> Self {
+        Self(client_error(&err))
+    }
+}
+
+impl From<io::Error> for CliExit {
+    fn from(err: io::Error) -> Self {
+        match err.kind() {
+            io::ErrorKind::NotFound => empty_result(err.to_string()),
+            io::ErrorKind::InvalidInput => usage_error(format!("output error: {err}")),
+            _ => json_error(format!("output error: {err}")),
+        }
+    }
+}
+
 /// Exit code used by clap for invalid flags, arguments, or command shape.
 pub const EXIT_USAGE_ERROR: i32 = 2;
 /// Exit code for missing, expired, or unusable authentication.
@@ -95,22 +135,22 @@ pub fn render_error(kind: CliErrorKind, message: impl AsRef<str>) -> i32 {
     kind.exit_code()
 }
 
-/// Writes a structured usage error and returns exit code 2.
-pub fn usage_error(message: impl AsRef<str>) -> i32 {
-    render_error(CliErrorKind::UsageError, message)
+/// Writes a structured usage error and returns the `CliExit`.
+pub fn usage_error(message: impl AsRef<str>) -> CliExit {
+    CliExit(render_error(CliErrorKind::UsageError, message))
 }
 
-/// Writes a structured JSON error and returns exit code 6.
-pub fn json_error(message: impl AsRef<str>) -> i32 {
-    render_error(CliErrorKind::JsonError, message)
+/// Writes a structured JSON error and returns the `CliExit`.
+pub fn json_error(message: impl AsRef<str>) -> CliExit {
+    CliExit(render_error(CliErrorKind::JsonError, message))
 }
 
-/// Writes a structured empty-result error and returns exit code 7.
-pub fn empty_result(message: impl AsRef<str>) -> i32 {
-    render_error(CliErrorKind::EmptyResult, message)
+/// Writes a structured empty-result error and returns the `CliExit`.
+pub fn empty_result(message: impl AsRef<str>) -> CliExit {
+    CliExit(render_error(CliErrorKind::EmptyResult, message))
 }
 
-/// Writes a structured client error and returns its semantic exit code.
+/// Writes a structured client error and returns its semantic `CliExit`.
 pub fn client_error(err: &ClientError) -> i32 {
     render_error(client_error_kind(err), err.to_string())
 }
