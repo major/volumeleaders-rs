@@ -322,7 +322,9 @@ fn command_preset_name_returns_correct_names() {
     };
 
     assert_eq!(
-        ReportCommand::Top100Rank(flags.clone()).preset().map(|p| p.0),
+        ReportCommand::Top100Rank(flags.clone())
+            .preset()
+            .map(|p| p.0),
         Some("top-100-rank")
     );
 

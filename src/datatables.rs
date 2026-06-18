@@ -394,10 +394,22 @@ fn raw_pairs(req: &DataTablesRequest) -> FormPairs {
     }
 
     if req.order.is_empty() {
-        push_order_raw(&mut pairs, 0, DEFAULT_ORDER_COLUMN, SortDir::Desc.as_str(), "");
+        push_order_raw(
+            &mut pairs,
+            0,
+            DEFAULT_ORDER_COLUMN,
+            SortDir::Desc.as_str(),
+            "",
+        );
     } else {
         for (index, order) in req.order.iter().enumerate() {
-            push_order_raw(&mut pairs, index, order.column, order.dir.as_str(), order.name);
+            push_order_raw(
+                &mut pairs,
+                index,
+                order.column,
+                order.dir.as_str(),
+                order.name,
+            );
         }
     }
 

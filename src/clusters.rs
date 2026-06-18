@@ -91,10 +91,7 @@ pub fn trade_cluster_bombs_columns() -> Vec<DataTablesColumn> {
         DataTablesColumn::searchable("DollarsMultiplier", "RS"),
         DataTablesColumn::searchable("CumulativeDistribution", "PCT"),
         DataTablesColumn::searchable("TradeClusterBombRank", "Rank"),
-        DataTablesColumn::searchable(
-            "LastComparableTradeClusterBombDate",
-            "Last Date",
-        ),
+        DataTablesColumn::searchable("LastComparableTradeClusterBombDate", "Last Date"),
         DataTablesColumn::new("LastComparableTradeClusterBombDate", "Charts", true, false),
     ]
 }

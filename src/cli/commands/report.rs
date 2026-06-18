@@ -13,11 +13,11 @@ use crate::cli::common::auth::make_client;
 use crate::cli::common::dates::resolve_date_range;
 use crate::cli::common::tickers::parse_tickers;
 use crate::cli::common::types::SummaryGroup;
-use crate::datatables::SortDir;
 use crate::cli::error::{CliExit, usage_error};
 use crate::cli::field_metadata;
 use crate::cli::field_metadata::TRADE_HEADERS;
 use crate::cli::output::{finish_output, print_json, print_records_for_command, selected_fields};
+use crate::datatables::SortDir;
 
 /// Default trade limit when none is specified on the command line.
 const DEFAULT_LIMIT: usize = 500;

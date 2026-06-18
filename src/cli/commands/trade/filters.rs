@@ -484,10 +484,7 @@ fn trade_cluster_bomb_chart_columns() -> Vec<DataTablesColumn> {
         DataTablesColumn::searchable("DollarsMultiplier", "RS"),
         DataTablesColumn::searchable("CumulativeDistribution", "PCT"),
         DataTablesColumn::searchable(K_TRADE_CLUSTER_BOMB_RANK, "R"),
-        DataTablesColumn::searchable(
-            "LastComparableTradeClusterBombDate",
-            "Last Comp",
-        ),
+        DataTablesColumn::searchable("LastComparableTradeClusterBombDate", "Last Comp"),
     ]
 }
 
