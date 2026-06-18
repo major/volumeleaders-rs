@@ -617,7 +617,7 @@ pub(super) fn level_touch_filters(
     filters.push(pair(K_VCD, args.vcd.unwrap_or(0).to_string()));
     filters.push(pair(
         K_RELATIVE_SIZE,
-        args.relative_size.unwrap_or(5).to_string(),
+        args.relative_size.unwrap_or(0).to_string(),
     ));
     filters.push(pair(K_TRADE_LEVEL_RANK, args.trade_level_rank.to_string()));
     filters.push(pair(K_LEVELS, args.trade_level_count.to_string()));

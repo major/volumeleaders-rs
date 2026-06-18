@@ -43,6 +43,18 @@ pub(crate) const LEVEL_HEADERS: &[&str] = &[
     "Dates",
 ];
 
+pub(crate) const LEVEL_TOUCHES_HEADERS: &[&str] = &[
+    "Ticker",
+    "FullTimeString24",
+    "Price",
+    "Dollars",
+    "Volume",
+    "Trades",
+    "RelativeSize",
+    "TradeLevelRank",
+    "Dates",
+];
+
 pub(crate) const ALERT_HEADERS: &[&str] = &[
     "FullTimeString24",
     "AlertType",
