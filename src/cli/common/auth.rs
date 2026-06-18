@@ -103,7 +103,7 @@ async fn build_client_from_session(session: Session) -> Result<Client, ClientErr
 #[cfg(test)]
 mod tests {
     use crate::ClientError;
-    use crate::login::login_with_base;
+    use crate::login::login_at;
 
     use super::*;
 
@@ -246,7 +246,7 @@ mod tests {
         password: &str,
         config: crate::client::ClientConfig,
     ) -> Result<Client, CliExit> {
-        let session = login_with_base(&config.base_url, username, password)
+        let session = login_at(&config.base_url, username, password)
             .await
             .map_err(|err| client_error(&err))?;
 

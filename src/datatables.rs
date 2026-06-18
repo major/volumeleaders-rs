@@ -247,6 +247,42 @@ macro_rules! impl_datatables_request_methods {
 
 pub(crate) use impl_datatables_request_methods;
 
+/// Defines a [`DataTablesRequest`] newtype with standard `new()`, `Default`,
+/// and delegated builder methods.
+///
+/// Emits the tuple struct, [`impl_datatables_request_methods!`] delegation,
+/// a `new()` constructor that installs the given column definitions, and a
+/// manual [`Default`] forwarding to `new()`. Endpoint-specific builder
+/// methods remain on manual `impl` blocks after the macro call.
+macro_rules! define_datatables_request {
+    ($(#[$meta:meta])* $name:ident, $columns_fn:path) => {
+        $(#[$meta])*
+        #[derive(Clone, Debug)]
+        pub struct $name(pub(crate) DataTablesRequest);
+
+        $crate::datatables::impl_datatables_request_methods!($name);
+
+        impl $name {
+            /// Create a new request with default column definitions.
+            #[must_use]
+            pub fn new() -> Self {
+                Self(DataTablesRequest {
+                    columns: $columns_fn(),
+                    ..DataTablesRequest::default()
+                })
+            }
+        }
+
+        impl Default for $name {
+            fn default() -> Self {
+                Self::new()
+            }
+        }
+    };
+}
+
+pub(crate) use define_datatables_request;
+
 /// Implement paired one-page and paginated DataTables client methods.
 ///
 /// `$request_type` must be a tuple struct whose field 0 is a
@@ -585,13 +621,12 @@ mod tests {
     async fn fetch_limit_single_page_returns_all_items() {
         let mut server = mockito::Server::new_async().await;
         let rows: Vec<TestRow> = (1..=3).map(|i| TestRow { id: i }).collect();
-        let mock = server
-            .mock("POST", "/data")
-            .with_status(200)
-            .with_header("content-type", "application/json")
-            .with_body(make_response(rows.clone(), 3))
-            .create_async()
-            .await;
+        let mock = crate::test_support::mock_json_post(
+            &mut server,
+            "/data",
+            &make_response(rows.clone(), 3),
+        )
+        .await;
         let client = test_client(&server);
 
         let result: Vec<TestRow> = client
@@ -647,13 +682,7 @@ mod tests {
     async fn fetch_limit_respects_limit() {
         let mut server = mockito::Server::new_async().await;
         let page: Vec<TestRow> = (1..=100).map(|i| TestRow { id: i }).collect();
-        server
-            .mock("POST", "/data")
-            .with_status(200)
-            .with_header("content-type", "application/json")
-            .with_body(make_response(page, 1000))
-            .create_async()
-            .await;
+        crate::test_support::mock_json_post(&mut server, "/data", &make_response(page, 1000)).await;
         let client = test_client(&server);
 
         let result: Vec<TestRow> = client
@@ -669,13 +698,7 @@ mod tests {
     #[tokio::test]
     async fn fetch_limit_empty_result_returns_empty_vec() {
         let mut server = mockito::Server::new_async().await;
-        server
-            .mock("POST", "/data")
-            .with_status(200)
-            .with_header("content-type", "application/json")
-            .with_body(make_response(vec![], 0))
-            .create_async()
-            .await;
+        crate::test_support::mock_json_post(&mut server, "/data", &make_response(vec![], 0)).await;
         let client = test_client(&server);
 
         let result: Vec<TestRow> = client

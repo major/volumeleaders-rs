@@ -10,8 +10,7 @@ use tracing::instrument;
 
 use crate::client::Client;
 use crate::datatables::{
-    DataTablesColumn, DataTablesRequest, impl_datatables_client_methods,
-    impl_datatables_request_methods,
+    DataTablesColumn, DataTablesRequest, define_datatables_request, impl_datatables_client_methods,
 };
 use crate::error::Result;
 use crate::models::{ExhaustionScore, Trade, TradeCluster};
@@ -39,57 +38,23 @@ pub struct ExhaustionScoresRequest {
     pub date: String,
 }
 
-/// Request parameters for `/ExecutiveSummary/GetWelcomeTrades`.
-///
-/// Wraps a [`DataTablesRequest`] with pre-configured column definitions
-/// matching the VolumeLeaders welcome trades table.
-#[derive(Clone, Debug)]
-pub struct WelcomeTradesRequest(pub(crate) DataTablesRequest);
+define_datatables_request!(
+    /// Request parameters for `/ExecutiveSummary/GetWelcomeTrades`.
+    ///
+    /// Wraps a [`DataTablesRequest`] with pre-configured column definitions
+    /// matching the VolumeLeaders welcome trades table.
+    WelcomeTradesRequest,
+    welcome_trades_columns
+);
 
-impl_datatables_request_methods!(WelcomeTradesRequest);
-
-impl WelcomeTradesRequest {
-    /// Create a welcome trades request with default column definitions.
-    #[must_use]
-    pub fn new() -> Self {
-        Self(DataTablesRequest {
-            columns: welcome_trades_columns(),
-            ..DataTablesRequest::default()
-        })
-    }
-}
-
-impl Default for WelcomeTradesRequest {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-/// Request parameters for `/ExecutiveSummary/GetWelcomeTradeClusters`.
-///
-/// Wraps a [`DataTablesRequest`] with pre-configured column definitions
-/// matching the VolumeLeaders welcome trade clusters table.
-#[derive(Clone, Debug)]
-pub struct WelcomeTradeClustersRequest(pub(crate) DataTablesRequest);
-
-impl_datatables_request_methods!(WelcomeTradeClustersRequest);
-
-impl WelcomeTradeClustersRequest {
-    /// Create a welcome trade clusters request with default column definitions.
-    #[must_use]
-    pub fn new() -> Self {
-        Self(DataTablesRequest {
-            columns: welcome_trade_clusters_columns(),
-            ..DataTablesRequest::default()
-        })
-    }
-}
-
-impl Default for WelcomeTradeClustersRequest {
-    fn default() -> Self {
-        Self::new()
-    }
-}
+define_datatables_request!(
+    /// Request parameters for `/ExecutiveSummary/GetWelcomeTradeClusters`.
+    ///
+    /// Wraps a [`DataTablesRequest`] with pre-configured column definitions
+    /// matching the VolumeLeaders welcome trade clusters table.
+    WelcomeTradeClustersRequest,
+    welcome_trade_clusters_columns
+);
 
 /// Return the DataTables column definitions for the welcome trades table.
 ///
@@ -339,13 +304,12 @@ mod tests {
     async fn get_welcome_trades_returns_fixture_response() {
         let mut server = mockito::Server::new_async().await;
         let fixture = crate::test_support::read_fixture("welcome_trades_response.json");
-        let mock = server
-            .mock("POST", EXECUTIVE_SUMMARY_GET_WELCOME_TRADES_PATH)
-            .with_status(200)
-            .with_header("content-type", "application/json")
-            .with_body(&fixture)
-            .create_async()
-            .await;
+        let mock = crate::test_support::mock_json_post(
+            &mut server,
+            EXECUTIVE_SUMMARY_GET_WELCOME_TRADES_PATH,
+            &fixture,
+        )
+        .await;
         let client = test_client(&server);
 
         let response = client
@@ -368,13 +332,12 @@ mod tests {
     async fn get_welcome_trades_limit_respects_limit() {
         let mut server = mockito::Server::new_async().await;
         let fixture = crate::test_support::read_fixture("welcome_trades_response.json");
-        server
-            .mock("POST", EXECUTIVE_SUMMARY_GET_WELCOME_TRADES_PATH)
-            .with_status(200)
-            .with_header("content-type", "application/json")
-            .with_body(&fixture)
-            .create_async()
-            .await;
+        crate::test_support::mock_json_post(
+            &mut server,
+            EXECUTIVE_SUMMARY_GET_WELCOME_TRADES_PATH,
+            &fixture,
+        )
+        .await;
         let client = test_client(&server);
 
         let trades = client
@@ -390,13 +353,12 @@ mod tests {
     async fn get_welcome_trade_clusters_returns_fixture_response() {
         let mut server = mockito::Server::new_async().await;
         let fixture = crate::test_support::read_fixture("welcome_trade_clusters_response.json");
-        let mock = server
-            .mock("POST", EXECUTIVE_SUMMARY_GET_WELCOME_TRADE_CLUSTERS_PATH)
-            .with_status(200)
-            .with_header("content-type", "application/json")
-            .with_body(&fixture)
-            .create_async()
-            .await;
+        let mock = crate::test_support::mock_json_post(
+            &mut server,
+            EXECUTIVE_SUMMARY_GET_WELCOME_TRADE_CLUSTERS_PATH,
+            &fixture,
+        )
+        .await;
         let client = test_client(&server);
 
         let response = client
@@ -419,13 +381,12 @@ mod tests {
     async fn get_welcome_trade_clusters_limit_respects_limit() {
         let mut server = mockito::Server::new_async().await;
         let fixture = crate::test_support::read_fixture("welcome_trade_clusters_response.json");
-        server
-            .mock("POST", EXECUTIVE_SUMMARY_GET_WELCOME_TRADE_CLUSTERS_PATH)
-            .with_status(200)
-            .with_header("content-type", "application/json")
-            .with_body(&fixture)
-            .create_async()
-            .await;
+        crate::test_support::mock_json_post(
+            &mut server,
+            EXECUTIVE_SUMMARY_GET_WELCOME_TRADE_CLUSTERS_PATH,
+            &fixture,
+        )
+        .await;
         let client = test_client(&server);
 
         let clusters = client
@@ -440,13 +401,12 @@ mod tests {
     #[tokio::test]
     async fn get_all_snapshots_parses_ticker_prices() {
         let mut server = mockito::Server::new_async().await;
-        let mock = server
-            .mock("POST", TRADES_GET_ALL_SNAPSHOTS_PATH)
-            .with_status(200)
-            .with_header("content-type", "application/json")
-            .with_body(r#""A:114.52;AA:62.67;""#)
-            .create_async()
-            .await;
+        let mock = crate::test_support::mock_json_post(
+            &mut server,
+            TRADES_GET_ALL_SNAPSHOTS_PATH,
+            r#""A:114.52;AA:62.67;""#,
+        )
+        .await;
         let client = test_client(&server);
 
         let snapshots = client.get_all_snapshots().await.unwrap();
@@ -459,13 +419,12 @@ mod tests {
     #[tokio::test]
     async fn get_all_snapshots_string_returns_raw_string() {
         let mut server = mockito::Server::new_async().await;
-        let mock = server
-            .mock("POST", TRADES_GET_ALL_SNAPSHOTS_PATH)
-            .with_status(200)
-            .with_header("content-type", "application/json")
-            .with_body(r#""A:114.52;AA:62.67;""#)
-            .create_async()
-            .await;
+        let mock = crate::test_support::mock_json_post(
+            &mut server,
+            TRADES_GET_ALL_SNAPSHOTS_PATH,
+            r#""A:114.52;AA:62.67;""#,
+        )
+        .await;
         let client = test_client(&server);
 
         let raw = client.get_all_snapshots_string().await.unwrap();

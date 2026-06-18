@@ -1,44 +1,28 @@
 //! Trades endpoint for the `/Trades/GetTrades` DataTables API.
 
 use crate::datatables::{
-    DataTablesColumn, DataTablesRequest, impl_datatables_client_methods,
-    impl_datatables_request_methods,
+    DataTablesColumn, DataTablesRequest, define_datatables_request, impl_datatables_client_methods,
 };
 use crate::models::Trade;
 
 /// Browser endpoint path for institutional trades.
 pub(crate) const TRADES_PATH: &str = "/Trades/GetTrades";
 
-/// Request parameters for the `/Trades/GetTrades` endpoint.
-///
-/// Wraps a [`DataTablesRequest`] with pre-configured column definitions
-/// matching the VolumeLeaders trades table.
-#[derive(Clone, Debug)]
-pub struct TradesRequest(pub(crate) DataTablesRequest);
-
-impl_datatables_request_methods!(TradesRequest);
+define_datatables_request!(
+    /// Request parameters for the `/Trades/GetTrades` endpoint.
+    ///
+    /// Wraps a [`DataTablesRequest`] with pre-configured column definitions
+    /// matching the VolumeLeaders trades table.
+    TradesRequest,
+    trades_columns
+);
 
 impl TradesRequest {
-    /// Create a new trades request with default column definitions.
-    #[must_use]
-    pub fn new() -> Self {
-        Self(DataTablesRequest {
-            columns: trades_columns(),
-            ..DataTablesRequest::default()
-        })
-    }
-
     /// Set endpoint filters for the trades table.
     #[must_use]
     pub fn with_trade_filters(mut self, filters: Vec<(String, String)>) -> Self {
         self.0 = self.0.with_extra_values(filters);
         self
-    }
-}
-
-impl Default for TradesRequest {
-    fn default() -> Self {
-        Self::new()
     }
 }
 
@@ -117,13 +101,7 @@ mod tests {
     async fn get_trades_returns_fixture_response() {
         let mut server = mockito::Server::new_async().await;
         let fixture = crate::test_support::read_fixture("trades_get_trades_response.json");
-        let mock = server
-            .mock("POST", TRADES_PATH)
-            .with_status(200)
-            .with_header("content-type", "application/json")
-            .with_body(&fixture)
-            .create_async()
-            .await;
+        let mock = crate::test_support::mock_json_post(&mut server, TRADES_PATH, &fixture).await;
         let client = test_client(&server);
 
         let response = client.get_trades(&TradesRequest::new()).await.unwrap();
@@ -141,13 +119,7 @@ mod tests {
     async fn get_trades_limit_respects_limit() {
         let mut server = mockito::Server::new_async().await;
         let fixture = crate::test_support::read_fixture("trades_get_trades_response.json");
-        server
-            .mock("POST", TRADES_PATH)
-            .with_status(200)
-            .with_header("content-type", "application/json")
-            .with_body(&fixture)
-            .create_async()
-            .await;
+        crate::test_support::mock_json_post(&mut server, TRADES_PATH, &fixture).await;
         let client = test_client(&server);
 
         let trades = client

@@ -422,7 +422,8 @@ mod tests {
     use serde_json::Value;
 
     use crate::cli::error::CliExit;
-    use crate::session::{COOKIE_DOMAIN, Cookie, FORMS_AUTH_COOKIE_NAME, SESSION_COOKIE_NAME};
+    use crate::session::{COOKIE_DOMAIN, Cookie, SESSION_COOKIE_NAME};
+    use crate::test_support::test_session;
     use crate::{
         ClientError, ClientError as Error, CredentialSource, Credentials, ResolvedCredentials,
     };
@@ -433,19 +434,9 @@ mod tests {
         finish_doctor_output, has_cookie, live_connectivity_from_error,
     };
 
-    fn valid_session() -> crate::session::Session {
-        crate::session::Session::new(
-            vec![
-                Cookie::new(SESSION_COOKIE_NAME, "session-123", COOKIE_DOMAIN),
-                Cookie::new(FORMS_AUTH_COOKIE_NAME, "auth-456", COOKIE_DOMAIN),
-            ],
-            "xsrf-789",
-        )
-    }
-
     #[test]
     fn auth_report_from_valid_cached_session() {
-        let session = Some(valid_session());
+        let session = Some(test_session());
         let report = auth_report_from_cache(&session, None, None);
 
         assert_eq!(report.kind, "credentials");
@@ -516,7 +507,7 @@ mod tests {
 
     #[test]
     fn auth_report_from_live_failed_cached_session_includes_recovery_actions() {
-        let session = Some(valid_session());
+        let session = Some(test_session());
         let resolution = Err(ClientError::SessionValidation {
             message: "set VL_USERNAME and VL_PASSWORD".to_string(),
         });
@@ -545,7 +536,7 @@ mod tests {
 
     #[test]
     fn auth_report_from_live_failed_cached_session_uses_fallback_credentials() {
-        let session = Some(valid_session());
+        let session = Some(test_session());
         let resolution = Ok(ResolvedCredentials::new(
             Credentials::new("user@example.com", "password"),
             CredentialSource::Environment,

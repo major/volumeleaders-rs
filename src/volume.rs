@@ -244,13 +244,12 @@ mod tests {
     #[tokio::test]
     async fn get_institutional_volume_returns_fixture_response() {
         let mut server = mockito::Server::new_async().await;
-        let mock = server
-            .mock("POST", INSTITUTIONAL_VOLUME_PATH)
-            .with_status(200)
-            .with_header("content-type", "application/json")
-            .with_body(volume_fixture())
-            .create_async()
-            .await;
+        let mock = crate::test_support::mock_json_post(
+            &mut server,
+            INSTITUTIONAL_VOLUME_PATH,
+            &volume_fixture(),
+        )
+        .await;
         let client = test_client(&server);
 
         let response = client
@@ -269,13 +268,12 @@ mod tests {
     #[tokio::test]
     async fn get_institutional_volume_limit_respects_limit() {
         let mut server = mockito::Server::new_async().await;
-        server
-            .mock("POST", INSTITUTIONAL_VOLUME_PATH)
-            .with_status(200)
-            .with_header("content-type", "application/json")
-            .with_body(volume_fixture())
-            .create_async()
-            .await;
+        crate::test_support::mock_json_post(
+            &mut server,
+            INSTITUTIONAL_VOLUME_PATH,
+            &volume_fixture(),
+        )
+        .await;
         let client = test_client(&server);
 
         let trades = client
@@ -290,13 +288,12 @@ mod tests {
     #[tokio::test]
     async fn get_ah_institutional_volume_returns_fixture_response() {
         let mut server = mockito::Server::new_async().await;
-        let mock = server
-            .mock("POST", AH_INSTITUTIONAL_VOLUME_PATH)
-            .with_status(200)
-            .with_header("content-type", "application/json")
-            .with_body(volume_fixture())
-            .create_async()
-            .await;
+        let mock = crate::test_support::mock_json_post(
+            &mut server,
+            AH_INSTITUTIONAL_VOLUME_PATH,
+            &volume_fixture(),
+        )
+        .await;
         let client = test_client(&server);
 
         let response = client
@@ -315,13 +312,12 @@ mod tests {
     #[tokio::test]
     async fn get_ah_institutional_volume_limit_respects_limit() {
         let mut server = mockito::Server::new_async().await;
-        server
-            .mock("POST", AH_INSTITUTIONAL_VOLUME_PATH)
-            .with_status(200)
-            .with_header("content-type", "application/json")
-            .with_body(volume_fixture())
-            .create_async()
-            .await;
+        crate::test_support::mock_json_post(
+            &mut server,
+            AH_INSTITUTIONAL_VOLUME_PATH,
+            &volume_fixture(),
+        )
+        .await;
         let client = test_client(&server);
 
         let trades = client
@@ -336,13 +332,9 @@ mod tests {
     #[tokio::test]
     async fn get_total_volume_returns_fixture_response() {
         let mut server = mockito::Server::new_async().await;
-        let mock = server
-            .mock("POST", TOTAL_VOLUME_PATH)
-            .with_status(200)
-            .with_header("content-type", "application/json")
-            .with_body(volume_fixture())
-            .create_async()
-            .await;
+        let mock =
+            crate::test_support::mock_json_post(&mut server, TOTAL_VOLUME_PATH, &volume_fixture())
+                .await;
         let client = test_client(&server);
 
         let response = client
@@ -361,12 +353,7 @@ mod tests {
     #[tokio::test]
     async fn get_total_volume_limit_respects_limit() {
         let mut server = mockito::Server::new_async().await;
-        server
-            .mock("POST", TOTAL_VOLUME_PATH)
-            .with_status(200)
-            .with_header("content-type", "application/json")
-            .with_body(volume_fixture())
-            .create_async()
+        crate::test_support::mock_json_post(&mut server, TOTAL_VOLUME_PATH, &volume_fixture())
             .await;
         let client = test_client(&server);
 
