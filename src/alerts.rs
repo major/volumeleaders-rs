@@ -401,31 +401,13 @@ mod tests {
     #[tokio::test]
     async fn alert_limit_methods_page_through_results() {
         let mut server = mockito::Server::new_async().await;
-        server
-            .mock("POST", ALERT_CONFIGS_GET_ALERT_CONFIGS_PATH)
-            .with_status(200)
-            .with_header("content-type", "application/json")
-            .with_body(datatables_body(vec![
-                serde_json::json!({"AlertConfigKey": 1}),
-            ]))
-            .create_async()
-            .await;
-        server
-            .mock("POST", TRADE_ALERTS_GET_TRADE_ALERTS_PATH)
-            .with_status(200)
-            .with_header("content-type", "application/json")
-            .with_body(datatables_body(vec![serde_json::json!({"TradeID": 2})]))
-            .create_async()
-            .await;
-        server
-            .mock("POST", TRADE_CLUSTER_ALERTS_GET_TRADE_CLUSTER_ALERTS_PATH)
-            .with_status(200)
-            .with_header("content-type", "application/json")
-            .with_body(datatables_body(vec![
-                serde_json::json!({"TradeClusterRank": 3}),
-            ]))
-            .create_async()
-            .await;
+        crate::test_support::mock_json_post(&mut server, ALERT_CONFIGS_GET_ALERT_CONFIGS_PATH, &datatables_body(vec![
+            serde_json::json!({"AlertConfigKey": 1}),
+        ])).await;
+        crate::test_support::mock_json_post(&mut server, TRADE_ALERTS_GET_TRADE_ALERTS_PATH, &datatables_body(vec![serde_json::json!({"TradeID": 2})])).await;
+        crate::test_support::mock_json_post(&mut server, TRADE_CLUSTER_ALERTS_GET_TRADE_CLUSTER_ALERTS_PATH, &datatables_body(vec![
+            serde_json::json!({"TradeClusterRank": 3}),
+        ])).await;
         let client = test_client(&server);
 
         let configs = client

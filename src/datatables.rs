@@ -621,13 +621,7 @@ mod tests {
     async fn fetch_limit_single_page_returns_all_items() {
         let mut server = mockito::Server::new_async().await;
         let rows: Vec<TestRow> = (1..=3).map(|i| TestRow { id: i }).collect();
-        let mock = server
-            .mock("POST", "/data")
-            .with_status(200)
-            .with_header("content-type", "application/json")
-            .with_body(make_response(rows.clone(), 3))
-            .create_async()
-            .await;
+        let mock = crate::test_support::mock_json_post(&mut server, "/data", &make_response(rows.clone(), 3)).await;
         let client = test_client(&server);
 
         let result: Vec<TestRow> = client
@@ -683,13 +677,7 @@ mod tests {
     async fn fetch_limit_respects_limit() {
         let mut server = mockito::Server::new_async().await;
         let page: Vec<TestRow> = (1..=100).map(|i| TestRow { id: i }).collect();
-        server
-            .mock("POST", "/data")
-            .with_status(200)
-            .with_header("content-type", "application/json")
-            .with_body(make_response(page, 1000))
-            .create_async()
-            .await;
+        crate::test_support::mock_json_post(&mut server, "/data", &make_response(page, 1000)).await;
         let client = test_client(&server);
 
         let result: Vec<TestRow> = client
@@ -705,13 +693,7 @@ mod tests {
     #[tokio::test]
     async fn fetch_limit_empty_result_returns_empty_vec() {
         let mut server = mockito::Server::new_async().await;
-        server
-            .mock("POST", "/data")
-            .with_status(200)
-            .with_header("content-type", "application/json")
-            .with_body(make_response(vec![], 0))
-            .create_async()
-            .await;
+        crate::test_support::mock_json_post(&mut server, "/data", &make_response(vec![], 0)).await;
         let client = test_client(&server);
 
         let result: Vec<TestRow> = client

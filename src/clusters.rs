@@ -191,13 +191,7 @@ mod tests {
     async fn get_trade_clusters_returns_fixture_response() {
         let mut server = mockito::Server::new_async().await;
         let fixture = crate::test_support::read_fixture("trade_clusters_response.json");
-        let mock = server
-            .mock("POST", TRADE_CLUSTERS_PATH)
-            .with_status(200)
-            .with_header("content-type", "application/json")
-            .with_body(&fixture)
-            .create_async()
-            .await;
+        let mock = crate::test_support::mock_json_post(&mut server, TRADE_CLUSTERS_PATH, &fixture).await;
         let client = test_client(&server);
 
         let response = client
@@ -220,13 +214,7 @@ mod tests {
     async fn get_trade_clusters_limit_respects_limit() {
         let mut server = mockito::Server::new_async().await;
         let fixture = crate::test_support::read_fixture("trade_clusters_response.json");
-        server
-            .mock("POST", TRADE_CLUSTERS_PATH)
-            .with_status(200)
-            .with_header("content-type", "application/json")
-            .with_body(&fixture)
-            .create_async()
-            .await;
+        crate::test_support::mock_json_post(&mut server, TRADE_CLUSTERS_PATH, &fixture).await;
         let client = test_client(&server);
 
         let clusters = client
@@ -242,13 +230,7 @@ mod tests {
     async fn get_trade_cluster_bombs_returns_fixture_response() {
         let mut server = mockito::Server::new_async().await;
         let fixture = crate::test_support::read_fixture("trade_cluster_bombs_response.json");
-        let mock = server
-            .mock("POST", TRADE_CLUSTER_BOMBS_PATH)
-            .with_status(200)
-            .with_header("content-type", "application/json")
-            .with_body(&fixture)
-            .create_async()
-            .await;
+        let mock = crate::test_support::mock_json_post(&mut server, TRADE_CLUSTER_BOMBS_PATH, &fixture).await;
         let client = test_client(&server);
 
         let response = client
@@ -271,13 +253,7 @@ mod tests {
     async fn get_trade_cluster_bombs_limit_respects_limit() {
         let mut server = mockito::Server::new_async().await;
         let fixture = crate::test_support::read_fixture("trade_cluster_bombs_response.json");
-        server
-            .mock("POST", TRADE_CLUSTER_BOMBS_PATH)
-            .with_status(200)
-            .with_header("content-type", "application/json")
-            .with_body(&fixture)
-            .create_async()
-            .await;
+        crate::test_support::mock_json_post(&mut server, TRADE_CLUSTER_BOMBS_PATH, &fixture).await;
         let client = test_client(&server);
 
         let bombs = client

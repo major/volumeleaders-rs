@@ -55,6 +55,25 @@ pub fn test_client(server: &mockito::Server) -> crate::client::Client {
     .unwrap()
 }
 
+/// Create a mockito mock that returns a body as a JSON POST response.
+///
+/// Covers the standard mock pattern: `POST`, status 200,
+/// `content-type: application/json`, and the provided body.
+#[cfg(test)]
+pub async fn mock_json_post(
+    server: &mut mockito::Server,
+    path: &str,
+    body: &str,
+) -> mockito::Mock {
+    server
+        .mock("POST", path)
+        .with_status(200)
+        .with_header("content-type", "application/json")
+        .with_body(body)
+        .create_async()
+        .await
+}
+
 /// Wrap data in a [`DataTablesResponse`] JSON body for mock server responses.
 pub fn datatables_body<T: Serialize>(data: Vec<T>) -> String {
     serde_json::to_string(&DataTablesResponse {
