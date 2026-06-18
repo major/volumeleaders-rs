@@ -369,10 +369,18 @@ mod tests {
     #[tokio::test]
     async fn watchlist_limit_methods_page_through_results() {
         let mut server = mockito::Server::new_async().await;
-        crate::test_support::mock_json_post(&mut server, WATCH_LIST_CONFIGS_GET_WATCH_LISTS_PATH, &datatables_body(vec![
-            serde_json::json!({"SearchTemplateKey": 6307}),
-        ])).await;
-        crate::test_support::mock_json_post(&mut server, WATCH_LISTS_GET_WATCH_LIST_TICKERS_PATH, &datatables_body(vec![serde_json::json!({"Ticker": "AAPL"})])).await;
+        crate::test_support::mock_json_post(
+            &mut server,
+            WATCH_LIST_CONFIGS_GET_WATCH_LISTS_PATH,
+            &datatables_body(vec![serde_json::json!({"SearchTemplateKey": 6307})]),
+        )
+        .await;
+        crate::test_support::mock_json_post(
+            &mut server,
+            WATCH_LISTS_GET_WATCH_LIST_TICKERS_PATH,
+            &datatables_body(vec![serde_json::json!({"Ticker": "AAPL"})]),
+        )
+        .await;
         let client = test_client(&server);
 
         let configs = client

@@ -244,7 +244,12 @@ mod tests {
     #[tokio::test]
     async fn get_institutional_volume_returns_fixture_response() {
         let mut server = mockito::Server::new_async().await;
-        let mock = crate::test_support::mock_json_post(&mut server, INSTITUTIONAL_VOLUME_PATH, &volume_fixture()).await;
+        let mock = crate::test_support::mock_json_post(
+            &mut server,
+            INSTITUTIONAL_VOLUME_PATH,
+            &volume_fixture(),
+        )
+        .await;
         let client = test_client(&server);
 
         let response = client
@@ -263,7 +268,12 @@ mod tests {
     #[tokio::test]
     async fn get_institutional_volume_limit_respects_limit() {
         let mut server = mockito::Server::new_async().await;
-        crate::test_support::mock_json_post(&mut server, INSTITUTIONAL_VOLUME_PATH, &volume_fixture()).await;
+        crate::test_support::mock_json_post(
+            &mut server,
+            INSTITUTIONAL_VOLUME_PATH,
+            &volume_fixture(),
+        )
+        .await;
         let client = test_client(&server);
 
         let trades = client
@@ -278,7 +288,12 @@ mod tests {
     #[tokio::test]
     async fn get_ah_institutional_volume_returns_fixture_response() {
         let mut server = mockito::Server::new_async().await;
-        let mock = crate::test_support::mock_json_post(&mut server, AH_INSTITUTIONAL_VOLUME_PATH, &volume_fixture()).await;
+        let mock = crate::test_support::mock_json_post(
+            &mut server,
+            AH_INSTITUTIONAL_VOLUME_PATH,
+            &volume_fixture(),
+        )
+        .await;
         let client = test_client(&server);
 
         let response = client
@@ -297,7 +312,12 @@ mod tests {
     #[tokio::test]
     async fn get_ah_institutional_volume_limit_respects_limit() {
         let mut server = mockito::Server::new_async().await;
-        crate::test_support::mock_json_post(&mut server, AH_INSTITUTIONAL_VOLUME_PATH, &volume_fixture()).await;
+        crate::test_support::mock_json_post(
+            &mut server,
+            AH_INSTITUTIONAL_VOLUME_PATH,
+            &volume_fixture(),
+        )
+        .await;
         let client = test_client(&server);
 
         let trades = client
@@ -312,7 +332,9 @@ mod tests {
     #[tokio::test]
     async fn get_total_volume_returns_fixture_response() {
         let mut server = mockito::Server::new_async().await;
-        let mock = crate::test_support::mock_json_post(&mut server, TOTAL_VOLUME_PATH, &volume_fixture()).await;
+        let mock =
+            crate::test_support::mock_json_post(&mut server, TOTAL_VOLUME_PATH, &volume_fixture())
+                .await;
         let client = test_client(&server);
 
         let response = client
@@ -331,7 +353,8 @@ mod tests {
     #[tokio::test]
     async fn get_total_volume_limit_respects_limit() {
         let mut server = mockito::Server::new_async().await;
-        crate::test_support::mock_json_post(&mut server, TOTAL_VOLUME_PATH, &volume_fixture()).await;
+        crate::test_support::mock_json_post(&mut server, TOTAL_VOLUME_PATH, &volume_fixture())
+            .await;
         let client = test_client(&server);
 
         let trades = client

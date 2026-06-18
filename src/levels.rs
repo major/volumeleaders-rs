@@ -213,7 +213,9 @@ mod tests {
     async fn get_chart_trade_levels_returns_fixture_response() {
         let mut server = mockito::Server::new_async().await;
         let fixture = crate::test_support::read_fixture("trade_levels_response.json");
-        let mock = crate::test_support::mock_json_post(&mut server, CHART_GET_TRADE_LEVELS_PATH, &fixture).await;
+        let mock =
+            crate::test_support::mock_json_post(&mut server, CHART_GET_TRADE_LEVELS_PATH, &fixture)
+                .await;
         let client = test_client(&server);
 
         let response = client
@@ -236,7 +238,8 @@ mod tests {
     async fn get_chart_trade_levels_limit_respects_limit() {
         let mut server = mockito::Server::new_async().await;
         let fixture = crate::test_support::read_fixture("trade_levels_response.json");
-        crate::test_support::mock_json_post(&mut server, CHART_GET_TRADE_LEVELS_PATH, &fixture).await;
+        crate::test_support::mock_json_post(&mut server, CHART_GET_TRADE_LEVELS_PATH, &fixture)
+            .await;
         let client = test_client(&server);
 
         let levels = client
@@ -252,7 +255,12 @@ mod tests {
     async fn get_chart0_trade_levels_returns_fixture_response() {
         let mut server = mockito::Server::new_async().await;
         let fixture = crate::test_support::read_fixture("trade_levels_response.json");
-        let mock = crate::test_support::mock_json_post(&mut server, CHART0_GET_TRADE_LEVELS_PATH, &fixture).await;
+        let mock = crate::test_support::mock_json_post(
+            &mut server,
+            CHART0_GET_TRADE_LEVELS_PATH,
+            &fixture,
+        )
+        .await;
         let client = test_client(&server);
 
         let response = client
@@ -274,7 +282,8 @@ mod tests {
     async fn get_chart0_trade_levels_limit_respects_limit() {
         let mut server = mockito::Server::new_async().await;
         let fixture = crate::test_support::read_fixture("trade_levels_response.json");
-        crate::test_support::mock_json_post(&mut server, CHART0_GET_TRADE_LEVELS_PATH, &fixture).await;
+        crate::test_support::mock_json_post(&mut server, CHART0_GET_TRADE_LEVELS_PATH, &fixture)
+            .await;
         let client = test_client(&server);
 
         let levels = client
@@ -290,7 +299,12 @@ mod tests {
     async fn get_trade_levels_returns_fixture_response() {
         let mut server = mockito::Server::new_async().await;
         let fixture = crate::test_support::read_fixture("trade_levels_response.json");
-        let mock = crate::test_support::mock_json_post(&mut server, TRADE_LEVELS_GET_TRADE_LEVELS_PATH, &fixture).await;
+        let mock = crate::test_support::mock_json_post(
+            &mut server,
+            TRADE_LEVELS_GET_TRADE_LEVELS_PATH,
+            &fixture,
+        )
+        .await;
         let client = test_client(&server);
 
         let response = client
@@ -314,7 +328,12 @@ mod tests {
     async fn get_trade_levels_limit_respects_limit() {
         let mut server = mockito::Server::new_async().await;
         let fixture = crate::test_support::read_fixture("trade_levels_response.json");
-        crate::test_support::mock_json_post(&mut server, TRADE_LEVELS_GET_TRADE_LEVELS_PATH, &fixture).await;
+        crate::test_support::mock_json_post(
+            &mut server,
+            TRADE_LEVELS_GET_TRADE_LEVELS_PATH,
+            &fixture,
+        )
+        .await;
         let client = test_client(&server);
 
         let levels = client
@@ -330,7 +349,9 @@ mod tests {
     async fn get_trade_level_touches_returns_fixture_response() {
         let mut server = mockito::Server::new_async().await;
         let fixture = crate::test_support::read_fixture("trade_level_touches_response.json");
-        let mock = crate::test_support::mock_json_post(&mut server, TRADE_LEVEL_TOUCHES_PATH, &fixture).await;
+        let mock =
+            crate::test_support::mock_json_post(&mut server, TRADE_LEVEL_TOUCHES_PATH, &fixture)
+                .await;
         let client = test_client(&server);
 
         let response = client

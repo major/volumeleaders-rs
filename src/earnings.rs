@@ -108,7 +108,9 @@ mod tests {
     async fn get_earnings_returns_fixture_response() {
         let mut server = mockito::Server::new_async().await;
         let fixture = crate::test_support::read_fixture("earnings_response.json");
-        let mock = crate::test_support::mock_json_post(&mut server, EARNINGS_GET_EARNINGS_PATH, &fixture).await;
+        let mock =
+            crate::test_support::mock_json_post(&mut server, EARNINGS_GET_EARNINGS_PATH, &fixture)
+                .await;
         let client = test_client(&server);
 
         let response = client.get_earnings(&EarningsRequest::new()).await.unwrap();
@@ -135,7 +137,8 @@ mod tests {
     async fn get_earnings_limit_respects_limit() {
         let mut server = mockito::Server::new_async().await;
         let fixture = crate::test_support::read_fixture("earnings_response.json");
-        crate::test_support::mock_json_post(&mut server, EARNINGS_GET_EARNINGS_PATH, &fixture).await;
+        crate::test_support::mock_json_post(&mut server, EARNINGS_GET_EARNINGS_PATH, &fixture)
+            .await;
         let client = test_client(&server);
 
         let earnings = client

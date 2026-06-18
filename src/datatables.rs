@@ -621,7 +621,12 @@ mod tests {
     async fn fetch_limit_single_page_returns_all_items() {
         let mut server = mockito::Server::new_async().await;
         let rows: Vec<TestRow> = (1..=3).map(|i| TestRow { id: i }).collect();
-        let mock = crate::test_support::mock_json_post(&mut server, "/data", &make_response(rows.clone(), 3)).await;
+        let mock = crate::test_support::mock_json_post(
+            &mut server,
+            "/data",
+            &make_response(rows.clone(), 3),
+        )
+        .await;
         let client = test_client(&server);
 
         let result: Vec<TestRow> = client

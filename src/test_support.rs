@@ -60,11 +60,7 @@ pub fn test_client(server: &mockito::Server) -> crate::client::Client {
 /// Covers the standard mock pattern: `POST`, status 200,
 /// `content-type: application/json`, and the provided body.
 #[cfg(test)]
-pub async fn mock_json_post(
-    server: &mut mockito::Server,
-    path: &str,
-    body: &str,
-) -> mockito::Mock {
+pub async fn mock_json_post(server: &mut mockito::Server, path: &str, body: &str) -> mockito::Mock {
     server
         .mock("POST", path)
         .with_status(200)

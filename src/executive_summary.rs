@@ -304,7 +304,12 @@ mod tests {
     async fn get_welcome_trades_returns_fixture_response() {
         let mut server = mockito::Server::new_async().await;
         let fixture = crate::test_support::read_fixture("welcome_trades_response.json");
-        let mock = crate::test_support::mock_json_post(&mut server, EXECUTIVE_SUMMARY_GET_WELCOME_TRADES_PATH, &fixture).await;
+        let mock = crate::test_support::mock_json_post(
+            &mut server,
+            EXECUTIVE_SUMMARY_GET_WELCOME_TRADES_PATH,
+            &fixture,
+        )
+        .await;
         let client = test_client(&server);
 
         let response = client
@@ -327,7 +332,12 @@ mod tests {
     async fn get_welcome_trades_limit_respects_limit() {
         let mut server = mockito::Server::new_async().await;
         let fixture = crate::test_support::read_fixture("welcome_trades_response.json");
-        crate::test_support::mock_json_post(&mut server, EXECUTIVE_SUMMARY_GET_WELCOME_TRADES_PATH, &fixture).await;
+        crate::test_support::mock_json_post(
+            &mut server,
+            EXECUTIVE_SUMMARY_GET_WELCOME_TRADES_PATH,
+            &fixture,
+        )
+        .await;
         let client = test_client(&server);
 
         let trades = client
@@ -343,7 +353,12 @@ mod tests {
     async fn get_welcome_trade_clusters_returns_fixture_response() {
         let mut server = mockito::Server::new_async().await;
         let fixture = crate::test_support::read_fixture("welcome_trade_clusters_response.json");
-        let mock = crate::test_support::mock_json_post(&mut server, EXECUTIVE_SUMMARY_GET_WELCOME_TRADE_CLUSTERS_PATH, &fixture).await;
+        let mock = crate::test_support::mock_json_post(
+            &mut server,
+            EXECUTIVE_SUMMARY_GET_WELCOME_TRADE_CLUSTERS_PATH,
+            &fixture,
+        )
+        .await;
         let client = test_client(&server);
 
         let response = client
@@ -366,7 +381,12 @@ mod tests {
     async fn get_welcome_trade_clusters_limit_respects_limit() {
         let mut server = mockito::Server::new_async().await;
         let fixture = crate::test_support::read_fixture("welcome_trade_clusters_response.json");
-        crate::test_support::mock_json_post(&mut server, EXECUTIVE_SUMMARY_GET_WELCOME_TRADE_CLUSTERS_PATH, &fixture).await;
+        crate::test_support::mock_json_post(
+            &mut server,
+            EXECUTIVE_SUMMARY_GET_WELCOME_TRADE_CLUSTERS_PATH,
+            &fixture,
+        )
+        .await;
         let client = test_client(&server);
 
         let clusters = client
@@ -381,7 +401,12 @@ mod tests {
     #[tokio::test]
     async fn get_all_snapshots_parses_ticker_prices() {
         let mut server = mockito::Server::new_async().await;
-        let mock = crate::test_support::mock_json_post(&mut server, TRADES_GET_ALL_SNAPSHOTS_PATH, r#""A:114.52;AA:62.67;""#).await;
+        let mock = crate::test_support::mock_json_post(
+            &mut server,
+            TRADES_GET_ALL_SNAPSHOTS_PATH,
+            r#""A:114.52;AA:62.67;""#,
+        )
+        .await;
         let client = test_client(&server);
 
         let snapshots = client.get_all_snapshots().await.unwrap();
@@ -394,7 +419,12 @@ mod tests {
     #[tokio::test]
     async fn get_all_snapshots_string_returns_raw_string() {
         let mut server = mockito::Server::new_async().await;
-        let mock = crate::test_support::mock_json_post(&mut server, TRADES_GET_ALL_SNAPSHOTS_PATH, r#""A:114.52;AA:62.67;""#).await;
+        let mock = crate::test_support::mock_json_post(
+            &mut server,
+            TRADES_GET_ALL_SNAPSHOTS_PATH,
+            r#""A:114.52;AA:62.67;""#,
+        )
+        .await;
         let client = test_client(&server);
 
         let raw = client.get_all_snapshots_string().await.unwrap();
