@@ -28,6 +28,14 @@ const PASSWORD_INPUT_MARKER: &str = r#"<input type="password"#;
 const X_REQUESTED_WITH: &str = "X-Requested-With";
 const XSRF_HEADER: &str = "X-XSRF-TOKEN";
 
+/// Browser form fields sent to VolumeLeaders.
+pub(crate) type FormPairs = Vec<(String, String)>;
+
+/// Build one browser form field pair.
+pub(crate) fn form_pair(name: impl Into<String>, value: impl Into<String>) -> (String, String) {
+    (name.into(), value.into())
+}
+
 /// HTTP client configuration.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ClientConfig {
@@ -128,11 +136,7 @@ impl Client {
 
     /// Sends an authenticated URL-encoded form POST and returns the response body.
     #[instrument(skip_all)]
-    pub(crate) async fn post_form(
-        &self,
-        path: &str,
-        pairs: Vec<(String, String)>,
-    ) -> Result<String> {
+    pub(crate) async fn post_form(&self, path: &str, pairs: FormPairs) -> Result<String> {
         let url = self.resolve(path);
         let response = self
             .http
@@ -375,11 +379,11 @@ pub(crate) fn hex_digit(value: u8) -> char {
 /// When `value` is true, two entries are pushed (`"true"` then `"false"`);
 /// when false, only `"false"` is pushed. This matches browser form behavior
 /// for checkbox + hidden input pairs.
-pub(crate) fn push_bool_field(fields: &mut Vec<(String, String)>, name: &str, value: bool) {
+pub(crate) fn push_bool_field(fields: &mut FormPairs, name: &str, value: bool) {
     if value {
-        fields.push((name.to_string(), "true".to_string()));
+        fields.push(form_pair(name, "true"));
     }
-    fields.push((name.to_string(), "false".to_string()));
+    fields.push(form_pair(name, "false"));
 }
 
 /// Build a `reqwest::multipart::Form` from key-value field pairs.

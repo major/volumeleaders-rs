@@ -2,6 +2,7 @@
 //! `/Chart0/GetTradeLevels`, `/TradeLevels/GetTradeLevels`, and
 //! `/TradeLevelTouches/GetTradeLevelTouches` DataTables APIs.
 
+use crate::client::FormPairs;
 use crate::datatables::{
     DataTablesColumn, DataTablesRequest, impl_datatables_client_methods,
     impl_datatables_request_methods,
@@ -59,7 +60,7 @@ impl TradeLevelsRequest {
     }
 
     /// Return raw key-value pairs for form submission.
-    pub(crate) fn to_pairs(&self) -> Vec<(String, String)> {
+    pub(crate) fn to_pairs(&self) -> FormPairs {
         self.0.to_pairs()
     }
 }
@@ -98,7 +99,7 @@ impl TradeLevelTouchesRequest {
     }
 
     /// Return raw key-value pairs for form submission.
-    pub(crate) fn to_pairs(&self) -> Vec<(String, String)> {
+    pub(crate) fn to_pairs(&self) -> FormPairs {
         self.0.to_pairs()
     }
 }
