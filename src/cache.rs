@@ -17,9 +17,10 @@ use tracing::{debug, warn};
 use crate::error::{ClientError, Result};
 use crate::session::Session;
 
-/// Maps a displayable error into [`ClientError::Cache`] with a context prefix.
-fn cache_err<E: std::fmt::Display>(context: impl Into<String>) -> impl FnOnce(E) -> ClientError {
-    let context = context.into();
+/// Maps a displayable error into [`ClientError::Cache`] with a static context
+/// prefix. The closure defers all work to the error path so the success path
+/// is zero-cost.
+fn cache_err<E: std::fmt::Display>(context: &'static str) -> impl FnOnce(E) -> ClientError {
     move |err| ClientError::Cache(format!("{context}: {err}"))
 }
 
@@ -93,10 +94,12 @@ fn save_session_at(session: &Session, base_dir: &Path) -> Result<()> {
     let path = cache_path_from_base(base_dir);
 
     let parent = path.parent().expect("cache path has parent");
-    fs::create_dir_all(parent).map_err(cache_err(format!(
-        "failed to create cache directory {}",
-        parent.display(),
-    )))?;
+    fs::create_dir_all(parent).map_err(|err| {
+        ClientError::Cache(format!(
+            "failed to create cache directory {}: {err}",
+            parent.display(),
+        ))
+    })?;
 
     let data = serde_json::to_string(session)?;
 
