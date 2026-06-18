@@ -2,13 +2,10 @@
 //! `/Chart0/GetTradeLevels`, `/TradeLevels/GetTradeLevels`, and
 //! `/TradeLevelTouches/GetTradeLevelTouches` DataTables APIs.
 
-use tracing::instrument;
-
-use crate::client::Client;
 use crate::datatables::{
-    DataTablesColumn, DataTablesRequest, DataTablesResponse, impl_datatables_request_methods,
+    DataTablesColumn, DataTablesRequest, impl_datatables_client_methods,
+    impl_datatables_request_methods,
 };
-use crate::error::Result;
 use crate::models::TradeLevel;
 
 /// Browser endpoint path for `/Chart/GetTradeLevels`.
@@ -153,100 +150,34 @@ pub fn trade_level_touches_columns() -> Vec<DataTablesColumn> {
     ]
 }
 
-impl Client {
-    /// Post a DataTables request to `/Chart/GetTradeLevels` and return the
-    /// typed response envelope.
-    #[instrument(skip_all)]
-    pub async fn get_chart_trade_levels(
-        &self,
-        request: &TradeLevelsRequest,
-    ) -> Result<DataTablesResponse<TradeLevel>> {
-        self.post_datatables(CHART_GET_TRADE_LEVELS_PATH, request.to_pairs())
-            .await
-    }
-
-    /// Fetch up to `limit` trade levels by paginating
-    /// `/Chart/GetTradeLevels`.
-    #[instrument(skip_all)]
-    pub async fn get_chart_trade_levels_limit(
-        &self,
-        request: &TradeLevelsRequest,
-        limit: usize,
-    ) -> Result<Vec<TradeLevel>> {
-        self.fetch_limit(CHART_GET_TRADE_LEVELS_PATH, request.0.clone(), limit)
-            .await
-    }
-
-    /// Post a DataTables request to `/Chart0/GetTradeLevels` and return the
-    /// typed response envelope.
-    #[instrument(skip_all)]
-    pub async fn get_chart0_trade_levels(
-        &self,
-        request: &TradeLevelsRequest,
-    ) -> Result<DataTablesResponse<TradeLevel>> {
-        self.post_datatables(CHART0_GET_TRADE_LEVELS_PATH, request.to_pairs())
-            .await
-    }
-
-    /// Fetch up to `limit` trade levels by paginating
-    /// `/Chart0/GetTradeLevels`.
-    #[instrument(skip_all)]
-    pub async fn get_chart0_trade_levels_limit(
-        &self,
-        request: &TradeLevelsRequest,
-        limit: usize,
-    ) -> Result<Vec<TradeLevel>> {
-        self.fetch_limit(CHART0_GET_TRADE_LEVELS_PATH, request.0.clone(), limit)
-            .await
-    }
-
-    /// Post a DataTables request to `/TradeLevels/GetTradeLevels` and return
-    /// the typed response envelope.
-    #[instrument(skip_all)]
-    pub async fn get_trade_levels(
-        &self,
-        request: &TradeLevelsRequest,
-    ) -> Result<DataTablesResponse<TradeLevel>> {
-        self.post_datatables(TRADE_LEVELS_GET_TRADE_LEVELS_PATH, request.to_pairs())
-            .await
-    }
-
-    /// Fetch up to `limit` trade levels by paginating
-    /// `/TradeLevels/GetTradeLevels`.
-    #[instrument(skip_all)]
-    pub async fn get_trade_levels_limit(
-        &self,
-        request: &TradeLevelsRequest,
-        limit: usize,
-    ) -> Result<Vec<TradeLevel>> {
-        self.fetch_limit(TRADE_LEVELS_GET_TRADE_LEVELS_PATH, request.0.clone(), limit)
-            .await
-    }
-
-    /// Post a DataTables request to
-    /// `/TradeLevelTouches/GetTradeLevelTouches` and return the typed
-    /// response envelope.
-    #[instrument(skip_all)]
-    pub async fn get_trade_level_touches(
-        &self,
-        request: &TradeLevelTouchesRequest,
-    ) -> Result<DataTablesResponse<TradeLevel>> {
-        self.post_datatables(TRADE_LEVEL_TOUCHES_PATH, request.to_pairs())
-            .await
-    }
-
-    /// Fetch up to `limit` trade level touches by paginating
-    /// `/TradeLevelTouches/GetTradeLevelTouches`.
-    #[instrument(skip_all)]
-    pub async fn get_trade_level_touches_limit(
-        &self,
-        request: &TradeLevelTouchesRequest,
-        limit: usize,
-    ) -> Result<Vec<TradeLevel>> {
-        self.fetch_limit(TRADE_LEVEL_TOUCHES_PATH, request.0.clone(), limit)
-            .await
-    }
-}
+impl_datatables_client_methods!(
+    get_chart_trade_levels,
+    get_chart_trade_levels_limit,
+    TradeLevelsRequest,
+    TradeLevel,
+    CHART_GET_TRADE_LEVELS_PATH
+);
+impl_datatables_client_methods!(
+    get_chart0_trade_levels,
+    get_chart0_trade_levels_limit,
+    TradeLevelsRequest,
+    TradeLevel,
+    CHART0_GET_TRADE_LEVELS_PATH
+);
+impl_datatables_client_methods!(
+    get_trade_levels,
+    get_trade_levels_limit,
+    TradeLevelsRequest,
+    TradeLevel,
+    TRADE_LEVELS_GET_TRADE_LEVELS_PATH
+);
+impl_datatables_client_methods!(
+    get_trade_level_touches,
+    get_trade_level_touches_limit,
+    TradeLevelTouchesRequest,
+    TradeLevel,
+    TRADE_LEVEL_TOUCHES_PATH
+);
 
 #[cfg(test)]
 mod tests {

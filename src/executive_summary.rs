@@ -10,7 +10,8 @@ use tracing::instrument;
 
 use crate::client::Client;
 use crate::datatables::{
-    DataTablesColumn, DataTablesRequest, DataTablesResponse, impl_datatables_request_methods,
+    DataTablesColumn, DataTablesRequest, impl_datatables_client_methods,
+    impl_datatables_request_methods,
 };
 use crate::error::Result;
 use crate::models::{ExhaustionScore, Trade, TradeCluster};
@@ -172,6 +173,21 @@ pub fn parse_snapshots(raw: &str) -> Result<HashMap<String, f64>> {
     Ok(snapshots)
 }
 
+impl_datatables_client_methods!(
+    get_welcome_trades,
+    get_welcome_trades_limit,
+    WelcomeTradesRequest,
+    Trade,
+    EXECUTIVE_SUMMARY_GET_WELCOME_TRADES_PATH
+);
+impl_datatables_client_methods!(
+    get_welcome_trade_clusters,
+    get_welcome_trade_clusters_limit,
+    WelcomeTradeClustersRequest,
+    TradeCluster,
+    EXECUTIVE_SUMMARY_GET_WELCOME_TRADE_CLUSTERS_PATH
+);
+
 impl Client {
     /// Post a JSON request to `/ExecutiveSummary/GetExhaustionScores` and
     /// return the exhaustion score data.
@@ -184,67 +200,6 @@ impl Client {
             .post_json(EXECUTIVE_SUMMARY_GET_EXHAUSTION_SCORES_PATH, request)
             .await?;
         Ok(serde_json::from_str(&body)?)
-    }
-
-    /// Post a DataTables request to `/ExecutiveSummary/GetWelcomeTrades` and
-    /// return the typed response envelope.
-    #[instrument(skip_all)]
-    pub async fn get_welcome_trades(
-        &self,
-        request: &WelcomeTradesRequest,
-    ) -> Result<DataTablesResponse<Trade>> {
-        self.post_datatables(
-            EXECUTIVE_SUMMARY_GET_WELCOME_TRADES_PATH,
-            request.to_pairs(),
-        )
-        .await
-    }
-
-    /// Fetch up to `limit` welcome trades by paginating
-    /// `/ExecutiveSummary/GetWelcomeTrades`.
-    #[instrument(skip_all)]
-    pub async fn get_welcome_trades_limit(
-        &self,
-        request: &WelcomeTradesRequest,
-        limit: usize,
-    ) -> Result<Vec<Trade>> {
-        self.fetch_limit(
-            EXECUTIVE_SUMMARY_GET_WELCOME_TRADES_PATH,
-            request.0.clone(),
-            limit,
-        )
-        .await
-    }
-
-    /// Post a DataTables request to
-    /// `/ExecutiveSummary/GetWelcomeTradeClusters` and return the typed
-    /// response envelope.
-    #[instrument(skip_all)]
-    pub async fn get_welcome_trade_clusters(
-        &self,
-        request: &WelcomeTradeClustersRequest,
-    ) -> Result<DataTablesResponse<TradeCluster>> {
-        self.post_datatables(
-            EXECUTIVE_SUMMARY_GET_WELCOME_TRADE_CLUSTERS_PATH,
-            request.to_pairs(),
-        )
-        .await
-    }
-
-    /// Fetch up to `limit` welcome trade clusters by paginating
-    /// `/ExecutiveSummary/GetWelcomeTradeClusters`.
-    #[instrument(skip_all)]
-    pub async fn get_welcome_trade_clusters_limit(
-        &self,
-        request: &WelcomeTradeClustersRequest,
-        limit: usize,
-    ) -> Result<Vec<TradeCluster>> {
-        self.fetch_limit(
-            EXECUTIVE_SUMMARY_GET_WELCOME_TRADE_CLUSTERS_PATH,
-            request.0.clone(),
-            limit,
-        )
-        .await
     }
 
     /// Post a JSON null request to `/Trades/GetAllSnapshots` and return

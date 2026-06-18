@@ -1,13 +1,10 @@
 //! Trade cluster endpoints for `/TradeClusters/GetTradeClusters` and
 //! `/TradeClusterBombs/GetTradeClusterBombs` DataTables APIs.
 
-use tracing::instrument;
-
-use crate::client::Client;
 use crate::datatables::{
-    DataTablesColumn, DataTablesRequest, DataTablesResponse, impl_datatables_request_methods,
+    DataTablesColumn, DataTablesRequest, impl_datatables_client_methods,
+    impl_datatables_request_methods,
 };
-use crate::error::Result;
 use crate::models::{TradeCluster, TradeClusterBomb};
 
 /// Browser endpoint path for trade clusters.
@@ -145,54 +142,20 @@ pub fn trade_cluster_bombs_columns() -> Vec<DataTablesColumn> {
     ]
 }
 
-impl Client {
-    /// Post a DataTables request to `/TradeClusters/GetTradeClusters` and
-    /// return the typed response envelope.
-    #[instrument(skip_all)]
-    pub async fn get_trade_clusters(
-        &self,
-        request: &TradeClustersRequest,
-    ) -> Result<DataTablesResponse<TradeCluster>> {
-        self.post_datatables(TRADE_CLUSTERS_PATH, request.to_pairs())
-            .await
-    }
-
-    /// Fetch up to `limit` trade clusters by paginating
-    /// `/TradeClusters/GetTradeClusters`.
-    #[instrument(skip_all)]
-    pub async fn get_trade_clusters_limit(
-        &self,
-        request: &TradeClustersRequest,
-        limit: usize,
-    ) -> Result<Vec<TradeCluster>> {
-        self.fetch_limit(TRADE_CLUSTERS_PATH, request.0.clone(), limit)
-            .await
-    }
-
-    /// Post a DataTables request to
-    /// `/TradeClusterBombs/GetTradeClusterBombs` and return the typed
-    /// response envelope.
-    #[instrument(skip_all)]
-    pub async fn get_trade_cluster_bombs(
-        &self,
-        request: &TradeClusterBombsRequest,
-    ) -> Result<DataTablesResponse<TradeClusterBomb>> {
-        self.post_datatables(TRADE_CLUSTER_BOMBS_PATH, request.to_pairs())
-            .await
-    }
-
-    /// Fetch up to `limit` trade cluster bombs by paginating
-    /// `/TradeClusterBombs/GetTradeClusterBombs`.
-    #[instrument(skip_all)]
-    pub async fn get_trade_cluster_bombs_limit(
-        &self,
-        request: &TradeClusterBombsRequest,
-        limit: usize,
-    ) -> Result<Vec<TradeClusterBomb>> {
-        self.fetch_limit(TRADE_CLUSTER_BOMBS_PATH, request.0.clone(), limit)
-            .await
-    }
-}
+impl_datatables_client_methods!(
+    get_trade_clusters,
+    get_trade_clusters_limit,
+    TradeClustersRequest,
+    TradeCluster,
+    TRADE_CLUSTERS_PATH
+);
+impl_datatables_client_methods!(
+    get_trade_cluster_bombs,
+    get_trade_cluster_bombs_limit,
+    TradeClusterBombsRequest,
+    TradeClusterBomb,
+    TRADE_CLUSTER_BOMBS_PATH
+);
 
 #[cfg(test)]
 mod tests {

@@ -1,12 +1,9 @@
 //! Earnings endpoint for `/Earnings/GetEarnings` DataTables API.
 
-use tracing::instrument;
-
-use crate::client::Client;
 use crate::datatables::{
-    DataTablesColumn, DataTablesRequest, DataTablesResponse, impl_datatables_request_methods,
+    DataTablesColumn, DataTablesRequest, impl_datatables_client_methods,
+    impl_datatables_request_methods,
 };
-use crate::error::Result;
 use crate::models::Earning;
 
 /// Browser endpoint path for `/Earnings/GetEarnings`.
@@ -72,30 +69,13 @@ pub fn earnings_columns() -> Vec<DataTablesColumn> {
     ]
 }
 
-impl Client {
-    /// Post a DataTables request to `/Earnings/GetEarnings` and return the
-    /// typed response envelope.
-    #[instrument(skip_all)]
-    pub async fn get_earnings(
-        &self,
-        request: &EarningsRequest,
-    ) -> Result<DataTablesResponse<Earning>> {
-        self.post_datatables(EARNINGS_GET_EARNINGS_PATH, request.to_pairs())
-            .await
-    }
-
-    /// Fetch up to `limit` earnings by paginating `/Earnings/GetEarnings`.
-    /// A zero limit fetches all available records.
-    #[instrument(skip_all)]
-    pub async fn get_earnings_limit(
-        &self,
-        request: &EarningsRequest,
-        limit: usize,
-    ) -> Result<Vec<Earning>> {
-        self.fetch_limit(EARNINGS_GET_EARNINGS_PATH, request.0.clone(), limit)
-            .await
-    }
-}
+impl_datatables_client_methods!(
+    get_earnings,
+    get_earnings_limit,
+    EarningsRequest,
+    Earning,
+    EARNINGS_GET_EARNINGS_PATH
+);
 
 #[cfg(test)]
 mod tests {

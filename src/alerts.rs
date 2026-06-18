@@ -5,7 +5,8 @@ use tracing::instrument;
 
 use crate::client::{Client, multipart_form_from_fields, push_bool_field};
 use crate::datatables::{
-    DataTablesColumn, DataTablesRequest, DataTablesResponse, impl_datatables_request_methods,
+    DataTablesColumn, DataTablesRequest, impl_datatables_client_methods,
+    impl_datatables_request_methods,
 };
 use crate::error::Result;
 use crate::models::{AlertConfig, TradeAlert, TradeClusterAlert};
@@ -296,81 +297,29 @@ pub fn trade_cluster_alerts_columns() -> Vec<DataTablesColumn> {
     crate::clusters::trade_clusters_columns()
 }
 
+impl_datatables_client_methods!(
+    get_alert_configs,
+    get_alert_configs_limit,
+    AlertConfigsRequest,
+    AlertConfig,
+    ALERT_CONFIGS_GET_ALERT_CONFIGS_PATH
+);
+impl_datatables_client_methods!(
+    get_trade_alerts,
+    get_trade_alerts_limit,
+    TradeAlertsRequest,
+    TradeAlert,
+    TRADE_ALERTS_GET_TRADE_ALERTS_PATH
+);
+impl_datatables_client_methods!(
+    get_trade_cluster_alerts,
+    get_trade_cluster_alerts_limit,
+    TradeClusterAlertsRequest,
+    TradeClusterAlert,
+    TRADE_CLUSTER_ALERTS_GET_TRADE_CLUSTER_ALERTS_PATH
+);
+
 impl Client {
-    /// Post a DataTables request to `/AlertConfigs/GetAlertConfigs`.
-    #[instrument(skip_all)]
-    pub async fn get_alert_configs(
-        &self,
-        request: &AlertConfigsRequest,
-    ) -> Result<DataTablesResponse<AlertConfig>> {
-        self.post_datatables(ALERT_CONFIGS_GET_ALERT_CONFIGS_PATH, request.to_pairs())
-            .await
-    }
-
-    /// Fetch up to `limit` alert configurations by paginating the endpoint.
-    #[instrument(skip_all)]
-    pub async fn get_alert_configs_limit(
-        &self,
-        request: &AlertConfigsRequest,
-        limit: usize,
-    ) -> Result<Vec<AlertConfig>> {
-        self.fetch_limit(
-            ALERT_CONFIGS_GET_ALERT_CONFIGS_PATH,
-            request.0.clone(),
-            limit,
-        )
-        .await
-    }
-
-    /// Post a DataTables request to `/TradeAlerts/GetTradeAlerts`.
-    #[instrument(skip_all)]
-    pub async fn get_trade_alerts(
-        &self,
-        request: &TradeAlertsRequest,
-    ) -> Result<DataTablesResponse<TradeAlert>> {
-        self.post_datatables(TRADE_ALERTS_GET_TRADE_ALERTS_PATH, request.to_pairs())
-            .await
-    }
-
-    /// Fetch up to `limit` trade alerts by paginating the endpoint.
-    #[instrument(skip_all)]
-    pub async fn get_trade_alerts_limit(
-        &self,
-        request: &TradeAlertsRequest,
-        limit: usize,
-    ) -> Result<Vec<TradeAlert>> {
-        self.fetch_limit(TRADE_ALERTS_GET_TRADE_ALERTS_PATH, request.0.clone(), limit)
-            .await
-    }
-
-    /// Post a DataTables request to `/TradeClusterAlerts/GetTradeClusterAlerts`.
-    #[instrument(skip_all)]
-    pub async fn get_trade_cluster_alerts(
-        &self,
-        request: &TradeClusterAlertsRequest,
-    ) -> Result<DataTablesResponse<TradeClusterAlert>> {
-        self.post_datatables(
-            TRADE_CLUSTER_ALERTS_GET_TRADE_CLUSTER_ALERTS_PATH,
-            request.to_pairs(),
-        )
-        .await
-    }
-
-    /// Fetch up to `limit` trade cluster alerts by paginating the endpoint.
-    #[instrument(skip_all)]
-    pub async fn get_trade_cluster_alerts_limit(
-        &self,
-        request: &TradeClusterAlertsRequest,
-        limit: usize,
-    ) -> Result<Vec<TradeClusterAlert>> {
-        self.fetch_limit(
-            TRADE_CLUSTER_ALERTS_GET_TRADE_CLUSTER_ALERTS_PATH,
-            request.0.clone(),
-            limit,
-        )
-        .await
-    }
-
     /// Post a multipart create or edit request to `/AlertConfig`.
     #[instrument(skip_all)]
     pub async fn save_alert_config(&self, request: SaveAlertConfigRequest) -> Result<()> {
