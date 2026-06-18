@@ -582,12 +582,9 @@ mod tests {
             3
         );
         assert_eq!(
-            finish_doctor_output(
-                Err(std::io::Error::other("stdout closed")),
-                CliExit(0)
-            )
-            .unwrap_err()
-            .code(),
+            finish_doctor_output(Err(std::io::Error::other("stdout closed")), CliExit(0))
+                .unwrap_err()
+                .code(),
             6
         );
     }

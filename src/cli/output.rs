@@ -445,7 +445,6 @@ mod tests {
 
     use serde::Serialize;
 
-    use crate::cli::common::trade_transforms::TradeRecordKind;
     use super::{
         configure_strict_empty, empty_result_suggestion, finish_output, print_record_values,
         print_record_values_with_allowed_fields, print_records, print_records_with_allowed_fields,
@@ -453,6 +452,7 @@ mod tests {
         records_to_values, selected_fields, strict_empty_command_from_args, write_json,
         write_record_values,
     };
+    use crate::cli::common::trade_transforms::TradeRecordKind;
 
     static STRICT_EMPTY_TEST_LOCK: LazyLock<Mutex<()>> = LazyLock::new(|| Mutex::new(()));
 
@@ -819,16 +819,20 @@ mod tests {
     #[test]
     fn finish_output_maps_result_to_exit_code() {
         assert!(finish_output(Ok(())).is_ok());
-        assert!(finish_output(Err(std::io::Error::new(
-            std::io::ErrorKind::NotFound,
-            "trade list returned no rows; try widening filters"
-        )))
-        .is_err());
-        assert!(finish_output(Err(std::io::Error::new(
-            std::io::ErrorKind::InvalidInput,
-            "unknown output field"
-        )))
-        .is_err());
+        assert!(
+            finish_output(Err(std::io::Error::new(
+                std::io::ErrorKind::NotFound,
+                "trade list returned no rows; try widening filters"
+            )))
+            .is_err()
+        );
+        assert!(
+            finish_output(Err(std::io::Error::new(
+                std::io::ErrorKind::InvalidInput,
+                "unknown output field"
+            )))
+            .is_err()
+        );
         assert!(finish_output(Err(std::io::Error::other("broken pipe"))).is_err());
     }
 

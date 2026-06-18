@@ -1,7 +1,7 @@
 //! Market commands: earnings and exhaustion.
 
-use crate::{EarningsRequest, ExhaustionScoresRequest};
 use crate::cli::error::CliExit;
+use crate::{EarningsRequest, ExhaustionScoresRequest};
 use clap::{Args, Subcommand};
 use tracing::instrument;
 

@@ -3,9 +3,9 @@
 use clap::{Arg, ArgAction, Command, CommandFactory};
 use serde::Serialize;
 
-use crate::cli::error::CliExit;
 use crate::cli::Cli;
 use crate::cli::command_examples::{CommandExample, examples_for_path};
+use crate::cli::error::CliExit;
 use crate::cli::output::{finish_output, print_json};
 
 const SCHEMA_VERSION: u8 = 1;

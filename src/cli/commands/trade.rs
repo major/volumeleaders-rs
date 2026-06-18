@@ -16,27 +16,27 @@ use serde::Serialize;
 use tracing::instrument;
 
 use crate::cli::TradeArgs;
+use crate::cli::common::DATE_FMT;
 use crate::cli::common::auth::make_client;
 use crate::cli::common::dates::resolve_date_range;
 use crate::cli::common::tickers::{parse_single_ticker, parse_tickers};
 use crate::cli::common::trade_transforms::TradeRecordKind;
 use crate::cli::common::types::{OrderDirection, SummaryGroup, TriStateFilter};
-use crate::cli::common::{DATE_FMT, TRADE_HEADERS};
 use crate::cli::error::{CliExit, usage_error};
-use crate::cli::field_metadata;
+use crate::cli::field_metadata::{
+    self, ALERT_HEADERS, BOMB_HEADERS, CLUSTER_HEADERS, LEVEL_HEADERS, TRADE_HEADERS,
+};
 use crate::cli::output::{
     finish_output, print_json, print_transformed_record_values_with_allowed_fields,
 };
 
 use self::dashboard::{TradeDashboard, dashboard_output_value};
 use self::filters::{
-    apply_trade_filter_args, apply_trade_list_ranges, apply_trade_ranges, cluster_bomb_filters,
-    cluster_filters, dashboard_bombs_request, dashboard_clusters_request, dashboard_levels_request,
-    dashboard_trades_request, default_trade_filters, default_trade_list_filters,
-    level_touch_filters, parse_tri_state_filter, set_filter, set_ticker_filters,
-    K_END_DATE, K_SECTOR_INDUSTRY, K_START_DATE,
-
-    validate_trade_level_count,
+    K_END_DATE, K_SECTOR_INDUSTRY, K_START_DATE, apply_trade_filter_args, apply_trade_list_ranges,
+    apply_trade_ranges, cluster_bomb_filters, cluster_filters, dashboard_bombs_request,
+    dashboard_clusters_request, dashboard_levels_request, dashboard_trades_request,
+    default_trade_filters, default_trade_list_filters, level_touch_filters, parse_tri_state_filter,
+    set_filter, set_ticker_filters, validate_trade_level_count,
 };
 use self::presets::{apply_preset_filters, find_trade_preset};
 use self::sentiment::summarize_trade_sentiment;
@@ -60,50 +60,6 @@ pub(super) const DEFAULT_MAX_PRICE: f64 = 100_000.0;
 pub(super) const DEFAULT_MAX_DOLLARS: f64 = 30_000_000_000.0;
 pub(super) const HAR_TRADE_MIN_VOLUME: i64 = 10_000;
 pub(super) const HAR_TRADE_MAX_DOLLARS: f64 = 100_000_000_000.0;
-
-const CLUSTER_HEADERS: &[&str] = &[
-    "Date",
-    "Ticker",
-    "Price",
-    "Dollars",
-    "TradeCount",
-    "DollarsMultiplier",
-    "CumulativeDistribution",
-    "TradeClusterRank",
-    "window",
-];
-const BOMB_HEADERS: &[&str] = &[
-    "Date",
-    "Ticker",
-    "Dollars",
-    "TradeCount",
-    "DollarsMultiplier",
-    "CumulativeDistribution",
-    "TradeClusterBombRank",
-    "window",
-];
-const LEVEL_HEADERS: &[&str] = &[
-    "Ticker",
-    "Price",
-    "Dollars",
-    "Trades",
-    "RelativeSize",
-    "CumulativeDistribution",
-    "TradeLevelRank",
-];
-const ALERT_HEADERS: &[&str] = &[
-    "Ticker",
-    "Date",
-    "Time",
-    "AlertType",
-    "TradeID",
-    "Price",
-    "Volume",
-    "Dollars",
-    "TradeRank",
-    "type",
-    "venue",
-];
 
 #[derive(Debug, Serialize)]
 struct DateRange {
@@ -651,7 +607,9 @@ async fn execute_list(args: &ListArgs) -> Result<(), CliExit> {
         return Err(usage_error("--group-by only works with --summary"));
     }
     if args.summary && (args.fields.is_some() || args.all_fields) {
-        return Err(usage_error("--fields and --all-fields cannot be used with --summary"));
+        return Err(usage_error(
+            "--fields and --all-fields cannot be used with --summary",
+        ));
     }
 
     let tickers = parse_ticker_args(&args.tickers);
@@ -743,7 +701,8 @@ async fn execute_dashboard(args: &DashboardArgs) -> Result<(), CliExit> {
 
 #[instrument(skip_all)]
 async fn execute_sentiment(args: &SentimentArgs) -> Result<(), CliExit> {
-    let (start, end) = resolve_required_range(&args.dates).map_err(|message| usage_error(message))?;
+    let (start, end) =
+        resolve_required_range(&args.dates).map_err(usage_error)?;
     let mut filters = default_trade_filters(args.ranges.min_dollars.unwrap_or(5_000_000.0), 97);
     apply_trade_ranges(&mut filters, &args.ranges, 5_000_000.0);
     apply_trade_filter_args(&mut filters, &args.filters);
@@ -763,7 +722,8 @@ async fn execute_sentiment(args: &SentimentArgs) -> Result<(), CliExit> {
 
 #[instrument(skip_all)]
 async fn execute_clusters(args: &ClustersArgs) -> Result<(), CliExit> {
-    let (start, end) = resolve_required_range(&args.dates).map_err(|message| usage_error(message))?;
+    let (start, end) =
+        resolve_required_range(&args.dates).map_err(usage_error)?;
     let request = TradeClustersRequest::new()
         .with_start(args.page.start)
         .with_length(DEFAULT_CLUSTER_LENGTH)
@@ -788,7 +748,8 @@ async fn execute_clusters(args: &ClustersArgs) -> Result<(), CliExit> {
 
 #[instrument(skip_all)]
 async fn execute_cluster_bombs(args: &ClusterBombsArgs) -> Result<(), CliExit> {
-    let (start, end) = resolve_required_range(&args.dates).map_err(|message| usage_error(message))?;
+    let (start, end) =
+        resolve_required_range(&args.dates).map_err(usage_error)?;
     let request = TradeClusterBombsRequest::new()
         .with_start(args.page.start)
         .with_length(DEFAULT_CLUSTER_BOMB_LENGTH)
@@ -853,7 +814,7 @@ async fn execute_cluster_alerts(args: &AlertsArgs) -> Result<(), CliExit> {
 async fn execute_levels(args: &LevelsArgs) -> Result<(), CliExit> {
     if !validate_trade_level_count(args.trade_level_count) {
         return Err(usage_error(
-            "--trade-level-count must be one of 5, 10, 20, or 50 for trade level retrieval"
+            "--trade-level-count must be one of 5, 10, 20, or 50 for trade level retrieval",
         ));
     }
     let ticker = parse_single_ticker(&args.ticker);
@@ -878,13 +839,16 @@ async fn execute_levels(args: &LevelsArgs) -> Result<(), CliExit> {
 async fn execute_level_touches(args: &LevelTouchesArgs) -> Result<(), CliExit> {
     if !validate_trade_level_count(args.trade_level_count) {
         return Err(usage_error(
-            "--trade-level-count must be one of 5, 10, 20, or 50 for trade level retrieval"
+            "--trade-level-count must be one of 5, 10, 20, or 50 for trade level retrieval",
         ));
     }
     if !(1..=50).contains(&args.page.length) {
-        return Err(usage_error("--length must be between 1 and 50 for trade level touch retrieval"));
+        return Err(usage_error(
+            "--length must be between 1 and 50 for trade level touch retrieval",
+        ));
     }
-    let (start, end) = resolve_required_range(&args.dates).map_err(|message| usage_error(message))?;
+    let (start, end) =
+        resolve_required_range(&args.dates).map_err(usage_error)?;
     let ticker = parse_single_ticker(&args.ticker);
     let request = TradeLevelTouchesRequest::new()
         .with_start(args.page.start)
@@ -911,7 +875,14 @@ fn output_trade_records<T: Serialize>(
     all_fields: bool,
     command_path: &str,
 ) -> Result<(), CliExit> {
-    Ok(print_trade_records(records, kind, headers, fields, all_fields, command_path)?)
+    Ok(print_trade_records(
+        records,
+        kind,
+        headers,
+        fields,
+        all_fields,
+        command_path,
+    )?)
 }
 
 fn cluster_order_name(order_col: i32) -> &'static str {
@@ -1586,7 +1557,8 @@ mod tests {
             "Dollars": 10_000_000.0
         }))];
 
-        assert!(output_trade_records(
+        assert!(
+            output_trade_records(
                 &records,
                 TradeRecordKind::Trade,
                 TRADE_HEADERS,
@@ -1594,7 +1566,8 @@ mod tests {
                 false,
                 "trade list",
             )
-            .is_ok());
+            .is_ok()
+        );
     }
 
     #[test]

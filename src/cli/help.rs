@@ -2,8 +2,8 @@
 
 use std::io::{self, Write};
 
-use crate::cli::output::finish_output;
 use crate::cli::error::CliExit;
+use crate::cli::output::finish_output;
 use crate::cli::{HelpArgs, HelpTopic};
 
 /// Emit a built-in operational help topic as plain text.

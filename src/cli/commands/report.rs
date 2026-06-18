@@ -9,7 +9,6 @@ use tracing::instrument;
 
 use crate::cli::ReportArgs;
 use crate::cli::common::DATE_FMT;
-use crate::cli::common::TRADE_HEADERS;
 use crate::cli::common::auth::make_client;
 use crate::cli::common::dates::resolve_date_range;
 use crate::cli::common::tickers::parse_tickers;
@@ -17,6 +16,7 @@ use crate::cli::common::trade_transforms::TradeRecordKind;
 use crate::cli::common::types::SummaryGroup;
 use crate::cli::error::{CliExit, usage_error};
 use crate::cli::field_metadata;
+use crate::cli::field_metadata::TRADE_HEADERS;
 use crate::cli::output::{
     finish_output, print_json, print_transformed_record_values, selected_fields,
 };
@@ -418,7 +418,9 @@ async fn execute_preset(args: &ReportArgs) -> Result<(), CliExit> {
     };
 
     if flags.summary_group.is_some() && (flags.fields.is_some() || flags.all_fields) {
-        return Err(usage_error("--fields and --all-fields cannot be used with summary output"));
+        return Err(usage_error(
+            "--fields and --all-fields cannot be used with summary output",
+        ));
     }
 
     if let Err(err) = validate_report_fields(preset_name, flags.fields.as_deref()) {

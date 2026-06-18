@@ -17,26 +17,6 @@ pub enum TradeRecordKind {
 }
 
 const DROPPED_FIELDS: &[&str] = &["EOM", "EOQ", "EOY", "OPEX", "VOLEX", "RSIDay", "RSIHour"];
-
-/// Default compact column headers for trade-shaped output.
-///
-/// Shared by commands that display individual institutional trades (e.g. `trade
-/// list` and `report` presets).
-pub const TRADE_HEADERS: &[&str] = &[
-    "Ticker",
-    "Date",
-    "Time",
-    "Price",
-    "Dollars",
-    "RelativeSize",
-    "CumulativeDistribution",
-    "TradeRank",
-    "type",
-    "venue",
-    "Sector",
-    "Industry",
-];
-
 /// Serialize records and apply the transforms for their trade-shaped row kind.
 pub fn transformed_trade_values<T: Serialize>(
     records: &[T],

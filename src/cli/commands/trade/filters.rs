@@ -380,7 +380,10 @@ fn dashboard_cluster_filters(
         pair(K_TICKERS, ticker.to_string()),
         pair(K_START_DATE, start.to_string()),
         pair(K_END_DATE, end.to_string()),
-        pair(K_MIN_VOLUME, args.ranges.min_volume.unwrap_or(0).to_string()),
+        pair(
+            K_MIN_VOLUME,
+            args.ranges.min_volume.unwrap_or(0).to_string(),
+        ),
         pair(
             K_MAX_VOLUME,
             args.ranges
@@ -421,7 +424,10 @@ fn dashboard_bomb_filters(
     end: &str,
 ) -> Vec<(String, String)> {
     let mut filters = dashboard_cluster_filters(args, ticker, start, end);
-    remove_filters(&mut filters, &[K_MIN_PRICE, K_MAX_PRICE, K_TRADE_CLUSTER_RANK]);
+    remove_filters(
+        &mut filters,
+        &[K_MIN_PRICE, K_MAX_PRICE, K_TRADE_CLUSTER_RANK],
+    );
     filters.push(pair(K_TRADE_CLUSTER_BOMB_RANK, "-1"));
     filters
 }
@@ -533,7 +539,10 @@ pub(super) fn cluster_bomb_filters(
         pair(K_TICKERS, tickers),
         pair(K_START_DATE, start.to_string()),
         pair(K_END_DATE, end.to_string()),
-        pair(K_MIN_VOLUME, args.ranges.min_volume.unwrap_or(0).to_string()),
+        pair(
+            K_MIN_VOLUME,
+            args.ranges.min_volume.unwrap_or(0).to_string(),
+        ),
         pair(
             K_MAX_VOLUME,
             args.ranges

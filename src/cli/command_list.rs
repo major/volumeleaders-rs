@@ -6,8 +6,8 @@ use clap::{Command, CommandFactory};
 
 use crate::cli::Cli;
 use crate::cli::CommandsArgs;
-use crate::cli::output::finish_output;
 use crate::cli::error::CliExit;
+use crate::cli::output::finish_output;
 
 /// Emit available leaf commands as plain text.
 pub fn handle(args: &CommandsArgs) -> Result<(), CliExit> {

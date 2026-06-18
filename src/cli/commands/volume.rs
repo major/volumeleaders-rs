@@ -10,26 +10,8 @@ use crate::cli::common::tickers::parse_tickers;
 use crate::cli::common::trade_transforms::TradeRecordKind;
 use crate::cli::common::types::OrderDirection;
 use crate::cli::error::CliExit;
-use crate::cli::field_metadata;
+use crate::cli::field_metadata::{self, VOLUME_HEADERS};
 use crate::cli::output::{finish_output, print_transformed_record_values_with_allowed_fields};
-
-const VOLUME_HEADERS: &[&str] = &[
-    "Date",
-    "FullDateTime",
-    "Ticker",
-    "Sector",
-    "Industry",
-    "Price",
-    "Dollars",
-    "DollarsMultiplier",
-    "CumulativeDistribution",
-    "TradeRank",
-    "type",
-    "venue",
-    "LatePrint",
-    "SignaturePrint",
-    "PhantomPrint",
-];
 
 /// Shared volume command flags.
 #[derive(Debug, Args)]
