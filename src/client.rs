@@ -415,17 +415,7 @@ fn map_reqwest_error(error: reqwest::Error) -> ClientError {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::session::{COOKIE_DOMAIN, Cookie, FORMS_AUTH_COOKIE_NAME, SESSION_COOKIE_NAME};
-
-    fn valid_session() -> Session {
-        Session::new(
-            vec![
-                Cookie::new(SESSION_COOKIE_NAME, "session-123", COOKIE_DOMAIN),
-                Cookie::new(FORMS_AUTH_COOKIE_NAME, "auth-456", COOKIE_DOMAIN),
-            ],
-            "xsrf-789",
-        )
-    }
+    use crate::test_support::test_session;
 
     fn test_config(server: &mockito::Server) -> ClientConfig {
         ClientConfig {
@@ -448,7 +438,7 @@ mod tests {
             .with_body("ok")
             .create_async()
             .await;
-        let client = Client::with_config(valid_session(), test_config(&server)).unwrap();
+        let client = Client::with_config(test_session(), test_config(&server)).unwrap();
 
         let body = client.get("/endpoint").await.unwrap();
 
@@ -475,7 +465,7 @@ mod tests {
             .with_body("{}")
             .create_async()
             .await;
-        let client = Client::with_config(valid_session(), test_config(&server)).unwrap();
+        let client = Client::with_config(test_session(), test_config(&server)).unwrap();
 
         let body = client
             .post_form(
@@ -503,7 +493,7 @@ mod tests {
             .await;
         let mut config = test_config(&server);
         config.body_limit = 4;
-        let client = Client::with_config(valid_session(), config).unwrap();
+        let client = Client::with_config(test_session(), config).unwrap();
 
         let error = client.get("/large").await.unwrap_err();
 
@@ -531,7 +521,7 @@ mod tests {
             .with_body(r#"<html><input type="password" /></html>"#)
             .create_async()
             .await;
-        let client = Client::with_config(valid_session(), test_config(&server)).unwrap();
+        let client = Client::with_config(test_session(), test_config(&server)).unwrap();
 
         let error = client.get("/endpoint").await.unwrap_err();
 
@@ -564,7 +554,7 @@ mod tests {
             .with_body(r#"<form><input type="password" name="Password"></form>"#)
             .create_async()
             .await;
-        let client = Client::with_config(valid_session(), test_config(&server)).unwrap();
+        let client = Client::with_config(test_session(), test_config(&server)).unwrap();
 
         let error = client.get("/expired").await.unwrap_err();
 
@@ -580,7 +570,7 @@ mod tests {
             .with_header("location", "https://example.com/login")
             .create_async()
             .await;
-        let client = Client::with_config(valid_session(), test_config(&server)).unwrap();
+        let client = Client::with_config(test_session(), test_config(&server)).unwrap();
 
         let error = client.get("/endpoint").await.unwrap_err();
 
@@ -607,7 +597,7 @@ mod tests {
             .with_body("saved")
             .create_async()
             .await;
-        let client = Client::with_config(valid_session(), test_config(&server)).unwrap();
+        let client = Client::with_config(test_session(), test_config(&server)).unwrap();
 
         client
             .post_multipart_form(

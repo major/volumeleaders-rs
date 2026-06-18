@@ -162,7 +162,7 @@ fn cache_path_from_base(base: &Path) -> PathBuf {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::session::{COOKIE_DOMAIN, Cookie, FORMS_AUTH_COOKIE_NAME, SESSION_COOKIE_NAME};
+    use crate::test_support::test_session;
     use tempfile::TempDir;
 
     /// Returns the cache file path within a TempDir for testing.
@@ -170,23 +170,12 @@ mod tests {
         cache_path_from_base(dir.path())
     }
 
-    /// Builds a minimal valid session for tests.
-    fn valid_session() -> Session {
-        Session::new(
-            vec![
-                Cookie::new(SESSION_COOKIE_NAME, "session-123", COOKIE_DOMAIN),
-                Cookie::new(FORMS_AUTH_COOKIE_NAME, "auth-456", COOKIE_DOMAIN),
-            ],
-            "xsrf-789",
-        )
-    }
-
     #[test]
     fn save_and_load_session_roundtrip() {
         let tmp = TempDir::new().expect("temp dir");
         let base = tmp.path();
 
-        let session = valid_session();
+        let session = test_session();
         save_session_at(&session, base).expect("save should succeed");
 
         let path = cache_path_for_temp(&tmp);
@@ -210,7 +199,7 @@ mod tests {
         let tmp = TempDir::new().expect("temp dir");
         let base = tmp.path();
 
-        save_session_at(&valid_session(), base).expect("save should succeed");
+        save_session_at(&test_session(), base).expect("save should succeed");
         let path = cache_path_for_temp(&tmp);
         assert!(load_cached_session_at(&path).is_some());
 
@@ -219,7 +208,7 @@ mod tests {
     }
 
     #[test]
-    fn load_rejects_invalid_session() {
+    fn load_rejects_intest_session() {
         let tmp = TempDir::new().expect("temp dir");
         let base = tmp.path();
 

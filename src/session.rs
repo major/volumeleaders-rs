@@ -208,21 +208,11 @@ fn clone_cookies(cookies: &[Cookie]) -> Vec<Cookie> {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    /// Builds a minimal valid session for tests.
-    fn valid_session() -> Session {
-        Session::new(
-            vec![
-                Cookie::new(SESSION_COOKIE_NAME, "session-123", COOKIE_DOMAIN),
-                Cookie::new(FORMS_AUTH_COOKIE_NAME, "auth-456", COOKIE_DOMAIN),
-            ],
-            "xsrf-789",
-        )
-    }
+    use crate::test_support::test_session;
 
     #[test]
     fn valid_session_passes_validation() {
-        let session = valid_session();
+        let session = test_session();
         assert!(session.validate().is_ok());
     }
 
@@ -336,7 +326,7 @@ mod tests {
 
     #[test]
     fn debug_shows_cookie_names_but_redacts_values() {
-        let session = valid_session();
+        let session = test_session();
         let debug = format!("{session:?}");
 
         // Cookie names should appear
@@ -372,7 +362,7 @@ mod tests {
 
     #[test]
     fn clone_produces_independent_copy() {
-        let original = valid_session();
+        let original = test_session();
         let cloned = original.clone();
 
         assert_eq!(original.xsrf_token(), cloned.xsrf_token());
@@ -421,7 +411,7 @@ mod tests {
 
     #[test]
     fn getters_return_correct_values() {
-        let session = valid_session();
+        let session = test_session();
         assert_eq!(session.xsrf_token(), "xsrf-789");
         assert_eq!(session.cookies().len(), 2);
         assert_eq!(session.cookies()[0].name(), SESSION_COOKIE_NAME);

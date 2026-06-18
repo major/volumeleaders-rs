@@ -107,18 +107,7 @@ fn parse_xsrf_token(html: &str) -> Result<String> {
 mod tests {
     use super::*;
     use crate::client::ClientConfig;
-    use crate::session::{COOKIE_DOMAIN, Cookie, FORMS_AUTH_COOKIE_NAME, SESSION_COOKIE_NAME};
-
-    /// Builds a minimal valid session for tests.
-    fn valid_session() -> Session {
-        Session::new(
-            vec![
-                Cookie::new(SESSION_COOKIE_NAME, "session-123", COOKIE_DOMAIN),
-                Cookie::new(FORMS_AUTH_COOKIE_NAME, "auth-456", COOKIE_DOMAIN),
-            ],
-            "xsrf-789",
-        )
-    }
+    use crate::test_support::test_session;
 
     /// Creates a test client config pointing at the mock server.
     fn test_config(server: &mockito::Server) -> ClientConfig {
@@ -217,7 +206,7 @@ mod tests {
             )
             .create_async()
             .await;
-        let client = Client::with_config(valid_session(), test_config(&server)).unwrap();
+        let client = Client::with_config(test_session(), test_config(&server)).unwrap();
 
         let token = extract_xsrf_token(&client).await.unwrap();
 
@@ -234,7 +223,7 @@ mod tests {
             .with_body("<html></html>")
             .create_async()
             .await;
-        let client = Client::with_config(valid_session(), test_config(&server)).unwrap();
+        let client = Client::with_config(test_session(), test_config(&server)).unwrap();
 
         let err = extract_xsrf_token(&client).await.unwrap_err();
 
@@ -256,7 +245,7 @@ mod tests {
             .with_body(r#"<html><input type="password"></html>"#)
             .create_async()
             .await;
-        let client = Client::with_config(valid_session(), test_config(&server)).unwrap();
+        let client = Client::with_config(test_session(), test_config(&server)).unwrap();
 
         let err = extract_xsrf_token(&client).await.unwrap_err();
 
@@ -274,7 +263,7 @@ mod tests {
             )
             .create_async()
             .await;
-        let client = Client::with_config(valid_session(), test_config(&server)).unwrap();
+        let client = Client::with_config(test_session(), test_config(&server)).unwrap();
 
         let err = extract_xsrf_token(&client).await.unwrap_err();
 
@@ -295,7 +284,7 @@ mod tests {
             )
             .create_async()
             .await;
-        let client = Client::with_config(valid_session(), test_config(&server)).unwrap();
+        let client = Client::with_config(test_session(), test_config(&server)).unwrap();
 
         let token = extract_xsrf_token(&client).await.unwrap();
 
@@ -315,7 +304,7 @@ mod tests {
             )
             .create_async()
             .await;
-        let session = valid_session();
+        let session = test_session();
         let client = Client::with_config(session.clone(), test_config(&server)).unwrap();
 
         let new_session = refresh_session(&client, &session).await.unwrap();
