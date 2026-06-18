@@ -1,6 +1,5 @@
 //! Volume leaderboard endpoints for institutional, after-hours, and total volume.
 
-use crate::client::FormPairs;
 use crate::datatables::{
     DataTablesColumn, DataTablesRequest, impl_datatables_client_methods,
     impl_datatables_request_methods,
@@ -71,11 +70,6 @@ impl VolumeRequest {
     pub fn with_tickers(mut self, tickers: impl Into<String>) -> Self {
         self.0 = self.0.with_extra_value("Tickers", tickers);
         self
-    }
-
-    /// Return raw key-value pairs for form submission.
-    pub(crate) fn to_pairs(&self) -> FormPairs {
-        self.0.to_pairs()
     }
 }
 

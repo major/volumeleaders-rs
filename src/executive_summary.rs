@@ -8,7 +8,7 @@ use std::collections::HashMap;
 use serde::Serialize;
 use tracing::instrument;
 
-use crate::client::{Client, FormPairs};
+use crate::client::Client;
 use crate::datatables::{
     DataTablesColumn, DataTablesRequest, impl_datatables_client_methods,
     impl_datatables_request_methods,
@@ -57,11 +57,6 @@ impl WelcomeTradesRequest {
             ..DataTablesRequest::default()
         })
     }
-
-    /// Return raw key-value pairs for form submission.
-    pub(crate) fn to_pairs(&self) -> FormPairs {
-        self.0.to_pairs()
-    }
 }
 
 impl Default for WelcomeTradesRequest {
@@ -87,11 +82,6 @@ impl WelcomeTradeClustersRequest {
             columns: welcome_trade_clusters_columns(),
             ..DataTablesRequest::default()
         })
-    }
-
-    /// Return raw key-value pairs for form submission.
-    pub(crate) fn to_pairs(&self) -> FormPairs {
-        self.0.to_pairs()
     }
 }
 

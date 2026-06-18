@@ -236,6 +236,11 @@ macro_rules! impl_datatables_request_methods {
             pub fn encode(&self) -> String {
                 self.0.encode()
             }
+
+            /// Return raw key-value pairs for form submission.
+            pub(crate) fn to_pairs(&self) -> $crate::client::FormPairs {
+                self.0.to_pairs()
+            }
         }
     };
 }

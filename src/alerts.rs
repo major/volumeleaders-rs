@@ -45,11 +45,6 @@ impl AlertConfigsRequest {
             ..DataTablesRequest::default()
         })
     }
-
-    /// Return raw key-value pairs for form submission.
-    pub(crate) fn to_pairs(&self) -> FormPairs {
-        self.0.to_pairs()
-    }
 }
 
 impl Default for AlertConfigsRequest {
@@ -80,11 +75,6 @@ impl TradeAlertsRequest {
         self.0 = self.0.with_extra_value("Date", date);
         self
     }
-
-    /// Return raw key-value pairs for form submission.
-    pub(crate) fn to_pairs(&self) -> FormPairs {
-        self.0.to_pairs()
-    }
 }
 
 impl Default for TradeAlertsRequest {
@@ -114,11 +104,6 @@ impl TradeClusterAlertsRequest {
     pub fn with_date(mut self, date: impl Into<String>) -> Self {
         self.0 = self.0.with_extra_value("Date", date);
         self
-    }
-
-    /// Return raw key-value pairs for form submission.
-    pub(crate) fn to_pairs(&self) -> FormPairs {
-        self.0.to_pairs()
     }
 }
 
