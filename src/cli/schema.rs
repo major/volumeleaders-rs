@@ -5,13 +5,14 @@ use serde::Serialize;
 
 use crate::cli::Cli;
 use crate::cli::command_examples::{CommandExample, examples_for_path};
+use crate::cli::error::CliExit;
 use crate::cli::output::{finish_output, print_json};
 
 const SCHEMA_VERSION: u8 = 1;
 const BINARY_NAME: &str = "volumeleaders-agent";
 
 /// Emit the CLI schema as compact JSON.
-pub fn handle() -> i32 {
+pub fn handle() -> Result<(), CliExit> {
     finish_output(print_json(&build_schema()))
 }
 

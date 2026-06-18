@@ -102,6 +102,87 @@ fn fields_for_trade_record_kind(kind: TradeRecordKind) -> &'static [FieldMetadat
     }
 }
 
+/// Default compact output columns for trade list and report commands.
+pub(crate) const TRADE_HEADERS: &[&str] = &[
+    "Ticker",
+    "Date",
+    "Time",
+    "Price",
+    "Dollars",
+    "RelativeSize",
+    "CumulativeDistribution",
+    "TradeRank",
+    "type",
+    "venue",
+    "Sector",
+    "Industry",
+];
+
+pub(crate) const CLUSTER_HEADERS: &[&str] = &[
+    "Date",
+    "Ticker",
+    "Price",
+    "Dollars",
+    "TradeCount",
+    "DollarsMultiplier",
+    "CumulativeDistribution",
+    "TradeClusterRank",
+    "window",
+];
+
+pub(crate) const BOMB_HEADERS: &[&str] = &[
+    "Date",
+    "Ticker",
+    "Dollars",
+    "TradeCount",
+    "DollarsMultiplier",
+    "CumulativeDistribution",
+    "TradeClusterBombRank",
+    "window",
+];
+
+pub(crate) const LEVEL_HEADERS: &[&str] = &[
+    "Ticker",
+    "Price",
+    "Dollars",
+    "Trades",
+    "RelativeSize",
+    "CumulativeDistribution",
+    "TradeLevelRank",
+];
+
+pub(crate) const ALERT_HEADERS: &[&str] = &[
+    "Ticker",
+    "Date",
+    "Time",
+    "AlertType",
+    "TradeID",
+    "Price",
+    "Volume",
+    "Dollars",
+    "TradeRank",
+    "type",
+    "venue",
+];
+
+pub(crate) const VOLUME_HEADERS: &[&str] = &[
+    "Date",
+    "FullDateTime",
+    "Ticker",
+    "Sector",
+    "Industry",
+    "Price",
+    "Dollars",
+    "DollarsMultiplier",
+    "CumulativeDistribution",
+    "TradeRank",
+    "type",
+    "venue",
+    "LatePrint",
+    "SignaturePrint",
+    "PhantomPrint",
+];
+
 const FIELD_TABLES: &[(&str, &[FieldMetadata])] = &[
     ("trade dashboard", DASHBOARD_FIELDS),
     ("trade alerts", TRADE_ALERT_FIELDS),

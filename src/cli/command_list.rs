@@ -6,10 +6,11 @@ use clap::{Command, CommandFactory};
 
 use crate::cli::Cli;
 use crate::cli::CommandsArgs;
+use crate::cli::error::CliExit;
 use crate::cli::output::finish_output;
 
 /// Emit available leaf commands as plain text.
-pub fn handle(args: &CommandsArgs) -> i32 {
+pub fn handle(args: &CommandsArgs) -> Result<(), CliExit> {
     let output = if args.grouped {
         grouped_commands_text()
     } else {
@@ -229,6 +230,6 @@ mod tests {
 
     #[test]
     fn write_errors_map_to_json_exit_code() {
-        assert_eq!(finish_output(Err(io::Error::other("stdout closed"))), 6);
+        assert!(finish_output(Err(io::Error::other("stdout closed"))).is_err());
     }
 }

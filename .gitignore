@@ -32,3 +32,4 @@ rustc-ice-*.txt
 
 # opencode
 .sisyphus
+.worktrees/

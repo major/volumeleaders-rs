@@ -1,12 +1,13 @@
 //! Market commands: earnings and exhaustion.
 
+use crate::cli::error::CliExit;
 use crate::{EarningsRequest, ExhaustionScoresRequest};
 use clap::{Args, Subcommand};
 use tracing::instrument;
 
 use crate::cli::MarketArgs;
 use crate::cli::commands::scaffold::run_client_command;
-use crate::cli::common::auth::{handle_api_error, make_client};
+use crate::cli::common::auth::make_client;
 use crate::cli::common::dates::resolve_date_range;
 use crate::cli::output::{finish_output, print_json, print_records};
 
@@ -67,7 +68,7 @@ pub struct ExhaustionArgs {
 
 /// Handles the market command group.
 #[instrument(skip_all)]
-pub async fn handle(args: &MarketArgs) -> i32 {
+pub async fn handle(args: &MarketArgs) -> Result<(), CliExit> {
     match &args.command {
         MarketCommand::Earnings(args) => execute_earnings(args).await,
         MarketCommand::Exhaustion(args) => execute_exhaustion(args).await,
@@ -75,16 +76,10 @@ pub async fn handle(args: &MarketArgs) -> i32 {
 }
 
 #[instrument(skip_all)]
-async fn execute_earnings(args: &EarningsArgs) -> i32 {
+async fn execute_earnings(args: &EarningsArgs) -> Result<(), CliExit> {
     let request = build_earnings_request(args);
-    let client = match make_client().await {
-        Ok(client) => client,
-        Err(code) => return code,
-    };
-    let earnings = match client.get_earnings_limit(&request, usize::MAX).await {
-        Ok(earnings) => earnings,
-        Err(err) => return handle_api_error(err),
-    };
+    let client = make_client().await?;
+    let earnings = client.get_earnings_limit(&request, usize::MAX).await?;
 
     finish_output(print_records(
         &earnings,
@@ -95,7 +90,7 @@ async fn execute_earnings(args: &EarningsArgs) -> i32 {
 }
 
 #[instrument(skip_all)]
-async fn execute_exhaustion(args: &ExhaustionArgs) -> i32 {
+async fn execute_exhaustion(args: &ExhaustionArgs) -> Result<(), CliExit> {
     let request = ExhaustionScoresRequest {
         date: args.date.clone().unwrap_or_default(),
     };

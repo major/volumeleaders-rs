@@ -9,14 +9,14 @@ use tracing::instrument;
 
 use crate::cli::ReportArgs;
 use crate::cli::common::DATE_FMT;
-use crate::cli::common::TRADE_HEADERS;
-use crate::cli::common::auth::{handle_api_error, make_client};
+use crate::cli::common::auth::make_client;
 use crate::cli::common::dates::resolve_date_range;
 use crate::cli::common::tickers::parse_tickers;
 use crate::cli::common::trade_transforms::TradeRecordKind;
 use crate::cli::common::types::SummaryGroup;
-use crate::cli::error::usage_error;
+use crate::cli::error::{CliExit, usage_error};
 use crate::cli::field_metadata;
+use crate::cli::field_metadata::TRADE_HEADERS;
 use crate::cli::output::{
     finish_output, print_json, print_transformed_record_values, selected_fields,
 };
@@ -381,7 +381,7 @@ impl ReportCommand {
 
 /// Handles the report command group.
 #[instrument(skip_all)]
-pub async fn handle(args: &ReportArgs) -> i32 {
+pub async fn handle(args: &ReportArgs) -> Result<(), CliExit> {
     match &args.command {
         ReportCommand::List => execute_list(),
         _ => execute_preset(args).await,
@@ -390,7 +390,7 @@ pub async fn handle(args: &ReportArgs) -> i32 {
 
 /// Lists all available report presets.
 #[instrument(skip_all)]
-fn execute_list() -> i32 {
+fn execute_list() -> Result<(), CliExit> {
     let entries: Vec<PresetListEntry> = REPORT_PRESETS
         .iter()
         .map(|p| PresetListEntry {
@@ -406,28 +406,30 @@ fn execute_list() -> i32 {
 /// Runs a preset report: builds request from preset filters + CLI overrides,
 /// fetches trades, and outputs results.
 #[instrument(skip_all)]
-async fn execute_preset(args: &ReportArgs) -> i32 {
+async fn execute_preset(args: &ReportArgs) -> Result<(), CliExit> {
     let preset_name = match args.command.preset_name() {
         Some(name) => name,
-        None => return usage_error("unexpected command state"),
+        None => return Err(usage_error("unexpected command state")),
     };
 
     let flags = match args.command.flags() {
         Some(f) => f,
-        None => return usage_error("unexpected command state"),
+        None => return Err(usage_error("unexpected command state")),
     };
 
     if flags.summary_group.is_some() && (flags.fields.is_some() || flags.all_fields) {
-        return usage_error("--fields and --all-fields cannot be used with summary output");
+        return Err(usage_error(
+            "--fields and --all-fields cannot be used with summary output",
+        ));
     }
 
     if let Err(err) = validate_report_fields(preset_name, flags.fields.as_deref()) {
-        return finish_output(Err(err));
+        return Err(err.into());
     }
 
     let preset = match REPORT_PRESETS.iter().find(|p| p.use_name == preset_name) {
         Some(p) => p,
-        None => return usage_error(format!("unknown preset: {preset_name}")),
+        None => return Err(usage_error(format!("unknown preset: {preset_name}"))),
     };
 
     // Build the trade filters first, then hand them to the client request builder.
@@ -458,16 +460,10 @@ async fn execute_preset(args: &ReportArgs) -> i32 {
     let request = build_report_request(filters, limit);
 
     // Authenticate and create client.
-    let client = match make_client().await {
-        Ok(client) => client,
-        Err(code) => return code,
-    };
+    let client = make_client().await?;
 
     // Fetch trades.
-    let mut trades = match client.get_trades(&request).await {
-        Ok(response) => response.data,
-        Err(e) => return handle_api_error(e),
-    };
+    let mut trades = client.get_trades(&request).await?.data;
     trades.truncate(limit);
 
     // Output results.
@@ -1045,9 +1041,6 @@ mod tests {
             command: ReportCommand::Top100Rank(flags),
         };
 
-        assert_eq!(
-            execute_preset(&args).await,
-            crate::cli::error::EXIT_USAGE_ERROR
-        );
+        assert!(execute_preset(&args).await.is_err());
     }
 }

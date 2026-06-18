@@ -29,6 +29,8 @@ pub mod schema;
 
 use clap::Parser;
 
+use crate::cli::error::CliExit;
+
 pub use args::{
     AlertArgs, Cli, Commands, CommandsArgs, CompletionsArgs, DoctorArgs, FieldsArgs, HelpArgs,
     HelpTopic, MarketArgs, ReportArgs, TradeArgs, VolumeArgs, WatchlistArgs,
@@ -44,7 +46,7 @@ pub async fn run() -> i32 {
         output::strict_empty_command_from_args(std::env::args().skip(1)),
     );
 
-    match &cli.command {
+    let result: Result<(), CliExit> = match &cli.command {
         Commands::Report(args) => commands::report::handle(args).await,
         Commands::Trade(args) => commands::trade::handle(args).await,
         Commands::Volume(args) => commands::volume::handle(args).await,
@@ -58,7 +60,12 @@ pub async fn run() -> i32 {
         Commands::Schema => schema::handle(),
         Commands::Completions(args) => {
             commands::completions::handle(args);
-            0
+            Ok(())
         }
+    };
+
+    match result {
+        Ok(()) => 0,
+        Err(exit) => exit.code(),
     }
 }

@@ -4,23 +4,18 @@ use std::pin::Pin;
 
 use crate::{Client, ClientError};
 
-use crate::cli::common::auth::{handle_api_error, make_client};
-use crate::cli::output::finish_output;
+use crate::cli::common::auth::make_client;
+use crate::cli::error::CliExit;
 
-pub(crate) async fn run_client_command<T, Fetch, Render>(fetch: Fetch, render: Render) -> i32
+pub(crate) async fn run_client_command<T, Fetch, Render>(
+    fetch: Fetch,
+    render: Render,
+) -> Result<(), CliExit>
 where
     Fetch: for<'a> FnOnce(&'a Client) -> Pin<Box<dyn Future<Output = Result<T, ClientError>> + 'a>>,
     Render: FnOnce(T) -> io::Result<()>,
 {
-    let client = match make_client().await {
-        Ok(client) => client,
-        Err(code) => return code,
-    };
-
-    let value = match fetch(&client).await {
-        Ok(value) => value,
-        Err(err) => return handle_api_error(err),
-    };
-
-    finish_output(render(value))
+    let client = make_client().await?;
+    let value = fetch(&client).await?;
+    Ok(render(value)?)
 }

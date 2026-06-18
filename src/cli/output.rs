@@ -5,7 +5,7 @@ use serde::Serialize;
 use serde_json::Value;
 
 use crate::cli::common::trade_transforms::{TradeRecordKind, transformed_trade_values};
-use crate::cli::error::{empty_result, json_error, usage_error};
+use crate::cli::error::CliExit;
 
 static STRICT_EMPTY_CONTEXT: LazyLock<Mutex<Option<EmptyResultContext>>> =
     LazyLock::new(|| Mutex::new(None));
@@ -378,16 +378,9 @@ pub fn print_result<T: Serialize>(value: &T) -> io::Result<()> {
     print_json(value)
 }
 
-/// Convert an output write result into the CLI exit code convention.
-pub fn finish_output(result: io::Result<()>) -> i32 {
-    match result {
-        Ok(()) => 0,
-        Err(err) if err.kind() == io::ErrorKind::NotFound => empty_result(err.to_string()),
-        Err(err) if err.kind() == io::ErrorKind::InvalidInput => {
-            usage_error(format!("output error: {err}"))
-        }
-        Err(err) => json_error(format!("output error: {err}")),
-    }
+/// Convert an output write result into the `Result<(), CliExit>` convention.
+pub fn finish_output(result: io::Result<()>) -> Result<(), CliExit> {
+    Ok(result?)
 }
 
 fn strict_empty_error_if_needed(records_empty: bool) -> io::Result<()> {
@@ -452,9 +445,6 @@ mod tests {
 
     use serde::Serialize;
 
-    use crate::cli::common::trade_transforms::TradeRecordKind;
-    use crate::cli::error::{EXIT_EMPTY_RESULT, EXIT_JSON_ERROR, EXIT_USAGE_ERROR};
-
     use super::{
         configure_strict_empty, empty_result_suggestion, finish_output, print_record_values,
         print_record_values_with_allowed_fields, print_records, print_records_with_allowed_fields,
@@ -462,6 +452,7 @@ mod tests {
         records_to_values, selected_fields, strict_empty_command_from_args, write_json,
         write_record_values,
     };
+    use crate::cli::common::trade_transforms::TradeRecordKind;
 
     static STRICT_EMPTY_TEST_LOCK: LazyLock<Mutex<()>> = LazyLock::new(|| Mutex::new(()));
 
@@ -827,25 +818,22 @@ mod tests {
 
     #[test]
     fn finish_output_maps_result_to_exit_code() {
-        assert_eq!(finish_output(Ok(())), 0);
-        assert_eq!(
+        assert!(finish_output(Ok(())).is_ok());
+        assert!(
             finish_output(Err(std::io::Error::new(
                 std::io::ErrorKind::NotFound,
                 "trade list returned no rows; try widening filters"
-            ))),
-            EXIT_EMPTY_RESULT
+            )))
+            .is_err()
         );
-        assert_eq!(
+        assert!(
             finish_output(Err(std::io::Error::new(
                 std::io::ErrorKind::InvalidInput,
                 "unknown output field"
-            ))),
-            EXIT_USAGE_ERROR
+            )))
+            .is_err()
         );
-        assert_eq!(
-            finish_output(Err(std::io::Error::other("broken pipe"))),
-            EXIT_JSON_ERROR
-        );
+        assert!(finish_output(Err(std::io::Error::other("broken pipe"))).is_err());
     }
 
     #[test]

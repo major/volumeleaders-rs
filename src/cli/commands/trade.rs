@@ -16,25 +16,27 @@ use serde::Serialize;
 use tracing::instrument;
 
 use crate::cli::TradeArgs;
-use crate::cli::common::auth::{handle_api_error, make_client};
+use crate::cli::common::DATE_FMT;
+use crate::cli::common::auth::make_client;
 use crate::cli::common::dates::resolve_date_range;
 use crate::cli::common::tickers::{parse_single_ticker, parse_tickers};
 use crate::cli::common::trade_transforms::TradeRecordKind;
 use crate::cli::common::types::{OrderDirection, SummaryGroup, TriStateFilter};
-use crate::cli::common::{DATE_FMT, TRADE_HEADERS};
-use crate::cli::error::usage_error;
-use crate::cli::field_metadata;
+use crate::cli::error::{CliExit, usage_error};
+use crate::cli::field_metadata::{
+    self, ALERT_HEADERS, BOMB_HEADERS, CLUSTER_HEADERS, LEVEL_HEADERS, TRADE_HEADERS,
+};
 use crate::cli::output::{
     finish_output, print_json, print_transformed_record_values_with_allowed_fields,
 };
 
 use self::dashboard::{TradeDashboard, dashboard_output_value};
 use self::filters::{
-    apply_trade_filter_args, apply_trade_list_ranges, apply_trade_ranges, cluster_bomb_filters,
-    cluster_filters, dashboard_bombs_request, dashboard_clusters_request, dashboard_levels_request,
-    dashboard_trades_request, default_trade_filters, default_trade_list_filters,
-    level_touch_filters, parse_tri_state_filter, set_filter, set_ticker_filters,
-    validate_trade_level_count,
+    K_END_DATE, K_SECTOR_INDUSTRY, K_START_DATE, apply_trade_filter_args, apply_trade_list_ranges,
+    apply_trade_ranges, cluster_bomb_filters, cluster_filters, dashboard_bombs_request,
+    dashboard_clusters_request, dashboard_levels_request, dashboard_trades_request,
+    default_trade_filters, default_trade_list_filters, level_touch_filters, parse_tri_state_filter,
+    set_filter, set_ticker_filters, validate_trade_level_count,
 };
 use self::presets::{apply_preset_filters, find_trade_preset};
 use self::sentiment::summarize_trade_sentiment;
@@ -58,50 +60,6 @@ pub(super) const DEFAULT_MAX_PRICE: f64 = 100_000.0;
 pub(super) const DEFAULT_MAX_DOLLARS: f64 = 30_000_000_000.0;
 pub(super) const HAR_TRADE_MIN_VOLUME: i64 = 10_000;
 pub(super) const HAR_TRADE_MAX_DOLLARS: f64 = 100_000_000_000.0;
-
-const CLUSTER_HEADERS: &[&str] = &[
-    "Date",
-    "Ticker",
-    "Price",
-    "Dollars",
-    "TradeCount",
-    "DollarsMultiplier",
-    "CumulativeDistribution",
-    "TradeClusterRank",
-    "window",
-];
-const BOMB_HEADERS: &[&str] = &[
-    "Date",
-    "Ticker",
-    "Dollars",
-    "TradeCount",
-    "DollarsMultiplier",
-    "CumulativeDistribution",
-    "TradeClusterBombRank",
-    "window",
-];
-const LEVEL_HEADERS: &[&str] = &[
-    "Ticker",
-    "Price",
-    "Dollars",
-    "Trades",
-    "RelativeSize",
-    "CumulativeDistribution",
-    "TradeLevelRank",
-];
-const ALERT_HEADERS: &[&str] = &[
-    "Ticker",
-    "Date",
-    "Time",
-    "AlertType",
-    "TradeID",
-    "Price",
-    "Volume",
-    "Dollars",
-    "TradeRank",
-    "type",
-    "venue",
-];
 
 #[derive(Debug, Serialize)]
 struct DateRange {
@@ -585,7 +543,7 @@ pub struct FixedPageArgs {
 
 /// Handles the trade command group.
 #[instrument(skip_all)]
-pub async fn handle(args: &TradeArgs) -> i32 {
+pub async fn handle(args: &TradeArgs) -> Result<(), CliExit> {
     match &args.command {
         TradeCommand::List(list_args) => execute_list(list_args).await,
         TradeCommand::Dashboard(dashboard_args) => execute_dashboard(dashboard_args).await,
@@ -644,12 +602,14 @@ fn resolve_trade_list_range(args: &OptionalDateRangeArgs) -> (String, String) {
 }
 
 #[instrument(skip_all)]
-async fn execute_list(args: &ListArgs) -> i32 {
+async fn execute_list(args: &ListArgs) -> Result<(), CliExit> {
     if args.group_by.is_some() && !args.summary {
-        return usage_error("--group-by only works with --summary");
+        return Err(usage_error("--group-by only works with --summary"));
     }
     if args.summary && (args.fields.is_some() || args.all_fields) {
-        return usage_error("--fields and --all-fields cannot be used with --summary");
+        return Err(usage_error(
+            "--fields and --all-fields cannot be used with --summary",
+        ));
     }
 
     let tickers = parse_ticker_args(&args.tickers);
@@ -662,7 +622,7 @@ async fn execute_list(args: &ListArgs) -> i32 {
         let preset = match find_trade_preset(preset_name) {
             Some(preset) => preset,
             None => {
-                return usage_error(format!("unknown trade preset: {preset_name}"));
+                return Err(usage_error(format!("unknown trade preset: {preset_name}")));
             }
         };
         filters = default_trade_list_filters();
@@ -670,8 +630,8 @@ async fn execute_list(args: &ListArgs) -> i32 {
         apply_trade_list_ranges(&mut filters, &args.ranges);
         apply_trade_filter_args(&mut filters, &args.filters);
     }
-    set_filter(&mut filters, "StartDate", start.clone());
-    set_filter(&mut filters, "EndDate", end.clone());
+    set_filter(&mut filters, K_START_DATE, start.clone());
+    set_filter(&mut filters, K_END_DATE, end.clone());
     set_ticker_filters(&mut filters, &tickers, "Tickers");
 
     let length = i32::try_from(args.limit).unwrap_or(i32::MAX);
@@ -680,14 +640,8 @@ async fn execute_list(args: &ListArgs) -> i32 {
         .with_search("", false)
         .with_order(1, "DESC", "FullTimeString24")
         .with_trade_filters(filters);
-    let client = match make_client().await {
-        Ok(client) => client,
-        Err(code) => return code,
-    };
-    let mut trades = match client.get_trades(&request).await {
-        Ok(response) => response.data,
-        Err(err) => return handle_api_error(err),
-    };
+    let client = make_client().await?;
+    let mut trades = client.get_trades(&request).await?.data;
     trades.truncate(args.limit);
 
     let output = if args.summary {
@@ -708,13 +662,10 @@ async fn execute_list(args: &ListArgs) -> i32 {
 }
 
 #[instrument(skip_all)]
-async fn execute_dashboard(args: &DashboardArgs) -> i32 {
+async fn execute_dashboard(args: &DashboardArgs) -> Result<(), CliExit> {
     let ticker = parse_single_ticker(&args.ticker);
     let (start, end) = resolve_with_default(&args.dates, DEFAULT_DASHBOARD_LOOKBACK_DAYS);
-    let client = match make_client().await {
-        Ok(client) => client,
-        Err(code) => return code,
-    };
+    let client = make_client().await?;
 
     let trades_req = dashboard_trades_request(args, &ticker, &start, &end);
     let clusters_req = dashboard_clusters_request(args, &ticker, &start, &end);
@@ -728,23 +679,11 @@ async fn execute_dashboard(args: &DashboardArgs) -> i32 {
         client.get_trade_cluster_bombs(&bombs_req),
     );
 
-    let trades = match trades_result {
-        Ok(response) => response.data,
-        Err(err) => return handle_api_error(err),
-    };
-    let clusters = match clusters_result {
-        Ok(response) => response.data,
-        Err(err) => return handle_api_error(err),
-    };
-    let mut levels = match levels_result {
-        Ok(response) => response.data,
-        Err(err) => return handle_api_error(err),
-    };
+    let trades = trades_result?.data;
+    let clusters = clusters_result?.data;
+    let mut levels = levels_result?.data;
     levels.truncate(args.count);
-    let cluster_bombs = match bombs_result {
-        Ok(response) => response.data,
-        Err(err) => return handle_api_error(err),
-    };
+    let cluster_bombs = bombs_result?.data;
 
     let dashboard = TradeDashboard {
         ticker,
@@ -755,48 +694,34 @@ async fn execute_dashboard(args: &DashboardArgs) -> i32 {
         levels,
         cluster_bombs,
     };
-    let dashboard = match dashboard_output_value(&dashboard, args) {
-        Ok(value) => value,
-        Err(message) => return usage_error(format!("field error: {message}")),
-    };
+    let dashboard = dashboard_output_value(&dashboard, args)
+        .map_err(|message| usage_error(format!("field error: {message}")))?;
     finish_output(print_json(&dashboard))
 }
 
 #[instrument(skip_all)]
-async fn execute_sentiment(args: &SentimentArgs) -> i32 {
-    let (start, end) = match resolve_required_range(&args.dates) {
-        Ok(range) => range,
-        Err(message) => return usage_error(message),
-    };
+async fn execute_sentiment(args: &SentimentArgs) -> Result<(), CliExit> {
+    let (start, end) = resolve_required_range(&args.dates).map_err(usage_error)?;
     let mut filters = default_trade_filters(args.ranges.min_dollars.unwrap_or(5_000_000.0), 97);
     apply_trade_ranges(&mut filters, &args.ranges, 5_000_000.0);
     apply_trade_filter_args(&mut filters, &args.filters);
-    set_filter(&mut filters, "StartDate", start.clone());
-    set_filter(&mut filters, "EndDate", end.clone());
-    set_filter(&mut filters, "SectorIndustry", "X B".to_string());
+    set_filter(&mut filters, K_START_DATE, start.clone());
+    set_filter(&mut filters, K_END_DATE, end.clone());
+    set_filter(&mut filters, K_SECTOR_INDUSTRY, "X B".to_string());
 
     let request = TradesRequest::new()
         .with_length(50)
         .with_order(1, "desc", "FullTimeString24")
         .with_trade_filters(filters);
-    let client = match make_client().await {
-        Ok(client) => client,
-        Err(code) => return code,
-    };
-    let trades = match client.get_trades_limit(&request, usize::MAX).await {
-        Ok(trades) => trades,
-        Err(err) => return handle_api_error(err),
-    };
+    let client = make_client().await?;
+    let trades = client.get_trades_limit(&request, usize::MAX).await?;
     let sentiment = summarize_trade_sentiment(&trades, &start, &end);
     finish_output(print_json(&sentiment))
 }
 
 #[instrument(skip_all)]
-async fn execute_clusters(args: &ClustersArgs) -> i32 {
-    let (start, end) = match resolve_required_range(&args.dates) {
-        Ok(range) => range,
-        Err(message) => return usage_error(message),
-    };
+async fn execute_clusters(args: &ClustersArgs) -> Result<(), CliExit> {
+    let (start, end) = resolve_required_range(&args.dates).map_err(usage_error)?;
     let request = TradeClustersRequest::new()
         .with_start(args.page.start)
         .with_length(DEFAULT_CLUSTER_LENGTH)
@@ -807,14 +732,8 @@ async fn execute_clusters(args: &ClustersArgs) -> i32 {
             cluster_order_name(args.page.order_col),
         )
         .with_cluster_filters(cluster_filters(args, &start, &end));
-    let client = match make_client().await {
-        Ok(client) => client,
-        Err(code) => return code,
-    };
-    let response = match client.get_trade_clusters(&request).await {
-        Ok(response) => response,
-        Err(err) => return handle_api_error(err),
-    };
+    let client = make_client().await?;
+    let response = client.get_trade_clusters(&request).await?;
     output_trade_records(
         &response.data,
         TradeRecordKind::Cluster,
@@ -826,11 +745,8 @@ async fn execute_clusters(args: &ClustersArgs) -> i32 {
 }
 
 #[instrument(skip_all)]
-async fn execute_cluster_bombs(args: &ClusterBombsArgs) -> i32 {
-    let (start, end) = match resolve_required_range(&args.dates) {
-        Ok(range) => range,
-        Err(message) => return usage_error(message),
-    };
+async fn execute_cluster_bombs(args: &ClusterBombsArgs) -> Result<(), CliExit> {
+    let (start, end) = resolve_required_range(&args.dates).map_err(usage_error)?;
     let request = TradeClusterBombsRequest::new()
         .with_start(args.page.start)
         .with_length(DEFAULT_CLUSTER_BOMB_LENGTH)
@@ -841,14 +757,8 @@ async fn execute_cluster_bombs(args: &ClusterBombsArgs) -> i32 {
             cluster_bomb_order_name(args.page.order_col),
         )
         .with_cluster_bomb_filters(cluster_bomb_filters(args, &start, &end));
-    let client = match make_client().await {
-        Ok(client) => client,
-        Err(code) => return code,
-    };
-    let response = match client.get_trade_cluster_bombs(&request).await {
-        Ok(response) => response,
-        Err(err) => return handle_api_error(err),
-    };
+    let client = make_client().await?;
+    let response = client.get_trade_cluster_bombs(&request).await?;
     output_trade_records(
         &response.data,
         TradeRecordKind::ClusterBomb,
@@ -860,20 +770,14 @@ async fn execute_cluster_bombs(args: &ClusterBombsArgs) -> i32 {
 }
 
 #[instrument(skip_all)]
-async fn execute_alerts(args: &AlertsArgs) -> i32 {
+async fn execute_alerts(args: &AlertsArgs) -> Result<(), CliExit> {
     let request = crate::TradeAlertsRequest::new()
         .with_start(args.page.start)
         .with_length(args.page.length)
         .with_order(args.page.order_col, args.page.order_dir.as_str(), "")
         .with_date(args.date.clone());
-    let client = match make_client().await {
-        Ok(client) => client,
-        Err(code) => return code,
-    };
-    let response = match client.get_trade_alerts(&request).await {
-        Ok(response) => response,
-        Err(err) => return handle_api_error(err),
-    };
+    let client = make_client().await?;
+    let response = client.get_trade_alerts(&request).await?;
     output_trade_records(
         &response.data,
         TradeRecordKind::Trade,
@@ -885,20 +789,14 @@ async fn execute_alerts(args: &AlertsArgs) -> i32 {
 }
 
 #[instrument(skip_all)]
-async fn execute_cluster_alerts(args: &AlertsArgs) -> i32 {
+async fn execute_cluster_alerts(args: &AlertsArgs) -> Result<(), CliExit> {
     let request = crate::TradeClusterAlertsRequest::new()
         .with_start(args.page.start)
         .with_length(args.page.length)
         .with_order(args.page.order_col, args.page.order_dir.as_str(), "")
         .with_date(args.date.clone());
-    let client = match make_client().await {
-        Ok(client) => client,
-        Err(code) => return code,
-    };
-    let response = match client.get_trade_cluster_alerts(&request).await {
-        Ok(response) => response,
-        Err(err) => return handle_api_error(err),
-    };
+    let client = make_client().await?;
+    let response = client.get_trade_cluster_alerts(&request).await?;
     output_trade_records(
         &response.data,
         TradeRecordKind::Cluster,
@@ -910,24 +808,18 @@ async fn execute_cluster_alerts(args: &AlertsArgs) -> i32 {
 }
 
 #[instrument(skip_all)]
-async fn execute_levels(args: &LevelsArgs) -> i32 {
+async fn execute_levels(args: &LevelsArgs) -> Result<(), CliExit> {
     if !validate_trade_level_count(args.trade_level_count) {
-        return usage_error(
+        return Err(usage_error(
             "--trade-level-count must be one of 5, 10, 20, or 50 for trade level retrieval",
-        );
+        ));
     }
     let ticker = parse_single_ticker(&args.ticker);
     let (start, end) = resolve_with_default(&args.dates, 365);
     let request =
         dashboard_levels_request(&ticker, &start, &end, args.trade_level_count).with_length(-1);
-    let client = match make_client().await {
-        Ok(client) => client,
-        Err(code) => return code,
-    };
-    let response = match client.get_chart0_trade_levels(&request).await {
-        Ok(response) => response,
-        Err(err) => return handle_api_error(err),
-    };
+    let client = make_client().await?;
+    let response = client.get_chart0_trade_levels(&request).await?;
     let mut levels = response.data;
     levels.truncate(args.trade_level_count);
     output_trade_records(
@@ -941,33 +833,26 @@ async fn execute_levels(args: &LevelsArgs) -> i32 {
 }
 
 #[instrument(skip_all)]
-async fn execute_level_touches(args: &LevelTouchesArgs) -> i32 {
+async fn execute_level_touches(args: &LevelTouchesArgs) -> Result<(), CliExit> {
     if !validate_trade_level_count(args.trade_level_count) {
-        return usage_error(
+        return Err(usage_error(
             "--trade-level-count must be one of 5, 10, 20, or 50 for trade level retrieval",
-        );
+        ));
     }
     if !(1..=50).contains(&args.page.length) {
-        return usage_error("--length must be between 1 and 50 for trade level touch retrieval");
+        return Err(usage_error(
+            "--length must be between 1 and 50 for trade level touch retrieval",
+        ));
     }
-    let (start, end) = match resolve_required_range(&args.dates) {
-        Ok(range) => range,
-        Err(message) => return usage_error(message),
-    };
+    let (start, end) = resolve_required_range(&args.dates).map_err(usage_error)?;
     let ticker = parse_single_ticker(&args.ticker);
     let request = TradeLevelTouchesRequest::new()
         .with_start(args.page.start)
         .with_length(args.page.length)
         .with_order(args.page.order_col, args.page.order_dir.as_str(), "")
         .with_level_touch_filters(level_touch_filters(args, &ticker, &start, &end));
-    let client = match make_client().await {
-        Ok(client) => client,
-        Err(code) => return code,
-    };
-    let response = match client.get_trade_level_touches(&request).await {
-        Ok(response) => response,
-        Err(err) => return handle_api_error(err),
-    };
+    let client = make_client().await?;
+    let response = client.get_trade_level_touches(&request).await?;
     output_trade_records(
         &response.data,
         TradeRecordKind::Level,
@@ -985,9 +870,15 @@ fn output_trade_records<T: Serialize>(
     fields: Option<&str>,
     all_fields: bool,
     command_path: &str,
-) -> i32 {
-    let result = print_trade_records(records, kind, headers, fields, all_fields, command_path);
-    finish_output(result)
+) -> Result<(), CliExit> {
+    Ok(print_trade_records(
+        records,
+        kind,
+        headers,
+        fields,
+        all_fields,
+        command_path,
+    )?)
 }
 
 fn cluster_order_name(order_col: i32) -> &'static str {
@@ -1662,7 +1553,7 @@ mod tests {
             "Dollars": 10_000_000.0
         }))];
 
-        assert_eq!(
+        assert!(
             output_trade_records(
                 &records,
                 TradeRecordKind::Trade,
@@ -1670,8 +1561,8 @@ mod tests {
                 Some("Price"),
                 false,
                 "trade list",
-            ),
-            0
+            )
+            .is_ok()
         );
     }
 
@@ -2427,8 +2318,8 @@ mod tests {
     fn trade_list_default_request_matches_har_shape() {
         let (start, end) = resolve_trade_list_range(&empty_optional_dates());
         let mut filters = default_trade_list_filters();
-        set_filter(&mut filters, "StartDate", start);
-        set_filter(&mut filters, "EndDate", end);
+        set_filter(&mut filters, K_START_DATE, start);
+        set_filter(&mut filters, K_END_DATE, end);
 
         let request = TradesRequest::new()
             .with_length(DEFAULT_TRADE_LIMIT as i32)
