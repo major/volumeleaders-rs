@@ -795,7 +795,7 @@ async fn execute_cluster_alerts(args: &AlertsArgs) -> Result<(), CliExit> {
         CLUSTER_HEADERS,
         args.fields.as_deref(),
         args.all_fields,
-        "trade clusters",
+        "trade cluster-alerts",
     )
 }
 
