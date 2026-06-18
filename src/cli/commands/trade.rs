@@ -34,6 +34,8 @@ use self::filters::{
     cluster_filters, dashboard_bombs_request, dashboard_clusters_request, dashboard_levels_request,
     dashboard_trades_request, default_trade_filters, default_trade_list_filters,
     level_touch_filters, parse_tri_state_filter, set_filter, set_ticker_filters,
+    K_END_DATE, K_SECTOR_INDUSTRY, K_START_DATE,
+
     validate_trade_level_count,
 };
 use self::presets::{apply_preset_filters, find_trade_preset};
@@ -670,8 +672,8 @@ async fn execute_list(args: &ListArgs) -> Result<(), CliExit> {
         apply_trade_list_ranges(&mut filters, &args.ranges);
         apply_trade_filter_args(&mut filters, &args.filters);
     }
-    set_filter(&mut filters, "StartDate", start.clone());
-    set_filter(&mut filters, "EndDate", end.clone());
+    set_filter(&mut filters, K_START_DATE, start.clone());
+    set_filter(&mut filters, K_END_DATE, end.clone());
     set_ticker_filters(&mut filters, &tickers, "Tickers");
 
     let length = i32::try_from(args.limit).unwrap_or(i32::MAX);
@@ -745,9 +747,9 @@ async fn execute_sentiment(args: &SentimentArgs) -> Result<(), CliExit> {
     let mut filters = default_trade_filters(args.ranges.min_dollars.unwrap_or(5_000_000.0), 97);
     apply_trade_ranges(&mut filters, &args.ranges, 5_000_000.0);
     apply_trade_filter_args(&mut filters, &args.filters);
-    set_filter(&mut filters, "StartDate", start.clone());
-    set_filter(&mut filters, "EndDate", end.clone());
-    set_filter(&mut filters, "SectorIndustry", "X B".to_string());
+    set_filter(&mut filters, K_START_DATE, start.clone());
+    set_filter(&mut filters, K_END_DATE, end.clone());
+    set_filter(&mut filters, K_SECTOR_INDUSTRY, "X B".to_string());
 
     let request = TradesRequest::new()
         .with_length(50)
@@ -2347,8 +2349,8 @@ mod tests {
     fn trade_list_default_request_matches_har_shape() {
         let (start, end) = resolve_trade_list_range(&empty_optional_dates());
         let mut filters = default_trade_list_filters();
-        set_filter(&mut filters, "StartDate", start);
-        set_filter(&mut filters, "EndDate", end);
+        set_filter(&mut filters, K_START_DATE, start);
+        set_filter(&mut filters, K_END_DATE, end);
 
         let request = TradesRequest::new()
             .with_length(DEFAULT_TRADE_LIMIT as i32)
