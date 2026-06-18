@@ -7,6 +7,7 @@ mod filters;
 mod presets;
 mod sentiment;
 
+use crate::datatables::SortDir;
 use crate::{
     TradeClusterBombsRequest, TradeClustersRequest, TradeLevelTouchesRequest, TradesRequest,
 };
@@ -635,7 +636,7 @@ async fn execute_list(args: &ListArgs) -> Result<(), CliExit> {
     let request = TradesRequest::new()
         .with_length(length)
         .with_search("", false)
-        .with_order(1, "DESC", "FullTimeString24")
+        .with_order(1, SortDir::Desc, "FullTimeString24")
         .with_trade_filters(filters);
     let client = make_client().await?;
     let mut trades = client.get_trades(&request).await?.data;
@@ -707,7 +708,7 @@ async fn execute_sentiment(args: &SentimentArgs) -> Result<(), CliExit> {
 
     let request = TradesRequest::new()
         .with_length(50)
-        .with_order(1, "desc", "FullTimeString24")
+        .with_order(1, SortDir::Desc, "FullTimeString24")
         .with_trade_filters(filters);
     let client = make_client().await?;
     let trades = client.get_trades_limit(&request, usize::MAX).await?;
@@ -724,7 +725,7 @@ async fn execute_clusters(args: &ClustersArgs) -> Result<(), CliExit> {
         .with_search("", false)
         .with_order(
             args.page.order_col,
-            args.page.order_dir.as_str().to_ascii_uppercase(),
+            args.page.order_dir.into(),
             cluster_order_name(args.page.order_col),
         )
         .with_cluster_filters(cluster_filters(args, &start, &end));
@@ -748,7 +749,7 @@ async fn execute_cluster_bombs(args: &ClusterBombsArgs) -> Result<(), CliExit> {
         .with_search("", false)
         .with_order(
             args.page.order_col,
-            args.page.order_dir.as_str().to_ascii_uppercase(),
+            args.page.order_dir.into(),
             cluster_bomb_order_name(args.page.order_col),
         )
         .with_cluster_bomb_filters(cluster_bomb_filters(args, &start, &end));
@@ -768,7 +769,7 @@ async fn execute_alerts(args: &AlertsArgs) -> Result<(), CliExit> {
     let request = crate::TradeAlertsRequest::new()
         .with_start(args.page.start)
         .with_length(args.page.length)
-        .with_order(args.page.order_col, args.page.order_dir.as_str(), "")
+        .with_order(args.page.order_col, args.page.order_dir.into(), "")
         .with_date(args.date.clone());
     let client = make_client().await?;
     let response = client.get_trade_alerts(&request).await?;
@@ -786,7 +787,7 @@ async fn execute_cluster_alerts(args: &AlertsArgs) -> Result<(), CliExit> {
     let request = crate::TradeClusterAlertsRequest::new()
         .with_start(args.page.start)
         .with_length(args.page.length)
-        .with_order(args.page.order_col, args.page.order_dir.as_str(), "")
+        .with_order(args.page.order_col, args.page.order_dir.into(), "")
         .with_date(args.date.clone());
     let client = make_client().await?;
     let response = client.get_trade_cluster_alerts(&request).await?;
@@ -840,7 +841,7 @@ async fn execute_level_touches(args: &LevelTouchesArgs) -> Result<(), CliExit> {
     let request = TradeLevelTouchesRequest::new()
         .with_start(args.page.start)
         .with_length(args.page.length)
-        .with_order(args.page.order_col, args.page.order_dir.as_str(), "")
+        .with_order(args.page.order_col, args.page.order_dir.into(), "")
         .with_level_touch_filters(level_touch_filters(args, &ticker, &start, &end));
     let client = make_client().await?;
     let response = client.get_trade_level_touches(&request).await?;

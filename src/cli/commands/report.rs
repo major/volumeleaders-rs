@@ -13,6 +13,7 @@ use crate::cli::common::auth::make_client;
 use crate::cli::common::dates::resolve_date_range;
 use crate::cli::common::tickers::parse_tickers;
 use crate::cli::common::types::SummaryGroup;
+use crate::datatables::SortDir;
 use crate::cli::error::{CliExit, usage_error};
 use crate::cli::field_metadata;
 use crate::cli::field_metadata::TRADE_HEADERS;
@@ -485,7 +486,7 @@ fn build_report_request(filters: Vec<(String, String)>, limit: usize) -> crate::
     crate::TradesRequest::new()
         .with_length(length)
         .with_search("", false)
-        .with_order(1, "DESC", "FullTimeString24")
+        .with_order(1, SortDir::Desc, "FullTimeString24")
         .with_trade_filters(filters)
 }
 

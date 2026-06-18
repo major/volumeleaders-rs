@@ -13,18 +13,38 @@ use crate::error::Result;
 
 const DEFAULT_DATATABLES_LENGTH: i32 = 25;
 const DEFAULT_ORDER_COLUMN: i32 = 1;
-const DEFAULT_ORDER_DIR: &str = "desc";
 
 /// Page size used by the DataTables paginator.
 pub const PAGE_SIZE: usize = 100;
 
+/// Sort direction for DataTables order definitions.
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+pub enum SortDir {
+    /// Ascending sort order.
+    Asc,
+    /// Descending sort order (the default).
+    #[default]
+    Desc,
+}
+
+impl SortDir {
+    /// Returns the wire-format string for this direction.
+    #[must_use]
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::Asc => "asc",
+            Self::Desc => "desc",
+        }
+    }
+}
+
 /// One DataTables form column definition.
-#[derive(Clone, Debug, Default, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 pub struct DataTablesColumn {
     /// Data field name sent in `columns[N][data]`.
-    pub data: String,
+    pub data: &'static str,
     /// Server-side display/sort name sent in `columns[N][name]`.
-    pub name: String,
+    pub name: &'static str,
     /// Whether the column participates in search.
     pub searchable: bool,
     /// Whether the column can be ordered.
@@ -34,15 +54,15 @@ pub struct DataTablesColumn {
 impl DataTablesColumn {
     /// Build a DataTables column definition.
     #[must_use]
-    pub fn new(
-        data: impl Into<String>,
-        name: impl Into<String>,
+    pub const fn new(
+        data: &'static str,
+        name: &'static str,
         searchable: bool,
         orderable: bool,
     ) -> Self {
         Self {
-            data: data.into(),
-            name: name.into(),
+            data,
+            name,
             searchable,
             orderable,
         }
@@ -50,25 +70,21 @@ impl DataTablesColumn {
 }
 
 /// One DataTables sort instruction.
-#[derive(Clone, Debug, Default, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 pub struct DataTablesOrder {
     /// Zero-based column index to sort on.
     pub column: i32,
-    /// Sort direction, usually `asc` or `desc`.
-    pub dir: String,
+    /// Sort direction.
+    pub dir: SortDir,
     /// Optional named sort key sent as `order[N][name]` when non-empty.
-    pub name: String,
+    pub name: &'static str,
 }
 
 impl DataTablesOrder {
     /// Build a DataTables order definition.
     #[must_use]
-    pub fn new(column: i32, dir: impl Into<String>, name: impl Into<String>) -> Self {
-        Self {
-            column,
-            dir: dir.into(),
-            name: name.into(),
-        }
+    pub const fn new(column: i32, dir: SortDir, name: &'static str) -> Self {
+        Self { column, dir, name }
     }
 }
 
@@ -119,7 +135,7 @@ impl DataTablesRequest {
 
     /// Replace the sort list with a single order definition.
     #[must_use]
-    pub fn with_order(self, column: i32, dir: impl Into<String>, name: impl Into<String>) -> Self {
+    pub fn with_order(self, column: i32, dir: SortDir, name: &'static str) -> Self {
         self.with_orders(vec![DataTablesOrder::new(column, dir, name)])
     }
 
@@ -211,8 +227,8 @@ macro_rules! impl_datatables_request_methods {
             pub fn with_order(
                 mut self,
                 column: i32,
-                dir: impl Into<String>,
-                name: impl Into<String>,
+                dir: $crate::datatables::SortDir,
+                name: &'static str,
             ) -> Self {
                 self.0 = self.0.with_order(column, dir, name);
                 self
@@ -351,8 +367,8 @@ fn raw_pairs(req: &DataTablesRequest) -> FormPairs {
 
     for (index, column) in req.columns.iter().enumerate() {
         let prefix = format!("columns[{index}]");
-        pairs.push((format!("{prefix}[data]"), column.data.clone()));
-        pairs.push((format!("{prefix}[name]"), column.name.clone()));
+        pairs.push((format!("{prefix}[data]"), column.data.to_string()));
+        pairs.push((format!("{prefix}[name]"), column.name.to_string()));
         pairs.push((
             format!("{prefix}[searchable]"),
             bool_value(column.searchable).to_string(),
@@ -366,15 +382,10 @@ fn raw_pairs(req: &DataTablesRequest) -> FormPairs {
     }
 
     if req.order.is_empty() {
-        push_order_raw(&mut pairs, 0, DEFAULT_ORDER_COLUMN, DEFAULT_ORDER_DIR, "");
+        push_order_raw(&mut pairs, 0, DEFAULT_ORDER_COLUMN, SortDir::Desc.as_str(), "");
     } else {
         for (index, order) in req.order.iter().enumerate() {
-            let dir = if order.dir.is_empty() {
-                DEFAULT_ORDER_DIR
-            } else {
-                order.dir.as_str()
-            };
-            push_order_raw(&mut pairs, index, order.column, dir, &order.name);
+            push_order_raw(&mut pairs, index, order.column, order.dir.as_str(), order.name);
         }
     }
 
@@ -503,8 +514,8 @@ mod tests {
                 DataTablesColumn::new("Volume", "Sh", false, true),
             ],
             order: vec![
-                DataTablesOrder::new(1, "asc", "Sh"),
-                DataTablesOrder::new(0, "", ""),
+                DataTablesOrder::new(1, SortDir::Asc, "Sh"),
+                DataTablesOrder::new(0, SortDir::Desc, ""),
             ],
             include_search: true,
             search_value: "AXP".to_string(),
@@ -533,7 +544,7 @@ mod tests {
                 DataTablesColumn::new("Last", "Last Price", false, true),
                 DataTablesColumn::new("Change", "", true, false),
             ],
-            order: vec![DataTablesOrder::new(0, "asc", "")],
+            order: vec![DataTablesOrder::new(0, SortDir::Asc, "")],
             include_search: true,
             extra_values: vec![("Sector".to_string(), "Financial Services".to_string())],
             ..DataTablesRequest::default()

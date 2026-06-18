@@ -1,3 +1,4 @@
+use crate::datatables::SortDir;
 use crate::{
     DataTablesColumn, TradeClusterBombsRequest, TradeClustersRequest, TradeLevelsRequest,
     TradesRequest,
@@ -323,7 +324,7 @@ pub(super) fn dashboard_trades_request(
         .with_columns(trade_chart_columns())
         .with_length(args.count as i32)
         .with_search("", false)
-        .with_order(0, "desc", "FullTimeString24")
+        .with_order(0, SortDir::Desc, "FullTimeString24")
         .with_trade_filters(filters)
 }
 
@@ -337,7 +338,7 @@ pub(super) fn dashboard_clusters_request(
         .with_columns(trade_cluster_chart_columns())
         .with_length(args.count as i32)
         .with_search("", false)
-        .with_order(3, "desc", "Sh")
+        .with_order(3, SortDir::Desc, "Sh")
         .with_cluster_filters(dashboard_cluster_filters(args, ticker, start, end))
 }
 
@@ -352,7 +353,7 @@ pub(super) fn dashboard_levels_request(
         .with_columns(trade_level_chart_columns())
         .with_length(count as i32)
         .with_search("", false)
-        .with_order(0, "desc", "Price")
+        .with_order(0, SortDir::Desc, "Price")
         .with_chart_filters(ticker, start, end, levels)
 }
 
@@ -366,7 +367,7 @@ pub(super) fn dashboard_bombs_request(
         .with_columns(trade_cluster_bomb_chart_columns())
         .with_length(args.count as i32)
         .with_search("", false)
-        .with_order(2, "desc", "Sh")
+        .with_order(2, SortDir::Desc, "Sh")
         .with_cluster_bomb_filters(dashboard_bomb_filters(args, ticker, start, end))
 }
 

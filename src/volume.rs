@@ -80,7 +80,7 @@ impl VolumeRequest {
 /// Only the three middle metric columns differ. The duplicated Ticker and
 /// LastComparibleTradeDate entries match the browser form that VolumeLeaders
 /// expects.
-fn volume_columns(volume: &str, dollars: &str, rank: &str) -> Vec<DataTablesColumn> {
+fn volume_columns(volume: &'static str, dollars: &'static str, rank: &'static str) -> Vec<DataTablesColumn> {
     vec![
         DataTablesColumn::new("Ticker", "Ticker", true, true),
         DataTablesColumn::new("Ticker", "Ticker", true, true),
