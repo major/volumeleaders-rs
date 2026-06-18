@@ -80,28 +80,22 @@ impl VolumeRequest {
 /// Only the three middle metric columns differ. The duplicated Ticker and
 /// LastComparibleTradeDate entries match the browser form that VolumeLeaders
 /// expects.
-fn volume_columns(volume: &str, dollars: &str, rank: &str) -> Vec<DataTablesColumn> {
+fn volume_columns(
+    volume: &'static str,
+    dollars: &'static str,
+    rank: &'static str,
+) -> Vec<DataTablesColumn> {
     vec![
-        DataTablesColumn::new("Ticker", "Ticker", true, true),
-        DataTablesColumn::new("Ticker", "Ticker", true, true),
-        DataTablesColumn::new("Price", "Price", true, true),
-        DataTablesColumn::new("Sector", "Sector", true, true),
-        DataTablesColumn::new("Industry", "Industry", true, true),
-        DataTablesColumn::new(volume, volume, true, true),
-        DataTablesColumn::new(dollars, dollars, true, true),
-        DataTablesColumn::new(rank, rank, true, true),
-        DataTablesColumn::new(
-            "LastComparibleTradeDate",
-            "LastComparibleTradeDate",
-            true,
-            true,
-        ),
-        DataTablesColumn::new(
-            "LastComparibleTradeDate",
-            "LastComparibleTradeDate",
-            true,
-            true,
-        ),
+        DataTablesColumn::id("Ticker"),
+        DataTablesColumn::id("Ticker"),
+        DataTablesColumn::id("Price"),
+        DataTablesColumn::id("Sector"),
+        DataTablesColumn::id("Industry"),
+        DataTablesColumn::id(volume),
+        DataTablesColumn::id(dollars),
+        DataTablesColumn::id(rank),
+        DataTablesColumn::id("LastComparibleTradeDate"),
+        DataTablesColumn::id("LastComparibleTradeDate"),
     ]
 }
 

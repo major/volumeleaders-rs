@@ -48,6 +48,15 @@ impl OrderDirection {
     }
 }
 
+impl From<OrderDirection> for crate::datatables::SortDir {
+    fn from(dir: OrderDirection) -> Self {
+        match dir {
+            OrderDirection::Asc => Self::Asc,
+            OrderDirection::Desc => Self::Desc,
+        }
+    }
+}
+
 /// Grouping dimension for summary commands.
 #[derive(Clone, Copy, Debug, PartialEq, clap::ValueEnum)]
 pub enum SummaryGroup {

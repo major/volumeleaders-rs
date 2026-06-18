@@ -17,6 +17,7 @@ use crate::cli::error::{CliExit, usage_error};
 use crate::cli::field_metadata;
 use crate::cli::field_metadata::TRADE_HEADERS;
 use crate::cli::output::{finish_output, print_json, print_records_for_command, selected_fields};
+use crate::datatables::SortDir;
 
 /// Default trade limit when none is specified on the command line.
 const DEFAULT_LIMIT: usize = 500;
@@ -228,80 +229,75 @@ pub static REPORT_PRESETS: &[ReportPreset] = &[
         omitted_filters: &[],
     },
 ];
-/// Report subcommands: list presets or run a specific preset.
-#[derive(Debug, Subcommand)]
-pub enum ReportCommand {
-    /// List available report presets.
-    #[command(
-        long_about = "List available report presets and their command names.\n\nExamples:\n  volumeleaders-agent report list\n  volumeleaders-agent report list | jq '.[].command'"
-    )]
-    List,
+/// Generate the `ReportCommand` enum and its `preset()` accessor from a
+/// single declaration list. Adding a preset requires one entry here plus
+/// one `ReportPreset` data entry — no manual match arms.
+macro_rules! report_preset_commands {
+    ($(
+        $(#[doc = $doc:expr])*
+        $variant:ident => $name:literal, $long_about:literal
+    );+ $(;)?) => {
+        /// Report subcommands: list presets or run a specific preset.
+        #[derive(Debug, Subcommand)]
+        pub enum ReportCommand {
+            /// List available report presets.
+            #[command(
+                long_about = "List available report presets and their command names.\n\nExamples:\n  volumeleaders-agent report list\n  volumeleaders-agent report list | jq '.[].command'"
+            )]
+            List,
+            $(
+                $(#[doc = $doc])*
+                #[command(name = $name, long_about = $long_about)]
+                $variant(#[command(flatten)] ReportFlags),
+            )+
+        }
+
+        impl ReportCommand {
+            /// Returns the preset `use_name` and shared flags, or `None` for `List`.
+            fn preset(&self) -> Option<(&'static str, &ReportFlags)> {
+                match self {
+                    Self::List => None,
+                    $(Self::$variant(f) => Some(($name, f)),)+
+                }
+            }
+        }
+    };
+}
+
+report_preset_commands! {
     /// Top 100 ranked institutional trades.
-    #[command(
-        name = "top-100-rank",
-        long_about = "Run the top 100 ranked institutional trades preset.\n\nExamples:\n  volumeleaders-agent report top-100-rank\n  volumeleaders-agent report top-100-rank --tickers NVDA,AAPL --days 5 --limit 50"
-    )]
-    Top100Rank(#[command(flatten)] ReportFlags),
+    Top100Rank => "top-100-rank",
+        "Run the top 100 ranked institutional trades preset.\n\nExamples:\n  volumeleaders-agent report top-100-rank\n  volumeleaders-agent report top-100-rank --tickers NVDA,AAPL --days 5 --limit 50";
     /// Top 10 ranked institutional trades.
-    #[command(
-        name = "top-10-rank",
-        long_about = "Run the top 10 ranked institutional trades preset.\n\nExamples:\n  volumeleaders-agent report top-10-rank\n  volumeleaders-agent report top-10-rank --tickers NVDA --start-date 2026-05-01 --end-date 2026-05-27"
-    )]
-    Top10Rank(#[command(flatten)] ReportFlags),
+    Top10Rank => "top-10-rank",
+        "Run the top 10 ranked institutional trades preset.\n\nExamples:\n  volumeleaders-agent report top-10-rank\n  volumeleaders-agent report top-10-rank --tickers NVDA --start-date 2026-05-01 --end-date 2026-05-27";
     /// Dark pool sweep trades.
-    #[command(
-        name = "dark-pool-sweeps",
-        long_about = "Run the dark pool sweep trades preset.\n\nExamples:\n  volumeleaders-agent report dark-pool-sweeps\n  volumeleaders-agent report dark-pool-sweeps --tickers SPY,QQQ --days 3 --fields FullTimeString24,Price,Dollars,DollarsMultiplier"
-    )]
-    DarkPoolSweeps(#[command(flatten)] ReportFlags),
+    DarkPoolSweeps => "dark-pool-sweeps",
+        "Run the dark pool sweep trades preset.\n\nExamples:\n  volumeleaders-agent report dark-pool-sweeps\n  volumeleaders-agent report dark-pool-sweeps --tickers SPY,QQQ --days 3 --fields FullTimeString24,Price,Dollars,DollarsMultiplier";
     /// Disproportionately large trades relative to average.
-    #[command(
-        name = "disproportionately-large",
-        long_about = "Run the disproportionately large trades preset.\n\nExamples:\n  volumeleaders-agent report disproportionately-large\n  volumeleaders-agent report disproportionately-large --tickers AAPL --limit 25 --summary-group ticker"
-    )]
-    DisproportionatelyLarge(#[command(flatten)] ReportFlags),
+    DisproportionatelyLarge => "disproportionately-large",
+        "Run the disproportionately large trades preset.\n\nExamples:\n  volumeleaders-agent report disproportionately-large\n  volumeleaders-agent report disproportionately-large --tickers AAPL --limit 25 --summary-group ticker";
     /// Institutional trades in leveraged ETFs.
-    #[command(
-        name = "leveraged-etfs",
-        long_about = "Run the leveraged ETF institutional trades preset.\n\nExamples:\n  volumeleaders-agent report leveraged-etfs\n  volumeleaders-agent report leveraged-etfs --days 10 --limit 100 --fields FullTimeString24,Price,Dollars,DollarsMultiplier"
-    )]
-    LeveragedEtfs(#[command(flatten)] ReportFlags),
+    LeveragedEtfs => "leveraged-etfs",
+        "Run the leveraged ETF institutional trades preset.\n\nExamples:\n  volumeleaders-agent report leveraged-etfs\n  volumeleaders-agent report leveraged-etfs --days 10 --limit 100 --fields FullTimeString24,Price,Dollars,DollarsMultiplier";
     /// Trades with overbought RSI conditions.
-    #[command(
-        name = "rsi-overbought",
-        long_about = "Run the overbought RSI trades preset.\n\nExamples:\n  volumeleaders-agent report rsi-overbought\n  volumeleaders-agent report rsi-overbought --tickers NVDA,MSFT --days 7 --limit 40"
-    )]
-    RsiOverbought(#[command(flatten)] ReportFlags),
+    RsiOverbought => "rsi-overbought",
+        "Run the overbought RSI trades preset.\n\nExamples:\n  volumeleaders-agent report rsi-overbought\n  volumeleaders-agent report rsi-overbought --tickers NVDA,MSFT --days 7 --limit 40";
     /// Trades with oversold RSI conditions.
-    #[command(
-        name = "rsi-oversold",
-        long_about = "Run the oversold RSI trades preset.\n\nExamples:\n  volumeleaders-agent report rsi-oversold\n  volumeleaders-agent report rsi-oversold --tickers TSLA --start-date 2026-05-01 --end-date 2026-05-27"
-    )]
-    RsiOversold(#[command(flatten)] ReportFlags),
+    RsiOversold => "rsi-oversold",
+        "Run the oversold RSI trades preset.\n\nExamples:\n  volumeleaders-agent report rsi-oversold\n  volumeleaders-agent report rsi-oversold --tickers TSLA --start-date 2026-05-01 --end-date 2026-05-27";
     /// Dark pool trades at 20x relative size.
-    #[command(
-        name = "dark-pool-20x",
-        long_about = "Run the dark pool trades at 20x relative size preset.\n\nExamples:\n  volumeleaders-agent report dark-pool-20x\n  volumeleaders-agent report dark-pool-20x --tickers AAPL,NVDA --days 5 --limit 50"
-    )]
-    DarkPool20x(#[command(flatten)] ReportFlags),
+    DarkPool20x => "dark-pool-20x",
+        "Run the dark pool trades at 20x relative size preset.\n\nExamples:\n  volumeleaders-agent report dark-pool-20x\n  volumeleaders-agent report dark-pool-20x --tickers AAPL,NVDA --days 5 --limit 50";
     /// Top 30 ranked trades at 10x size in the 99th percentile.
-    #[command(
-        name = "top-30-rank-10x-99th",
-        long_about = "Run the top 30 ranked 10x size 99th percentile preset.\n\nExamples:\n  volumeleaders-agent report top-30-rank-10x-99th\n  volumeleaders-agent report top-30-rank-10x-99th --tickers QQQ --days 2 --all-fields"
-    )]
-    Top30Rank10x99th(#[command(flatten)] ReportFlags),
+    Top30Rank10x99th => "top-30-rank-10x-99th",
+        "Run the top 30 ranked 10x size 99th percentile preset.\n\nExamples:\n  volumeleaders-agent report top-30-rank-10x-99th\n  volumeleaders-agent report top-30-rank-10x-99th --tickers QQQ --days 2 --all-fields";
     /// Phantom print trades (dark pool only).
-    #[command(
-        name = "phantom-trades",
-        long_about = "Run the phantom print trades preset.\n\nExamples:\n  volumeleaders-agent report phantom-trades\n  volumeleaders-agent report phantom-trades --tickers SPY --start-date 2026-05-01 --end-date 2026-05-27"
-    )]
-    PhantomTrades(#[command(flatten)] ReportFlags),
+    PhantomTrades => "phantom-trades",
+        "Run the phantom print trades preset.\n\nExamples:\n  volumeleaders-agent report phantom-trades\n  volumeleaders-agent report phantom-trades --tickers SPY --start-date 2026-05-01 --end-date 2026-05-27";
     /// Offsetting institutional trades.
-    #[command(
-        name = "offsetting-trades",
-        long_about = "Run the offsetting institutional trades preset.\n\nExamples:\n  volumeleaders-agent report offsetting-trades\n  volumeleaders-agent report offsetting-trades --tickers NVDA --days 5 --summary-group ticker"
-    )]
-    OffsettingTrades(#[command(flatten)] ReportFlags),
+    OffsettingTrades => "offsetting-trades",
+        "Run the offsetting institutional trades preset.\n\nExamples:\n  volumeleaders-agent report offsetting-trades\n  volumeleaders-agent report offsetting-trades --tickers NVDA --days 5 --summary-group ticker";
 }
 
 /// Shared flags for all preset report commands.
@@ -338,44 +334,6 @@ pub struct ReportFlags {
     pub all_fields: bool,
 }
 
-impl ReportCommand {
-    /// Returns the preset use_name for preset commands, or None for List.
-    fn preset_name(&self) -> Option<&'static str> {
-        match self {
-            Self::List => None,
-            Self::Top100Rank(_) => Some("top-100-rank"),
-            Self::Top10Rank(_) => Some("top-10-rank"),
-            Self::DarkPoolSweeps(_) => Some("dark-pool-sweeps"),
-            Self::DisproportionatelyLarge(_) => Some("disproportionately-large"),
-            Self::LeveragedEtfs(_) => Some("leveraged-etfs"),
-            Self::RsiOverbought(_) => Some("rsi-overbought"),
-            Self::RsiOversold(_) => Some("rsi-oversold"),
-            Self::DarkPool20x(_) => Some("dark-pool-20x"),
-            Self::Top30Rank10x99th(_) => Some("top-30-rank-10x-99th"),
-            Self::PhantomTrades(_) => Some("phantom-trades"),
-            Self::OffsettingTrades(_) => Some("offsetting-trades"),
-        }
-    }
-
-    /// Returns the ReportFlags for preset commands, or None for List.
-    fn flags(&self) -> Option<&ReportFlags> {
-        match self {
-            Self::List => None,
-            Self::Top100Rank(f)
-            | Self::Top10Rank(f)
-            | Self::DarkPoolSweeps(f)
-            | Self::DisproportionatelyLarge(f)
-            | Self::LeveragedEtfs(f)
-            | Self::RsiOverbought(f)
-            | Self::RsiOversold(f)
-            | Self::DarkPool20x(f)
-            | Self::Top30Rank10x99th(f)
-            | Self::PhantomTrades(f)
-            | Self::OffsettingTrades(f) => Some(f),
-        }
-    }
-}
-
 /// Handles the report command group.
 #[instrument(skip_all)]
 pub async fn handle(args: &ReportArgs) -> Result<(), CliExit> {
@@ -404,13 +362,8 @@ fn execute_list() -> Result<(), CliExit> {
 /// fetches trades, and outputs results.
 #[instrument(skip_all)]
 async fn execute_preset(args: &ReportArgs) -> Result<(), CliExit> {
-    let preset_name = match args.command.preset_name() {
-        Some(name) => name,
-        None => return Err(usage_error("unexpected command state")),
-    };
-
-    let flags = match args.command.flags() {
-        Some(f) => f,
+    let (preset_name, flags) = match args.command.preset() {
+        Some(pair) => pair,
         None => return Err(usage_error("unexpected command state")),
     };
 
@@ -485,7 +438,7 @@ fn build_report_request(filters: Vec<(String, String)>, limit: usize) -> crate::
     crate::TradesRequest::new()
         .with_length(length)
         .with_search("", false)
-        .with_order(1, "DESC", "FullTimeString24")
+        .with_order(1, SortDir::Desc, "FullTimeString24")
         .with_trade_filters(filters)
 }
 

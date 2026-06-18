@@ -17,6 +17,13 @@ use tracing::{debug, warn};
 use crate::error::{ClientError, Result};
 use crate::session::Session;
 
+/// Maps a displayable error into [`ClientError::Cache`] with a static context
+/// prefix. The closure defers all work to the error path so the success path
+/// is zero-cost.
+fn cache_err<E: std::fmt::Display>(context: &'static str) -> impl FnOnce(E) -> ClientError {
+    move |err| ClientError::Cache(format!("{context}: {err}"))
+}
+
 /// Cache directory name within the XDG user cache dir.
 const CACHE_DIR: &str = "volumeleaders-agent";
 
@@ -86,10 +93,11 @@ pub fn save_session(session: &Session) -> Result<()> {
 fn save_session_at(session: &Session, base_dir: &Path) -> Result<()> {
     let path = cache_path_from_base(base_dir);
 
-    fs::create_dir_all(path.parent().expect("cache path has parent")).map_err(|err| {
+    let parent = path.parent().expect("cache path has parent");
+    fs::create_dir_all(parent).map_err(|err| {
         ClientError::Cache(format!(
             "failed to create cache directory {}: {err}",
-            path.parent().unwrap().display(),
+            parent.display(),
         ))
     })?;
 
@@ -98,11 +106,10 @@ fn save_session_at(session: &Session, base_dir: &Path) -> Result<()> {
     // Write atomically via unique temp file then rename.
     // Use NamedTempFile so temp files are auto-cleaned on failure
     // and avoid racing concurrent writers.
-    let parent = path.parent().unwrap();
     let mut tmp = tempfile::NamedTempFile::new_in(parent)
-        .map_err(|err| ClientError::Cache(format!("failed to create temp session file: {err}")))?;
+        .map_err(cache_err("failed to create temp session file"))?;
     tmp.write_all(data.as_bytes())
-        .map_err(|err| ClientError::Cache(format!("failed to write session cache: {err}")))?;
+        .map_err(cache_err("failed to write session cache"))?;
     #[cfg(unix)]
     {
         // tempfile creates files with restrictive permissions on Unix; set the
@@ -110,7 +117,7 @@ fn save_session_at(session: &Session, base_dir: &Path) -> Result<()> {
         // reusable authentication cookies.
         use std::os::unix::fs::PermissionsExt;
         fs::set_permissions(tmp.path(), fs::Permissions::from_mode(0o600))
-            .map_err(|err| ClientError::Cache(format!("failed to secure session cache: {err}")))?;
+            .map_err(cache_err("failed to secure session cache"))?;
     }
     #[cfg(not(unix))]
     {
@@ -120,7 +127,7 @@ fn save_session_at(session: &Session, base_dir: &Path) -> Result<()> {
         let _ = tmp.path();
     }
     tmp.persist(&path)
-        .map_err(|err| ClientError::Cache(format!("failed to persist session cache: {err}")))?;
+        .map_err(cache_err("failed to persist session cache"))?;
 
     debug!(?path, "saved session to cache");
     Ok(())

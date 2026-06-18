@@ -1,3 +1,4 @@
+use crate::datatables::SortDir;
 use crate::{
     DataTablesColumn, TradeClusterBombsRequest, TradeClustersRequest, TradeLevelsRequest,
     TradesRequest,
@@ -323,7 +324,7 @@ pub(super) fn dashboard_trades_request(
         .with_columns(trade_chart_columns())
         .with_length(args.count as i32)
         .with_search("", false)
-        .with_order(0, "desc", "FullTimeString24")
+        .with_order(0, SortDir::Desc, "FullTimeString24")
         .with_trade_filters(filters)
 }
 
@@ -337,7 +338,7 @@ pub(super) fn dashboard_clusters_request(
         .with_columns(trade_cluster_chart_columns())
         .with_length(args.count as i32)
         .with_search("", false)
-        .with_order(3, "desc", "Sh")
+        .with_order(3, SortDir::Desc, "Sh")
         .with_cluster_filters(dashboard_cluster_filters(args, ticker, start, end))
 }
 
@@ -352,7 +353,7 @@ pub(super) fn dashboard_levels_request(
         .with_columns(trade_level_chart_columns())
         .with_length(count as i32)
         .with_search("", false)
-        .with_order(0, "desc", "Price")
+        .with_order(0, SortDir::Desc, "Price")
         .with_chart_filters(ticker, start, end, levels)
 }
 
@@ -366,7 +367,7 @@ pub(super) fn dashboard_bombs_request(
         .with_columns(trade_cluster_bomb_chart_columns())
         .with_length(args.count as i32)
         .with_search("", false)
-        .with_order(2, "desc", "Sh")
+        .with_order(2, SortDir::Desc, "Sh")
         .with_cluster_bomb_filters(dashboard_bomb_filters(args, ticker, start, end))
 }
 
@@ -438,57 +439,52 @@ fn remove_filters(filters: &mut Vec<(String, String)>, names: &[&str]) {
 
 fn trade_chart_columns() -> Vec<DataTablesColumn> {
     vec![
-        DataTablesColumn::new("FullTimeString24", "FullTimeString24", true, true),
-        DataTablesColumn::new("Volume", "Sh", true, true),
-        DataTablesColumn::new("Price", "Price", true, true),
-        DataTablesColumn::new("Dollars", "$$", true, true),
-        DataTablesColumn::new("DollarsMultiplier", "RS", true, true),
-        DataTablesColumn::new(K_TRADE_RANK, "R", true, true),
-        DataTablesColumn::new("LastComparibleTradeDate", "Last Comp", true, true),
+        DataTablesColumn::id("FullTimeString24"),
+        DataTablesColumn::searchable("Volume", "Sh"),
+        DataTablesColumn::id("Price"),
+        DataTablesColumn::searchable("Dollars", "$$"),
+        DataTablesColumn::searchable("DollarsMultiplier", "RS"),
+        DataTablesColumn::searchable(K_TRADE_RANK, "R"),
+        DataTablesColumn::searchable("LastComparibleTradeDate", "Last Comp"),
     ]
 }
 
 fn trade_cluster_chart_columns() -> Vec<DataTablesColumn> {
     vec![
-        DataTablesColumn::new("MinFullTimeString24", "MinFullTimeString24", true, true),
-        DataTablesColumn::new("Price", "Price", true, true),
-        DataTablesColumn::new("TradeCount", "TradeCount", true, true),
-        DataTablesColumn::new("Volume", "Sh", true, true),
-        DataTablesColumn::new("Dollars", "$$", true, true),
-        DataTablesColumn::new("DollarsMultiplier", "RS", true, true),
-        DataTablesColumn::new(K_TRADE_CLUSTER_RANK, "R", true, true),
-        DataTablesColumn::new("LastComparibleTradeClusterDate", "Last Comp", true, true),
+        DataTablesColumn::id("MinFullTimeString24"),
+        DataTablesColumn::id("Price"),
+        DataTablesColumn::id("TradeCount"),
+        DataTablesColumn::searchable("Volume", "Sh"),
+        DataTablesColumn::searchable("Dollars", "$$"),
+        DataTablesColumn::searchable("DollarsMultiplier", "RS"),
+        DataTablesColumn::searchable(K_TRADE_CLUSTER_RANK, "R"),
+        DataTablesColumn::searchable("LastComparibleTradeClusterDate", "Last Comp"),
     ]
 }
 
 fn trade_level_chart_columns() -> Vec<DataTablesColumn> {
     vec![
-        DataTablesColumn::new("Price", "Price", true, true),
-        DataTablesColumn::new("Dollars", "$$", true, true),
-        DataTablesColumn::new("Volume", "Sh", true, true),
-        DataTablesColumn::new("Trades", "Trades", true, true),
-        DataTablesColumn::new(K_RELATIVE_SIZE, "RS", true, true),
-        DataTablesColumn::new("CumulativeDistribution", "PCT", true, true),
-        DataTablesColumn::new(K_TRADE_LEVEL_RANK, "Rank", true, true),
-        DataTablesColumn::new("Dates", "Dates", true, true),
+        DataTablesColumn::id("Price"),
+        DataTablesColumn::searchable("Dollars", "$$"),
+        DataTablesColumn::searchable("Volume", "Sh"),
+        DataTablesColumn::id("Trades"),
+        DataTablesColumn::searchable(K_RELATIVE_SIZE, "RS"),
+        DataTablesColumn::searchable("CumulativeDistribution", "PCT"),
+        DataTablesColumn::searchable(K_TRADE_LEVEL_RANK, "Rank"),
+        DataTablesColumn::id("Dates"),
     ]
 }
 
 fn trade_cluster_bomb_chart_columns() -> Vec<DataTablesColumn> {
     vec![
-        DataTablesColumn::new("MinFullTimeString24", "MinFullTimeString24", true, true),
-        DataTablesColumn::new("TradeCount", "TradeCount", true, true),
-        DataTablesColumn::new("Volume", "Sh", true, true),
-        DataTablesColumn::new("Dollars", "$$", true, true),
-        DataTablesColumn::new("DollarsMultiplier", "RS", true, true),
-        DataTablesColumn::new("CumulativeDistribution", "PCT", true, true),
-        DataTablesColumn::new(K_TRADE_CLUSTER_BOMB_RANK, "R", true, true),
-        DataTablesColumn::new(
-            "LastComparableTradeClusterBombDate",
-            "Last Comp",
-            true,
-            true,
-        ),
+        DataTablesColumn::id("MinFullTimeString24"),
+        DataTablesColumn::id("TradeCount"),
+        DataTablesColumn::searchable("Volume", "Sh"),
+        DataTablesColumn::searchable("Dollars", "$$"),
+        DataTablesColumn::searchable("DollarsMultiplier", "RS"),
+        DataTablesColumn::searchable("CumulativeDistribution", "PCT"),
+        DataTablesColumn::searchable(K_TRADE_CLUSTER_BOMB_RANK, "R"),
+        DataTablesColumn::searchable("LastComparableTradeClusterBombDate", "Last Comp"),
     ]
 }
 

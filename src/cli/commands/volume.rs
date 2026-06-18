@@ -121,7 +121,7 @@ fn build_request(mut request: VolumeRequest, args: &VolumeOptions) -> VolumeRequ
         }
     }
 
-    request.with_order(1, args.order_dir.as_str(), "")
+    request.with_order(1, args.order_dir.into(), "")
 }
 
 fn output_records<T: serde::Serialize>(

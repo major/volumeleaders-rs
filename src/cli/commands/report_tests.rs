@@ -322,12 +322,14 @@ fn command_preset_name_returns_correct_names() {
     };
 
     assert_eq!(
-        ReportCommand::Top100Rank(flags.clone()).preset_name(),
+        ReportCommand::Top100Rank(flags.clone())
+            .preset()
+            .map(|p| p.0),
         Some("top-100-rank")
     );
 
-    // List has no preset name.
-    assert_eq!(ReportCommand::List.preset_name(), None);
+    // List has no preset.
+    assert!(ReportCommand::List.preset().is_none());
 }
 
 #[test]

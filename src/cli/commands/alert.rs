@@ -61,17 +61,10 @@ pub struct ConfigsArgs {
     pub all_fields: bool,
 }
 
-/// Arguments for `alert create`.
+/// Shared threshold fields for alert create and edit commands.
 #[derive(Debug, Args)]
-pub struct CreateArgs {
-    /// Print the alert create request as JSON without sending it.
-    #[arg(long)]
-    pub dry_run: bool,
-
-    /// Alert configuration name.
-    #[arg(long)]
-    pub name: String,
-
+#[allow(missing_docs)]
+pub struct AlertConfigFlags {
     /// Ticker group name; defaults to AllTickers and switches to SelectedTickers when tickers are set.
     #[arg(long)]
     pub ticker_group: Option<String>,
@@ -217,6 +210,61 @@ pub struct CreateArgs {
     pub phantom_print: bool,
 }
 
+impl AlertConfigFlags {
+    /// Build the typed save-request fields from these flags plus identity fields.
+    fn to_save_fields(&self, alert_config_key: i64, name: String) -> SaveAlertConfigFields {
+        SaveAlertConfigFields {
+            alert_config_key,
+            name,
+            ticker_group: resolve_ticker_group(self.ticker_group.as_deref(), &self.tickers),
+            tickers: self.tickers.clone(),
+            trade_rank_lte: self.trade_rank_lte,
+            trade_vcd_gte: self.trade_vcd_gte,
+            trade_mult_gte: self.trade_mult_gte,
+            trade_volume_gte: self.trade_volume_gte,
+            trade_dollars_gte: self.trade_dollars_gte,
+            trade_conditions: self.trade_conditions.clone(),
+            dark_pool: self.dark_pool,
+            sweep: self.sweep,
+            closing_trade_rank_lte: self.closing_trade_rank_lte,
+            closing_trade_vcd_gte: self.closing_trade_vcd_gte,
+            closing_trade_mult_gte: self.closing_trade_mult_gte,
+            closing_trade_volume_gte: self.closing_trade_volume_gte,
+            closing_trade_dollars_gte: self.closing_trade_dollars_gte,
+            closing_trade_conditions: self.closing_trade_conditions.clone(),
+            cluster_rank_lte: self.cluster_rank_lte,
+            cluster_vcd_gte: self.cluster_vcd_gte,
+            cluster_mult_gte: self.cluster_mult_gte,
+            cluster_volume_gte: self.cluster_volume_gte,
+            cluster_dollars_gte: self.cluster_dollars_gte,
+            total_rank_lte: self.total_rank_lte,
+            total_volume_gte: self.total_volume_gte,
+            total_dollars_gte: self.total_dollars_gte,
+            ah_rank_lte: self.ah_rank_lte,
+            ah_volume_gte: self.ah_volume_gte,
+            ah_dollars_gte: self.ah_dollars_gte,
+            offsetting_print: self.offsetting_print,
+            phantom_print: self.phantom_print,
+        }
+    }
+}
+
+/// Arguments for `alert create`.
+#[derive(Debug, Args)]
+pub struct CreateArgs {
+    /// Print the alert create request as JSON without sending it.
+    #[arg(long)]
+    pub dry_run: bool,
+
+    /// Alert configuration name.
+    #[arg(long)]
+    pub name: String,
+
+    /// Alert threshold and filter configuration.
+    #[command(flatten)]
+    pub config: AlertConfigFlags,
+}
+
 /// Arguments for `alert edit`.
 #[derive(Debug, Args)]
 pub struct EditArgs {
@@ -232,149 +280,9 @@ pub struct EditArgs {
     #[arg(long)]
     pub name: Option<String>,
 
-    /// Ticker group name; defaults to AllTickers and switches to SelectedTickers when tickers are set.
-    #[arg(long)]
-    pub ticker_group: Option<String>,
-
-    /// Comma-separated ticker symbols for SelectedTickers alerts.
-    #[arg(long, default_value = "")]
-    pub tickers: String,
-
-    /// Maximum trade rank to alert on; lower ranks are more significant, and 0 disables this threshold.
-    #[arg(long, default_value = "0")]
-    pub trade_rank_lte: i64,
-
-    /// Minimum trade volume-concentration delta score, or 0 to disable this threshold.
-    #[arg(long, default_value = "0")]
-    pub trade_vcd_gte: i64,
-
-    /// Minimum trade dollar multiplier, or 0 to disable this threshold.
-    #[arg(long, default_value = "0")]
-    pub trade_mult_gte: i64,
-
-    /// Minimum trade share volume, or 0 to disable this threshold.
-    #[arg(long, default_value = "0")]
-    pub trade_volume_gte: i64,
-
-    /// Minimum trade dollar value, or 0 to disable this threshold.
-    #[arg(long, default_value = "0")]
-    pub trade_dollars_gte: i64,
-
-    /// Trade condition code filter accepted by the alert API; use 0 for no condition filter.
-    #[arg(long, default_value = "0")]
-    pub trade_conditions: String,
-
-    /// Require dark-pool trades when true; false leaves the alert unrestricted by dark-pool status.
-    #[arg(
-        long,
-        action = clap::ArgAction::Set,
-        value_parser = clap::value_parser!(bool),
-        default_value = "false",
-        default_missing_value = "true",
-        num_args = 0..=1
-    )]
-    pub dark_pool: bool,
-
-    /// Require sweep trades when true; false leaves the alert unrestricted by sweep status.
-    #[arg(
-        long,
-        action = clap::ArgAction::Set,
-        value_parser = clap::value_parser!(bool),
-        default_value = "false",
-        default_missing_value = "true",
-        num_args = 0..=1
-    )]
-    pub sweep: bool,
-
-    /// Maximum closing trade rank to alert on; lower ranks are more significant, and 0 disables this threshold.
-    #[arg(long, default_value = "0")]
-    pub closing_trade_rank_lte: i64,
-
-    /// Minimum closing trade volume-concentration delta score, or 0 to disable this threshold.
-    #[arg(long, default_value = "0")]
-    pub closing_trade_vcd_gte: i64,
-
-    /// Minimum closing trade dollar multiplier, or 0 to disable this threshold.
-    #[arg(long, default_value = "0")]
-    pub closing_trade_mult_gte: i64,
-
-    /// Minimum closing trade share volume, or 0 to disable this threshold.
-    #[arg(long, default_value = "0")]
-    pub closing_trade_volume_gte: i64,
-
-    /// Minimum closing trade dollar value, or 0 to disable this threshold.
-    #[arg(long, default_value = "0")]
-    pub closing_trade_dollars_gte: i64,
-
-    /// Closing trade condition code filter accepted by the alert API; use 0 for no condition filter.
-    #[arg(long, default_value = "0")]
-    pub closing_trade_conditions: String,
-
-    /// Maximum cluster rank to alert on; lower ranks are more significant, and 0 disables this threshold.
-    #[arg(long, default_value = "0")]
-    pub cluster_rank_lte: i64,
-
-    /// Minimum cluster volume-concentration delta score, or 0 to disable this threshold.
-    #[arg(long, default_value = "0")]
-    pub cluster_vcd_gte: i64,
-
-    /// Minimum cluster dollar multiplier, or 0 to disable this threshold.
-    #[arg(long, default_value = "0")]
-    pub cluster_mult_gte: i64,
-
-    /// Minimum cluster share volume, or 0 to disable this threshold.
-    #[arg(long, default_value = "0")]
-    pub cluster_volume_gte: i64,
-
-    /// Minimum cluster dollar value, or 0 to disable this threshold.
-    #[arg(long, default_value = "0")]
-    pub cluster_dollars_gte: i64,
-
-    /// Maximum total rank to alert on; lower ranks are more significant, and 0 disables this threshold.
-    #[arg(long, default_value = "0")]
-    pub total_rank_lte: i64,
-
-    /// Minimum total share volume, or 0 to disable this threshold.
-    #[arg(long, default_value = "0")]
-    pub total_volume_gte: i64,
-
-    /// Minimum total dollar value, or 0 to disable this threshold.
-    #[arg(long, default_value = "0")]
-    pub total_dollars_gte: i64,
-
-    /// Maximum after-hours rank to alert on; lower ranks are more significant, and 0 disables this threshold.
-    #[arg(long, default_value = "0")]
-    pub ah_rank_lte: i64,
-
-    /// Minimum after-hours share volume, or 0 to disable this threshold.
-    #[arg(long, default_value = "0")]
-    pub ah_volume_gte: i64,
-
-    /// Minimum after-hours dollar value, or 0 to disable this threshold.
-    #[arg(long, default_value = "0")]
-    pub ah_dollars_gte: i64,
-
-    /// Require offsetting prints when true; false leaves the alert unrestricted by offsetting status.
-    #[arg(
-        long,
-        action = clap::ArgAction::Set,
-        value_parser = clap::value_parser!(bool),
-        default_value = "false",
-        default_missing_value = "true",
-        num_args = 0..=1
-    )]
-    pub offsetting_print: bool,
-
-    /// Require phantom prints when true; false leaves the alert unrestricted by phantom status.
-    #[arg(
-        long,
-        action = clap::ArgAction::Set,
-        value_parser = clap::value_parser!(bool),
-        default_value = "false",
-        default_missing_value = "true",
-        num_args = 0..=1
-    )]
-    pub phantom_print: bool,
+    /// Alert threshold and filter configuration.
+    #[command(flatten)]
+    pub config: AlertConfigFlags,
 }
 
 /// Arguments for `alert delete`.
@@ -485,144 +393,14 @@ async fn execute_delete(args: &DeleteArgs) -> Result<(), CliExit> {
 }
 
 fn build_create_request(args: &CreateArgs) -> SaveAlertConfigRequest {
-    build_alert_config_request(
-        0,
-        args.name.clone(),
-        args.ticker_group.as_deref(),
-        &args.tickers,
-        args.trade_rank_lte,
-        args.trade_vcd_gte,
-        args.trade_mult_gte,
-        args.trade_volume_gte,
-        args.trade_dollars_gte,
-        &args.trade_conditions,
-        args.dark_pool,
-        args.sweep,
-        args.closing_trade_rank_lte,
-        args.closing_trade_vcd_gte,
-        args.closing_trade_mult_gte,
-        args.closing_trade_volume_gte,
-        args.closing_trade_dollars_gte,
-        &args.closing_trade_conditions,
-        args.cluster_rank_lte,
-        args.cluster_vcd_gte,
-        args.cluster_mult_gte,
-        args.cluster_volume_gte,
-        args.cluster_dollars_gte,
-        args.total_rank_lte,
-        args.total_volume_gte,
-        args.total_dollars_gte,
-        args.ah_rank_lte,
-        args.ah_volume_gte,
-        args.ah_dollars_gte,
-        args.offsetting_print,
-        args.phantom_print,
-    )
+    SaveAlertConfigRequest::from_config(args.config.to_save_fields(0, args.name.clone()))
 }
 
 fn build_edit_request(args: &EditArgs) -> SaveAlertConfigRequest {
-    build_alert_config_request(
-        args.key,
-        args.name.clone().unwrap_or_default(),
-        args.ticker_group.as_deref(),
-        &args.tickers,
-        args.trade_rank_lte,
-        args.trade_vcd_gte,
-        args.trade_mult_gte,
-        args.trade_volume_gte,
-        args.trade_dollars_gte,
-        &args.trade_conditions,
-        args.dark_pool,
-        args.sweep,
-        args.closing_trade_rank_lte,
-        args.closing_trade_vcd_gte,
-        args.closing_trade_mult_gte,
-        args.closing_trade_volume_gte,
-        args.closing_trade_dollars_gte,
-        &args.closing_trade_conditions,
-        args.cluster_rank_lte,
-        args.cluster_vcd_gte,
-        args.cluster_mult_gte,
-        args.cluster_volume_gte,
-        args.cluster_dollars_gte,
-        args.total_rank_lte,
-        args.total_volume_gte,
-        args.total_dollars_gte,
-        args.ah_rank_lte,
-        args.ah_volume_gte,
-        args.ah_dollars_gte,
-        args.offsetting_print,
-        args.phantom_print,
+    SaveAlertConfigRequest::from_config(
+        args.config
+            .to_save_fields(args.key, args.name.clone().unwrap_or_default()),
     )
-}
-
-#[allow(clippy::too_many_arguments)]
-fn build_alert_config_request(
-    alert_config_key: i64,
-    name: String,
-    ticker_group: Option<&str>,
-    tickers: &str,
-    trade_rank_lte: i64,
-    trade_vcd_gte: i64,
-    trade_mult_gte: i64,
-    trade_volume_gte: i64,
-    trade_dollars_gte: i64,
-    trade_conditions: &str,
-    dark_pool: bool,
-    sweep: bool,
-    closing_trade_rank_lte: i64,
-    closing_trade_vcd_gte: i64,
-    closing_trade_mult_gte: i64,
-    closing_trade_volume_gte: i64,
-    closing_trade_dollars_gte: i64,
-    closing_trade_conditions: &str,
-    cluster_rank_lte: i64,
-    cluster_vcd_gte: i64,
-    cluster_mult_gte: i64,
-    cluster_volume_gte: i64,
-    cluster_dollars_gte: i64,
-    total_rank_lte: i64,
-    total_volume_gte: i64,
-    total_dollars_gte: i64,
-    ah_rank_lte: i64,
-    ah_volume_gte: i64,
-    ah_dollars_gte: i64,
-    offsetting_print: bool,
-    phantom_print: bool,
-) -> SaveAlertConfigRequest {
-    SaveAlertConfigRequest::from_config(SaveAlertConfigFields {
-        alert_config_key,
-        name,
-        ticker_group: resolve_ticker_group(ticker_group, tickers),
-        tickers: tickers.to_string(),
-        trade_rank_lte,
-        trade_vcd_gte,
-        trade_mult_gte,
-        trade_volume_gte,
-        trade_dollars_gte,
-        trade_conditions: trade_conditions.to_string(),
-        dark_pool,
-        sweep,
-        closing_trade_rank_lte,
-        closing_trade_vcd_gte,
-        closing_trade_mult_gte,
-        closing_trade_volume_gte,
-        closing_trade_dollars_gte,
-        closing_trade_conditions: closing_trade_conditions.to_string(),
-        cluster_rank_lte,
-        cluster_vcd_gte,
-        cluster_mult_gte,
-        cluster_volume_gte,
-        cluster_dollars_gte,
-        total_rank_lte,
-        total_volume_gte,
-        total_dollars_gte,
-        ah_rank_lte,
-        ah_volume_gte,
-        ah_dollars_gte,
-        offsetting_print,
-        phantom_print,
-    })
 }
 
 /// Resolve the ticker group: use the explicit value if provided, auto-select

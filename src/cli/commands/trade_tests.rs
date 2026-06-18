@@ -1299,12 +1299,12 @@ fn trade_list_default_request_matches_har_shape() {
     let request = TradesRequest::new()
         .with_length(DEFAULT_TRADE_LIMIT as i32)
         .with_search("", false)
-        .with_order(1, "DESC", "FullTimeString24")
+        .with_order(1, SortDir::Desc, "FullTimeString24")
         .with_trade_filters(filters);
     let encoded = request.encode();
 
     assert!(encoded.contains("length=1000"));
-    assert!(encoded.contains("order[0][dir]=DESC"));
+    assert!(encoded.contains("order[0][dir]=desc"));
     assert!(encoded.contains("order[0][name]=FullTimeString24"));
     assert!(encoded.contains("search[value]="));
     assert!(encoded.contains("search[regex]=false"));
@@ -1423,7 +1423,7 @@ fn cluster_request_matches_browser_defaults() {
         .with_search("", false)
         .with_order(
             args.page.order_col,
-            args.page.order_dir.as_str().to_ascii_uppercase(),
+            args.page.order_dir.into(),
             cluster_order_name(args.page.order_col),
         )
         .with_cluster_filters(cluster_filters(&args, "2026-05-20", "2026-05-20"));
@@ -1433,7 +1433,7 @@ fn cluster_request_matches_browser_defaults() {
     assert!(encoded.contains("search[value]="));
     assert!(encoded.contains("search[regex]=false"));
     assert!(encoded.contains("order[0][column]=1"));
-    assert!(encoded.contains("order[0][dir]=DESC"));
+    assert!(encoded.contains("order[0][dir]=desc"));
     assert!(encoded.contains("order[0][name]=MinFullTimeString24"));
     assert!(encoded.contains("MinVolume=10000"));
     assert!(encoded.contains("MinDollars=500000"));
@@ -1469,7 +1469,7 @@ fn cluster_bomb_request_matches_browser_defaults() {
         .with_search("", false)
         .with_order(
             args.page.order_col,
-            args.page.order_dir.as_str().to_ascii_uppercase(),
+            args.page.order_dir.into(),
             cluster_bomb_order_name(args.page.order_col),
         )
         .with_cluster_bomb_filters(cluster_bomb_filters(&args, "2026-05-20", "2026-05-20"));
@@ -1480,7 +1480,7 @@ fn cluster_bomb_request_matches_browser_defaults() {
     assert!(encoded.contains("search[regex]=false"));
     assert!(encoded.contains("columns[12][name]=Charts"));
     assert!(encoded.contains("order[0][column]=1"));
-    assert!(encoded.contains("order[0][dir]=DESC"));
+    assert!(encoded.contains("order[0][dir]=desc"));
     assert!(encoded.contains("order[0][name]=MinFullTimeString24"));
     assert!(encoded.contains("SecurityTypeKey=0"));
     assert!(encoded.contains("RelativeSize=0"));
