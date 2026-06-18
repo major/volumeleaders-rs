@@ -26,7 +26,7 @@ volumeleaders-agent trade list --help
 - `doctor` is local-only by default and reports credential-based readiness as compact JSON. If auth is missing or invalid, parse `auth.actions` and apply each recovery step. Use `doctor --live` for an authenticated connectivity check that tries the cached session first, then falls back to a live login if credentials are configured.
 - `schema` is the authoritative machine-readable command contract generated from the live clap tree. Command entries include `path`, `preferred_path`, `is_alias`, optional `alias_for`, `aliases`, auth requirements, mutating and dry-run safety metadata, help text, argument metadata with stable `name` identifiers and semantic types, known `possible_values` validation constraints, boolean flag versus value-taking option shape, and structured `examples` arrays.
 - `commands` is the lightweight plain-text leaf command list. Use `--grouped` for descriptions.
-- `fields <command path>` emits exact case-sensitive output field names, descriptions, and type hints for commands that support `--fields` without requiring live rows. `fields trade dashboard` uses section-qualified nested names such as `trades.TradeRank`, `clusters.window`, `levels.TradeLevelRank`, and `cluster_bombs.TradeCount`. Unknown projected fields fail with exit code `2` and structured `usage_error` JSON on stderr.
+- `fields <command path>` emits exact case-sensitive output field names, descriptions, and type hints for commands that support `--fields` without requiring live rows. `fields trade dashboard` uses section-qualified nested names such as `trades.TradeRank`, `clusters.window`, `levels.TradeLevelRank`, and `cluster_bombs.TradeCount`. For trade/report rows, `RelativeSize` is the browser-visible RS value and is derived from the API's `DollarsMultiplier` when the upstream `RelativeSize` field is empty; transformed trade/report output omits `DollarsMultiplier`. Unknown projected fields fail with exit code `2` and structured `usage_error` JSON on stderr.
 - `help <topic>` gives operational guidance when README access is unavailable. Use `help workflows` for common agent workflows with recommended first commands and copy-paste examples.
 - `help agent` summarizes the recommended non-interactive automation flow.
 - Command-specific `--help` includes descriptions for public options and an `Examples:` section for every visible leaf command; schema also exposes structured examples for machine-readable access.
@@ -156,6 +156,7 @@ Common data workflows:
 volumeleaders-agent trades NVDA
 volumeleaders-agent trade list NVDA --start-date 2026-05-01 --end-date 2026-05-27 --fields Ticker,DateTime,Price,Dollars
 volumeleaders-agent trade list NVDA --fields Ticker,Dollars | jq '.[] | select(.Dollars > 1000000)'
+volumeleaders-agent report top-10-rank --fields Ticker,RelativeSize,Dollars
 volumeleaders-agent dashboard NVDA
 volumeleaders-agent levels NVDA
 volumeleaders-agent volume institutional --date 2026-05-27 --tickers AAPL
