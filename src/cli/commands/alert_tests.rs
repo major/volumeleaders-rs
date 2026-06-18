@@ -40,7 +40,10 @@ fn create_accepts_bare_sweep_flag() {
     assert!(matches!(
         cli.command,
         crate::cli::Commands::Alert(AlertArgs {
-            command: AlertCommand::Create(CreateArgs { sweep: true, .. }),
+            command: AlertCommand::Create(CreateArgs {
+                config: AlertConfigFlags { sweep: true, .. },
+                ..
+            }),
         })
     ));
 }
@@ -61,7 +64,10 @@ fn create_accepts_explicit_false_sweep_value() {
     assert!(matches!(
         cli.command,
         crate::cli::Commands::Alert(AlertArgs {
-            command: AlertCommand::Create(CreateArgs { sweep: false, .. }),
+            command: AlertCommand::Create(CreateArgs {
+                config: AlertConfigFlags { sweep: false, .. },
+                ..
+            }),
         })
     ));
 }
@@ -87,9 +93,12 @@ fn documented_big_tech_sweeps_example_parses() {
         crate::cli::Commands::Alert(AlertArgs {
             command: AlertCommand::Create(CreateArgs {
                 name,
-                tickers,
-                trade_dollars_gte: 1_000_000,
-                sweep: true,
+                config: AlertConfigFlags {
+                    tickers,
+                    trade_dollars_gte: 1_000_000,
+                    sweep: true,
+                    ..
+                },
                 ..
             }),
         }) if name == "BigTechSweeps" && tickers == "AAPL,MSFT"
@@ -176,35 +185,10 @@ fn build_edit_request_defaults_missing_name_to_empty() {
         key: 42,
         dry_run: false,
         name: None,
-        ticker_group: None,
-        tickers: "AAPL".to_string(),
-        trade_rank_lte: 0,
-        trade_vcd_gte: 0,
-        trade_mult_gte: 0,
-        trade_volume_gte: 0,
-        trade_dollars_gte: 0,
-        trade_conditions: "0".to_string(),
-        dark_pool: true,
-        sweep: false,
-        closing_trade_rank_lte: 0,
-        closing_trade_vcd_gte: 0,
-        closing_trade_mult_gte: 0,
-        closing_trade_volume_gte: 0,
-        closing_trade_dollars_gte: 0,
-        closing_trade_conditions: "0".to_string(),
-        cluster_rank_lte: 0,
-        cluster_vcd_gte: 0,
-        cluster_mult_gte: 0,
-        cluster_volume_gte: 0,
-        cluster_dollars_gte: 0,
-        total_rank_lte: 0,
-        total_volume_gte: 0,
-        total_dollars_gte: 0,
-        ah_rank_lte: 0,
-        ah_volume_gte: 0,
-        ah_dollars_gte: 0,
-        offsetting_print: true,
-        phantom_print: false,
+        config: AlertConfigFlags {
+            tickers: "AAPL".to_string(),
+            ..test_config_flags()
+        },
     };
 
     let request = build_edit_request(&args);
@@ -258,10 +242,8 @@ fn build_create_request_auto_selects_ticker_group() {
     assert_eq!(pp_entries[0].1, "false");
 }
 
-fn test_create_args(dry_run: bool) -> CreateArgs {
-    CreateArgs {
-        dry_run,
-        name: "Test Alert".to_string(),
+fn test_config_flags() -> AlertConfigFlags {
+    AlertConfigFlags {
         ticker_group: None,
         tickers: "AAPL,MSFT".to_string(),
         trade_rank_lte: 0,
@@ -294,39 +276,19 @@ fn test_create_args(dry_run: bool) -> CreateArgs {
     }
 }
 
+fn test_create_args(dry_run: bool) -> CreateArgs {
+    CreateArgs {
+        dry_run,
+        name: "Test Alert".to_string(),
+        config: test_config_flags(),
+    }
+}
+
 fn test_edit_args(dry_run: bool) -> EditArgs {
     EditArgs {
         dry_run,
         key: 42,
         name: Some("Edited Alert".to_string()),
-        ticker_group: None,
-        tickers: "AAPL,MSFT".to_string(),
-        trade_rank_lte: 0,
-        trade_vcd_gte: 0,
-        trade_mult_gte: 0,
-        trade_volume_gte: 0,
-        trade_dollars_gte: 0,
-        trade_conditions: "0".to_string(),
-        dark_pool: true,
-        sweep: false,
-        closing_trade_rank_lte: 0,
-        closing_trade_vcd_gte: 0,
-        closing_trade_mult_gte: 0,
-        closing_trade_volume_gte: 0,
-        closing_trade_dollars_gte: 0,
-        closing_trade_conditions: "0".to_string(),
-        cluster_rank_lte: 0,
-        cluster_vcd_gte: 0,
-        cluster_mult_gte: 0,
-        cluster_volume_gte: 0,
-        cluster_dollars_gte: 0,
-        total_rank_lte: 0,
-        total_volume_gte: 0,
-        total_dollars_gte: 0,
-        ah_rank_lte: 0,
-        ah_volume_gte: 0,
-        ah_dollars_gte: 0,
-        offsetting_print: true,
-        phantom_print: false,
+        config: test_config_flags(),
     }
 }
