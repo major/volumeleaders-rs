@@ -61,7 +61,7 @@ volumeleaders-agent schema | jq '.commands[] | select(.mutating == true) | {path
 volumeleaders-agent help exit-codes
 volumeleaders-agent alert create --name BigTechSweeps --tickers AAPL,MSFT --dry-run
 volumeleaders-agent --strict-empty trades NVDA
-volumeleaders-agent trade list NVDA --start-date 2026-05-01 --end-date 2026-05-27 --fields Ticker,DateTime,Price,Dollars
+volumeleaders-agent trade list NVDA --start-date 2026-05-01 --end-date 2026-05-27 --fields FullTimeString24,Volume,Price,Dollars
 volumeleaders-agent volume institutional --date 2026-05-27 --tickers AAPL,NVDA --limit 50 --fields Ticker,Dollars | jq '.[] | select(.Dollars > 1000000) | {ticker: .Ticker, dollars: .Dollars}'
 "#;
 
@@ -135,7 +135,7 @@ Use `schema` and `commands` for binary-native CLI discovery.
 
 `volumeleaders-agent schema` emits compact JSON generated from the live clap tree. It includes the binary version, auth model, leaf command paths, explicit alias metadata, auth requirements, mutating and dry-run safety metadata, help text, argument metadata with stable names and semantic hints, boolean flag versus value-taking option shape, and structured command examples.
 
-`volumeleaders-agent fields <command path>` emits compact JSON with output fields accepted by `--fields`, including each exact case-sensitive field name, short description, and type hint. It does not need live API rows. Unknown projected fields are reported as structured usage errors with exit code 2 before output transformation.
+`volumeleaders-agent fields <command path>` emits compact JSON with raw output fields accepted by `--fields`, including each exact case-sensitive field name, short description, and type hint. It does not need live API rows. Unknown projected fields are reported as structured usage errors with exit code 2 before output is written.
 
 Built-in output shaping is intentionally limited to `--fields` and `--all-fields`. For jq-style filtering, sorting, object construction, or pretty-printing, pipe stdout to external `jq`; diagnostics and runtime error JSON remain on stderr.
 
@@ -152,7 +152,7 @@ Useful discovery commands:
 - volumeleaders-agent commands --grouped
 - volumeleaders-agent fields trade list
 - volumeleaders-agent fields volume institutional
-- volumeleaders-agent trade list NVDA --fields Ticker,DateTime,Price,Dollars | jq '.[] | select(.Dollars > 1000000)'
+- volumeleaders-agent trade list NVDA --fields FullTimeString24,Price,Dollars,DollarsMultiplier | jq '.[] | select(.Dollars > 1000000)'
 - volumeleaders-agent schema | jq '.commands[] | select(.preferred_path == "trade list")'
 "#;
 
@@ -173,7 +173,7 @@ volumeleaders-agent report dark-pool-sweeps
 volumeleaders-agent trades NVDA
 volumeleaders-agent trade list NVDA
 volumeleaders-agent -vv trade list NVDA
-volumeleaders-agent --strict-empty trade list NVDA --start-date 2026-05-01 --end-date 2026-05-27 --fields Ticker,DateTime,Price,Dollars
+volumeleaders-agent --strict-empty trade list NVDA --start-date 2026-05-01 --end-date 2026-05-27 --fields FullTimeString24,Volume,Price,Dollars
 volumeleaders-agent trade list NVDA --fields Ticker,Dollars | jq '.[] | select(.Dollars > 1000000)'
 volumeleaders-agent dashboard NVDA
 volumeleaders-agent trade dashboard NVDA
@@ -219,11 +219,11 @@ Recommended first command: `volumeleaders-agent trade dashboard NVDA`
 Copy-paste examples:
 volumeleaders-agent trade dashboard NVDA
 volumeleaders-agent fields trade dashboard
-volumeleaders-agent trade dashboard NVDA --fields trades.TradeRank,clusters.window,levels.TradeLevelRank,cluster_bombs.TradeCount
+volumeleaders-agent trade dashboard NVDA --fields trades.TradeRank,clusters.MinFullTimeString24,levels.TradeLevelRank,cluster_bombs.TradeCount
 volumeleaders-agent trade list NVDA
 volumeleaders-agent fields trade list
-volumeleaders-agent trade list NVDA --fields Ticker,DateTime,Price,Dollars,venue,type
-volumeleaders-agent trade list NVDA --start-date 2026-05-01 --end-date 2026-05-27 --fields Ticker,DateTime,Price,Dollars | jq '.[] | select(.Dollars > 1000000)'
+volumeleaders-agent trade list NVDA --fields FullTimeString24,Volume,Price,Dollars,DollarsMultiplier
+volumeleaders-agent trade list NVDA --start-date 2026-05-01 --end-date 2026-05-27 --fields FullTimeString24,Volume,Price,Dollars | jq '.[] | select(.Dollars > 1000000)'
 
 4. Broad daily scan
 Recommended first command: `volumeleaders-agent report top-100-rank`
@@ -231,7 +231,7 @@ Recommended first command: `volumeleaders-agent report top-100-rank`
 Copy-paste examples:
 volumeleaders-agent report top-100-rank
 volumeleaders-agent fields report top-100-rank
-volumeleaders-agent report top-100-rank --days 5 --fields Ticker,DateTime,Price,Dollars,TradeRank
+volumeleaders-agent report top-100-rank --days 5 --fields FullTimeString24,Price,Dollars,DollarsMultiplier,TradeRank
 
 5. Support and resistance context
 Recommended first command: `volumeleaders-agent trade dashboard NVDA`

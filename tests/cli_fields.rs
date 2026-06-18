@@ -17,8 +17,8 @@ fn fields_trade_list_emits_machine_readable_metadata() {
     assert_eq!(discovery["preferred_path"], "trade list");
 
     let fields = discovery["fields"].as_array().unwrap();
-    assert_field(fields, "Ticker", "string");
-    assert_field(fields, "DateTime", "datetime");
+    assert_field(fields, "FullTimeString24", "string");
+    assert_field(fields, "DollarsMultiplier", "number");
     assert_field(fields, "Dollars", "number");
     assert!(fields.iter().all(|field| field["description"].is_string()));
 }
@@ -58,7 +58,7 @@ fn fields_trade_dashboard_emits_nested_section_metadata() {
     let fields = discovery["fields"].as_array().unwrap();
     assert_field(fields, "trades.TradeRank", "number");
     assert_field(fields, "clusters.TradeClusterRank", "number");
-    assert_field(fields, "clusters.window", "string");
+    assert_field(fields, "clusters.MinFullTimeString24", "string");
     assert_field(fields, "levels.TradeLevelRank", "number");
     assert_field(fields, "cluster_bombs.TradeCount", "number");
     assert!(fields.iter().all(|field| {

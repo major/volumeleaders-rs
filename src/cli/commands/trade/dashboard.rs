@@ -1,37 +1,48 @@
 use serde::Serialize;
 use serde_json::{Map, Value, json};
 
-use crate::cli::common::trade_transforms::transform_trade_dashboard;
 use crate::cli::field_metadata;
 
 use super::{DashboardArgs, DateRange};
 
 const DASHBOARD_TOP_LEVEL_FIELDS: [&str; 4] = ["ticker", "date_range", "count", "sections"];
 const DASHBOARD_COMPACT_TRADE_FIELDS: &[&str] = &[
-    "Date",
-    "Time",
+    "FullTimeString24",
+    "Volume",
     "Price",
     "Dollars",
+    "DollarsMultiplier",
     "TradeRank",
-    "TradeCount",
-    "type",
-    "venue",
+    "LastComparibleTradeDate",
 ];
 const DASHBOARD_COMPACT_CLUSTER_FIELDS: &[&str] = &[
-    "Date",
+    "MinFullTimeString24",
+    "TradeCount",
     "Price",
     "Dollars",
-    "TradeCount",
+    "DollarsMultiplier",
     "TradeClusterRank",
-    "window",
+    "LastComparibleTradeClusterDate",
 ];
-const DASHBOARD_COMPACT_LEVEL_FIELDS: &[&str] = &["Price", "Dollars", "Trades", "TradeLevelRank"];
-const DASHBOARD_COMPACT_BOMB_FIELDS: &[&str] = &[
-    "Date",
+const DASHBOARD_COMPACT_LEVEL_FIELDS: &[&str] = &[
+    "Price",
     "Dollars",
+    "Volume",
+    "Trades",
+    "RelativeSize",
+    "CumulativeDistribution",
+    "TradeLevelRank",
+    "Dates",
+];
+const DASHBOARD_COMPACT_BOMB_FIELDS: &[&str] = &[
+    "MinFullTimeString24",
     "TradeCount",
+    "Volume",
+    "Dollars",
+    "DollarsMultiplier",
+    "CumulativeDistribution",
     "TradeClusterBombRank",
-    "window",
+    "LastComparableTradeClusterBombDate",
 ];
 
 #[derive(Debug, Serialize)]
@@ -62,8 +73,6 @@ pub(super) fn dashboard_output_value(
     let Some(map) = value.as_object_mut() else {
         return Ok(value);
     };
-
-    transform_trade_dashboard(map);
 
     match args.fields.as_deref().map(str::trim) {
         _ if args.all_fields => {}

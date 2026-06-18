@@ -37,6 +37,8 @@ fn cluster_fixture() -> TradeCluster {
         "TradeCount": 4,
         "DollarsMultiplier": 12.345,
         "TradeClusterRank": 2,
+        "MinFullTimeString24": "16:00:00",
+        "LastComparibleTradeClusterDate": "/Date(1767225600000)/",
         "MinFullDateTime": "2026-01-02T16:00:00+00:00",
         "MaxFullDateTime": "2026-01-02T16:49:31+00:00",
         "EOM": true,
@@ -54,6 +56,10 @@ fn cluster_alert_fixture() -> TradeClusterAlert {
         "Volume": 75_000,
         "TradeCount": 3,
         "TradeClusterRank": 8,
+        "MinFullTimeString24": "15:00:00",
+        "Price": 312.25,
+        "DollarsMultiplier": 3.5,
+        "LastComparibleTradeClusterDate": "/Date(1767225600000)/",
         "MinFullDateTime": "2026-01-02T15:00:00+00:00",
         "MaxFullDateTime": "2026-01-02T15:07:30+00:00",
         "VOLEX": true
@@ -61,11 +67,7 @@ fn cluster_alert_fixture() -> TradeClusterAlert {
 }
 
 fn render_cluster_json(fields: Option<&str>, all_fields: bool) -> serde_json::Value {
-    let values = crate::cli::common::trade_transforms::transformed_trade_values(
-        &[cluster_fixture()],
-        TradeRecordKind::Cluster,
-    )
-    .expect("cluster serializes");
+    let values = vec![serde_json::to_value(cluster_fixture()).expect("cluster serializes")];
     let mut output = Vec::new();
     write_record_values(
         &mut output,
@@ -136,6 +138,8 @@ fn dashboard_fixture() -> TradeDashboard {
             "Dollars": 10_000_000.0,
             "Volume": 50_000,
             "TradeRank": 3,
+            "DollarsMultiplier": 4.2,
+            "LastComparibleTradeDate": "/Date(1767225600000)/",
             "RSIDay": 45.67,
             "RSIHour": 0.0,
             "DarkPool": false,
@@ -151,6 +155,9 @@ fn dashboard_fixture() -> TradeDashboard {
             "Volume": 100_000,
             "TradeCount": 4,
             "TradeClusterRank": 2,
+            "MinFullTimeString24": "16:00:00",
+            "DollarsMultiplier": 3.1,
+            "LastComparibleTradeClusterDate": "/Date(1767225600000)/",
             "MinFullDateTime": "2026-01-02T16:00:00+00:00",
             "MaxFullDateTime": "2026-01-02T16:49:31+00:00",
             "SecurityKey": 0
@@ -162,7 +169,9 @@ fn dashboard_fixture() -> TradeDashboard {
             "Volume": 150_000,
             "Trades": 5,
             "RelativeSize": 0.0,
+            "CumulativeDistribution": 99.1,
             "TradeLevelRank": 1,
+            "Dates": "2026-01-01,2026-01-02",
             "Name": null
         }))],
         cluster_bombs: vec![cluster_bomb(json!({
@@ -172,9 +181,67 @@ fn dashboard_fixture() -> TradeDashboard {
             "Volume": 200_000,
             "TradeCount": 6,
             "TradeClusterBombRank": 1,
+            "MinFullTimeString24": "16:00:00",
+            "DollarsMultiplier": 2.4,
+            "CumulativeDistribution": 98.5,
+            "LastComparableTradeClusterBombDate": "/Date(1767225600000)/",
             "ExternalFeed": false
         }))],
     }
+}
+
+#[test]
+fn trade_shaped_default_headers_are_raw_website_fields() {
+    assert_eq!(
+        TRADE_HEADERS,
+        [
+            "FullTimeString24",
+            "Volume",
+            "Price",
+            "Dollars",
+            "DollarsMultiplier",
+            "TradeRank",
+            "LastComparibleTradeDate",
+        ]
+    );
+    assert_eq!(
+        CLUSTER_HEADERS,
+        [
+            "MinFullTimeString24",
+            "TradeCount",
+            "Price",
+            "Dollars",
+            "DollarsMultiplier",
+            "TradeClusterRank",
+            "LastComparibleTradeClusterDate",
+        ]
+    );
+    assert_eq!(
+        BOMB_HEADERS,
+        [
+            "MinFullTimeString24",
+            "TradeCount",
+            "Volume",
+            "Dollars",
+            "DollarsMultiplier",
+            "CumulativeDistribution",
+            "TradeClusterBombRank",
+            "LastComparableTradeClusterBombDate",
+        ]
+    );
+    assert_eq!(
+        LEVEL_HEADERS,
+        [
+            "Price",
+            "Dollars",
+            "Volume",
+            "Trades",
+            "RelativeSize",
+            "CumulativeDistribution",
+            "TradeLevelRank",
+            "Dates",
+        ]
+    );
 }
 
 #[test]
@@ -308,7 +375,7 @@ fn dashboard_filter_building_matches_endpoint_requirements() {
 }
 
 #[test]
-fn dashboard_output_defaults_to_compact_decision_fields() {
+fn dashboard_output_defaults_to_raw_compact_fields() {
     let args = dashboard_args();
     let output = dashboard_output_value(&dashboard_fixture(), &args).unwrap();
 
@@ -317,41 +384,37 @@ fn dashboard_output_defaults_to_compact_decision_fields() {
     assert_eq!(output["count"], DEFAULT_DASHBOARD_COUNT);
 
     let trade = output["trades"][0].as_object().unwrap();
-    assert_eq!(trade["Date"], "2026-01-02");
-    assert_eq!(trade["Dollars"], 10_000_000.0);
-    assert_eq!(trade["venue"], "lit_sweep");
-    assert_eq!(trade["type"], "closing");
-    assert!(!trade.contains_key("FullTimeString24"));
-    assert_eq!(trade["Time"], "16:00:00");
-    assert!(!trade.contains_key("DollarsMultiplier"));
+    assert_eq!(trade["FullTimeString24"], "16:00:00");
+    assert_eq!(trade["Volume"], 50_000);
+    assert_eq!(trade["DollarsMultiplier"], 4.2);
+    assert_eq!(trade["TradeRank"], 3);
+    assert!(!trade.contains_key("Time"));
+    assert!(!trade.contains_key("venue"));
+    assert!(!trade.contains_key("type"));
     assert!(!trade.contains_key("Ticker"));
-    assert!(!trade.contains_key("SecurityKey"));
-    assert!(!trade.contains_key("RSI"));
-    assert!(!trade.contains_key("RSIDay"));
-    assert!(!trade.contains_key("RSIHour"));
-    assert!(!trade.contains_key("DarkPool"));
-    assert!(!trade.contains_key("Sweep"));
-    assert!(!trade.contains_key("ClosingTrade"));
-    assert!(!trade.contains_key("TradeConditions"));
 
     let cluster = output["clusters"][0].as_object().unwrap();
-    assert_eq!(cluster["Date"], "2026-01-02");
+    assert_eq!(cluster["MinFullTimeString24"], "16:00:00");
+    assert_eq!(cluster["TradeCount"], 4);
     assert_eq!(cluster["TradeClusterRank"], 2);
-    assert_eq!(cluster["window"], "16:00:00-16:49:31");
-    assert!(!cluster.contains_key("MinFullDateTime"));
-    assert!(!cluster.contains_key("MaxFullDateTime"));
-    assert!(!cluster.contains_key("MinDateTime"));
-    assert!(!cluster.contains_key("MaxDateTime"));
-    assert!(!cluster.contains_key("DollarsMultiplier"));
+    assert_eq!(cluster["DollarsMultiplier"], 3.1);
+    assert!(!cluster.contains_key("window"));
     assert!(!cluster.contains_key("Ticker"));
 
     let level = output["levels"][0].as_object().unwrap();
+    assert_eq!(level["Volume"], 150_000);
+    assert_eq!(level["RelativeSize"], 0.0);
     assert_eq!(level["TradeLevelRank"], 1);
-    assert!(!level.contains_key("RelativeSize"));
+    assert_eq!(level["Dates"], "2026-01-01,2026-01-02");
     assert!(!level.contains_key("Ticker"));
 
     let bomb = output["cluster_bombs"][0].as_object().unwrap();
+    assert_eq!(bomb["MinFullTimeString24"], "16:00:00");
     assert_eq!(bomb["TradeClusterBombRank"], 1);
+    assert_eq!(
+        bomb["LastComparableTradeClusterBombDate"],
+        "2026-01-01T00:00:00+00:00"
+    );
     assert!(!bomb.contains_key("ExternalFeed"));
 }
 
@@ -392,36 +455,40 @@ fn dashboard_output_section_metadata_matches_projected_sections() {
 }
 
 #[test]
-fn cluster_output_defaults_to_transformed_compact_fields() {
+fn cluster_output_defaults_to_raw_compact_fields() {
     let output = render_cluster_json(None, false);
     let row = output[0].as_object().unwrap();
 
-    assert_eq!(row["Date"], "2026-01-02");
-    assert_eq!(row["Ticker"], "AAPL");
+    assert_eq!(row["MinFullTimeString24"], "16:00:00");
+    assert_eq!(row["TradeCount"], 4);
     assert_eq!(row["Price"], 199.125);
     assert_eq!(row["Dollars"], 20_000_000.126);
-    assert_eq!(row["TradeCount"], 4);
+    assert_eq!(row["DollarsMultiplier"], 12.345);
     assert_eq!(row["TradeClusterRank"], 2);
-    assert_eq!(row["window"], "16:00:00-16:49:31");
-    assert!(!row.contains_key("events"));
-    assert!(!row.contains_key("MinFullDateTime"));
-    assert!(!row.contains_key("MaxFullDateTime"));
-    assert!(!row.contains_key("MinDateTime"));
-    assert!(!row.contains_key("MaxDateTime"));
-    assert!(!row.contains_key("EOM"));
-    assert!(!row.contains_key("OPEX"));
+    assert_eq!(
+        row["LastComparibleTradeClusterDate"],
+        "2026-01-01T00:00:00+00:00"
+    );
+    assert!(!row.contains_key("window"));
+    assert!(!row.contains_key("Ticker"));
     assert!(!row.contains_key("SecurityKey"));
 }
 
 #[test]
-fn cluster_output_accepts_custom_transformed_fields() {
-    let output = render_cluster_json(Some("Date,TradeCount,window"), false);
+fn cluster_output_accepts_custom_raw_fields() {
+    let output = render_cluster_json(
+        Some("MinFullTimeString24,TradeCount,LastComparibleTradeClusterDate"),
+        false,
+    );
     let row = output[0].as_object().unwrap();
 
     assert_eq!(row.len(), 3);
-    assert_eq!(row["Date"], "2026-01-02");
+    assert_eq!(row["MinFullTimeString24"], "16:00:00");
     assert_eq!(row["TradeCount"], 4);
-    assert_eq!(row["window"], "16:00:00-16:49:31");
+    assert_eq!(
+        row["LastComparibleTradeClusterDate"],
+        "2026-01-01T00:00:00+00:00"
+    );
 }
 
 #[test]
@@ -511,28 +578,22 @@ fn cluster_bomb_output_accepts_cluster_bomb_rank_metadata() {
 }
 
 #[test]
-fn cluster_output_all_fields_keeps_extra_fields_after_transforms() {
+fn cluster_output_all_fields_keeps_raw_extra_fields() {
     let output = render_cluster_json(None, true);
     let row = output[0].as_object().unwrap();
 
     assert_eq!(row["SecurityKey"], 123);
-    assert_eq!(row["window"], "16:00:00-16:49:31");
-    assert!(!row.contains_key("events"));
-    assert!(!row.contains_key("MinFullDateTime"));
-    assert!(!row.contains_key("MaxFullDateTime"));
-    assert!(!row.contains_key("MinDateTime"));
-    assert!(!row.contains_key("MaxDateTime"));
-    assert!(!row.contains_key("EOM"));
-    assert!(!row.contains_key("OPEX"));
+    assert_eq!(row["MinFullDateTime"], "2026-01-02T16:00:00+00:00");
+    assert_eq!(row["MaxFullDateTime"], "2026-01-02T16:49:31+00:00");
+    assert_eq!(row["EOM"], true);
+    assert_eq!(row["OPEX"], false);
+    assert!(!row.contains_key("window"));
 }
 
 #[test]
-fn cluster_alert_output_uses_cluster_transform_headers() {
-    let values = crate::cli::common::trade_transforms::transformed_trade_values(
-        &[cluster_alert_fixture()],
-        TradeRecordKind::Cluster,
-    )
-    .expect("cluster alert serializes");
+fn cluster_alert_output_uses_raw_cluster_headers() {
+    let values =
+        vec![serde_json::to_value(cluster_alert_fixture()).expect("cluster alert serializes")];
     let mut output = Vec::new();
     write_record_values(&mut output, &values, CLUSTER_HEADERS, None, false, None)
         .expect("cluster alert output renders");
@@ -544,13 +605,13 @@ fn cluster_alert_output_uses_cluster_transform_headers() {
             .iter()
             .all(|header| row.contains_key(*header))
     );
-    assert_eq!(row["Ticker"], "MSFT");
-    assert_eq!(row["window"], "15:00:00-15:07:30");
-    assert!(!row.contains_key("events"));
-    assert!(!row.contains_key("MinFullDateTime"));
-    assert!(!row.contains_key("MaxFullDateTime"));
-    assert!(!row.contains_key("MinDateTime"));
-    assert!(!row.contains_key("MaxDateTime"));
+    assert_eq!(row["MinFullTimeString24"], "15:00:00");
+    assert_eq!(
+        row["LastComparibleTradeClusterDate"],
+        "2026-01-01T00:00:00+00:00"
+    );
+    assert!(!row.contains_key("window"));
+    assert!(!row.contains_key("Ticker"));
 }
 
 #[test]
@@ -564,7 +625,7 @@ fn dashboard_output_accepts_section_qualified_custom_fields() {
     let output = dashboard_output_value(&dashboard_fixture(), &args).unwrap();
     let trade = output["trades"][0].as_object().unwrap();
     assert_eq!(trade.len(), 2);
-    assert_eq!(trade["Date"], "2026-01-02");
+    assert_eq!(trade["Date"], "2026-01-02T00:00:00+00:00");
     assert_eq!(trade["Dollars"], 10_000_000.0);
 
     let cluster = output["clusters"][0].as_object().unwrap();
@@ -583,7 +644,7 @@ fn dashboard_output_accepts_section_qualified_custom_fields() {
 #[test]
 fn dashboard_output_accepts_discovered_field_absent_from_rows() {
     let mut args = dashboard_args();
-    args.fields = Some("trades.venue".to_string());
+    args.fields = Some("trades.FullTimeString24".to_string());
     let mut dashboard = dashboard_fixture();
     dashboard.trades = vec![trade(json!({
         "Ticker": "AAPL",
@@ -597,7 +658,7 @@ fn dashboard_output_accepts_discovered_field_absent_from_rows() {
     let output = dashboard_output_value(&dashboard, &args).unwrap();
 
     let trade = output["trades"][0].as_object().unwrap();
-    assert!(trade.is_empty());
+    assert_eq!(trade["FullTimeString24"], serde_json::Value::Null);
 }
 
 #[test]
@@ -615,30 +676,24 @@ fn dashboard_output_applies_unqualified_custom_fields_to_all_sections() {
 }
 
 #[test]
-fn dashboard_output_all_fields_applies_transforms() {
+fn dashboard_output_all_fields_returns_raw_rows() {
     let mut args = dashboard_args();
     args.all_fields = true;
 
     let output = dashboard_output_value(&dashboard_fixture(), &args).unwrap();
     let trade = output["trades"][0].as_object().unwrap();
     assert_eq!(trade["Ticker"], "AAPL");
-    assert_eq!(trade["SecurityKey"], 0);
-    assert_eq!(trade["venue"], "lit_sweep");
-    assert_eq!(trade["type"], "closing");
-    assert!(!trade.contains_key("FullTimeString24"));
-    assert_eq!(trade["Time"], "16:00:00");
-    assert!(!trade.contains_key("DarkPool"));
-    assert!(!trade.contains_key("Sweep"));
-    assert!(!trade.contains_key("ClosingTrade"));
-    assert!(trade.contains_key("TradeConditions"));
-    assert!(trade["TradeConditions"].is_null());
+    assert_eq!(trade["FullTimeString24"], "16:00:00");
+    assert_eq!(trade["Sweep"], true);
+    assert_eq!(trade["ClosingTrade"], true);
+    assert!(!trade.contains_key("Time"));
+    assert!(!trade.contains_key("venue"));
+    assert!(!trade.contains_key("type"));
 
     let cluster = output["clusters"][0].as_object().unwrap();
-    assert_eq!(cluster["window"], "16:00:00-16:49:31");
-    assert!(!cluster.contains_key("MinFullDateTime"));
-    assert!(!cluster.contains_key("MaxFullDateTime"));
-    assert!(!cluster.contains_key("MinDateTime"));
-    assert!(!cluster.contains_key("MaxDateTime"));
+    assert_eq!(cluster["MinFullDateTime"], "2026-01-02T16:00:00+00:00");
+    assert_eq!(cluster["MaxFullDateTime"], "2026-01-02T16:49:31+00:00");
+    assert!(!cluster.contains_key("window"));
 }
 
 #[test]
@@ -687,7 +742,7 @@ fn dashboard_field_metadata_accepts_documented_projection_fields() {
 }
 
 #[test]
-fn dashboard_field_metadata_covers_transformed_dashboard_fields() {
+fn dashboard_field_metadata_covers_raw_dashboard_fields() {
     let mut args = dashboard_args();
     args.all_fields = true;
     let output = dashboard_output_value(&dashboard_fixture(), &args).unwrap();

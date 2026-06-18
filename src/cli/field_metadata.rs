@@ -3,7 +3,7 @@
 use serde::Serialize;
 
 use crate::cli::commands::report::REPORT_PRESETS;
-use crate::cli::common::trade_transforms::TradeRecordKind;
+use crate::cli::common::trade_record_kind::TradeRecordKind;
 
 /// Machine-readable field discovery response for one command path.
 #[derive(Debug, Serialize)]
@@ -104,65 +104,59 @@ fn fields_for_trade_record_kind(kind: TradeRecordKind) -> &'static [FieldMetadat
 
 /// Default compact output columns for trade list and report commands.
 pub(crate) const TRADE_HEADERS: &[&str] = &[
-    "Ticker",
-    "Date",
-    "Time",
+    "FullTimeString24",
+    "Volume",
     "Price",
     "Dollars",
-    "RelativeSize",
-    "CumulativeDistribution",
+    "DollarsMultiplier",
     "TradeRank",
-    "type",
-    "venue",
-    "Sector",
-    "Industry",
+    "LastComparibleTradeDate",
 ];
 
 pub(crate) const CLUSTER_HEADERS: &[&str] = &[
-    "Date",
-    "Ticker",
+    "MinFullTimeString24",
+    "TradeCount",
     "Price",
     "Dollars",
-    "TradeCount",
     "DollarsMultiplier",
-    "CumulativeDistribution",
     "TradeClusterRank",
-    "window",
+    "LastComparibleTradeClusterDate",
 ];
 
 pub(crate) const BOMB_HEADERS: &[&str] = &[
-    "Date",
-    "Ticker",
-    "Dollars",
+    "MinFullTimeString24",
     "TradeCount",
+    "Volume",
+    "Dollars",
     "DollarsMultiplier",
     "CumulativeDistribution",
     "TradeClusterBombRank",
-    "window",
+    "LastComparableTradeClusterBombDate",
 ];
 
 pub(crate) const LEVEL_HEADERS: &[&str] = &[
-    "Ticker",
     "Price",
     "Dollars",
+    "Volume",
     "Trades",
     "RelativeSize",
     "CumulativeDistribution",
     "TradeLevelRank",
+    "Dates",
 ];
 
 pub(crate) const ALERT_HEADERS: &[&str] = &[
-    "Ticker",
-    "Date",
-    "Time",
+    "FullTimeString24",
     "AlertType",
     "TradeID",
     "Price",
     "Volume",
     "Dollars",
+    "DollarsMultiplier",
     "TradeRank",
-    "type",
-    "venue",
+    "LastComparibleTradeDate",
+    "DarkPool",
+    "Sweep",
 ];
 
 pub(crate) const VOLUME_HEADERS: &[&str] = &[
@@ -176,8 +170,10 @@ pub(crate) const VOLUME_HEADERS: &[&str] = &[
     "DollarsMultiplier",
     "CumulativeDistribution",
     "TradeRank",
-    "type",
-    "venue",
+    "OpeningTrade",
+    "ClosingTrade",
+    "DarkPool",
+    "Sweep",
     "LatePrint",
     "SignaturePrint",
     "PhantomPrint",
@@ -199,16 +195,17 @@ const TRADE_FIELDS: &[FieldMetadata] = &[
     field!("Ticker", "Ticker symbol.", FieldType::String),
     field!("Date", "Trading date.", FieldType::Date),
     field!(
-        "Time",
+        "FullTimeString24",
         "Trade time in the market session.",
         FieldType::String
     ),
-    field!("DateTime", "Trade timestamp.", FieldType::Datetime),
+    field!("FullDateTime", "Trade timestamp.", FieldType::Datetime),
     field!("Price", "Trade price.", FieldType::Number),
+    field!("Volume", "Trade share volume.", FieldType::Number),
     field!("Dollars", "Trade notional value.", FieldType::Number),
     field!(
-        "RelativeSize",
-        "Browser RS value for trade rows, derived from DollarsMultiplier when the upstream RelativeSize field is empty.",
+        "DollarsMultiplier",
+        "Relative dollar-size multiplier.",
         FieldType::Number
     ),
     field!(
@@ -222,14 +219,29 @@ const TRADE_FIELDS: &[FieldMetadata] = &[
         FieldType::Number
     ),
     field!(
-        "type",
-        "Opening or closing trade classification.",
-        FieldType::String
+        "LastComparibleTradeDate",
+        "Last date when a trade that large was seen.",
+        FieldType::Date
     ),
     field!(
-        "venue",
-        "Dark-pool or sweep venue classification.",
-        FieldType::String
+        "DarkPool",
+        "Whether the trade was dark-pool volume.",
+        FieldType::Boolean
+    ),
+    field!(
+        "Sweep",
+        "Whether the trade was a sweep.",
+        FieldType::Boolean
+    ),
+    field!(
+        "OpeningTrade",
+        "Whether the row is an opening trade.",
+        FieldType::Boolean
+    ),
+    field!(
+        "ClosingTrade",
+        "Whether the row is a closing trade.",
+        FieldType::Boolean
     ),
     field!("Sector", "Issuer sector.", FieldType::String),
     field!("Industry", "Issuer industry.", FieldType::String),
@@ -280,6 +292,31 @@ const DASHBOARD_FIELDS: &[FieldMetadata] = &[
         FieldType::Number
     ),
     field!(
+        "trades.EOM",
+        "Dashboard trade end-of-month flag.",
+        FieldType::Boolean
+    ),
+    field!(
+        "trades.EOQ",
+        "Dashboard trade end-of-quarter flag.",
+        FieldType::Boolean
+    ),
+    field!(
+        "trades.EOY",
+        "Dashboard trade end-of-year flag.",
+        FieldType::Boolean
+    ),
+    field!(
+        "trades.OPEX",
+        "Dashboard trade options-expiration flag.",
+        FieldType::Boolean
+    ),
+    field!(
+        "trades.VOLEX",
+        "Dashboard trade volatility-expiration flag.",
+        FieldType::Boolean
+    ),
+    field!(
         "trades.Ticker",
         "Dashboard trade ticker symbol.",
         FieldType::String
@@ -300,11 +337,15 @@ const DASHBOARD_FIELDS: &[FieldMetadata] = &[
         FieldType::String
     ),
     field!(
-        "trades.DateTime",
+        "trades.FullDateTime",
         "Dashboard trade timestamp.",
         FieldType::Datetime
     ),
-    field!("trades.Time", "Dashboard trade time.", FieldType::String),
+    field!(
+        "trades.FullTimeString24",
+        "Dashboard trade time.",
+        FieldType::String
+    ),
     field!("trades.Price", "Dashboard trade price.", FieldType::Number),
     field!(
         "trades.Bid",
@@ -407,6 +448,26 @@ const DASHBOARD_FIELDS: &[FieldMetadata] = &[
         FieldType::Boolean
     ),
     field!(
+        "trades.Sweep",
+        "Whether the dashboard trade is a sweep.",
+        FieldType::Boolean
+    ),
+    field!(
+        "trades.DarkPool",
+        "Whether the dashboard trade is dark-pool volume.",
+        FieldType::Boolean
+    ),
+    field!(
+        "trades.OpeningTrade",
+        "Whether the dashboard trade is opening flow.",
+        FieldType::Boolean
+    ),
+    field!(
+        "trades.ClosingTrade",
+        "Whether the dashboard trade is closing flow.",
+        FieldType::Boolean
+    ),
+    field!(
         "trades.PhantomPrint",
         "Whether the dashboard trade is a phantom print.",
         FieldType::Boolean
@@ -497,6 +558,16 @@ const DASHBOARD_FIELDS: &[FieldMetadata] = &[
         FieldType::Number
     ),
     field!(
+        "trades.RSIHour",
+        "Dashboard trade hourly RSI value.",
+        FieldType::Number
+    ),
+    field!(
+        "trades.RSIDay",
+        "Dashboard trade daily RSI value.",
+        FieldType::Number
+    ),
+    field!(
         "trades.TotalRows",
         "Dashboard trade total row count.",
         FieldType::Number
@@ -536,16 +607,6 @@ const DASHBOARD_FIELDS: &[FieldMetadata] = &[
         "Whether the dashboard trade came from an external feed.",
         FieldType::Boolean
     ),
-    field!(
-        "trades.venue",
-        "Dashboard trade venue classification.",
-        FieldType::String
-    ),
-    field!(
-        "trades.type",
-        "Dashboard trade opening or closing classification.",
-        FieldType::String
-    ),
     field!("clusters.Date", "Dashboard cluster date.", FieldType::Date),
     field!(
         "clusters.IPODate",
@@ -583,23 +644,23 @@ const DASHBOARD_FIELDS: &[FieldMetadata] = &[
         FieldType::String
     ),
     field!(
-        "clusters.MinDateTime",
-        "Dashboard cluster minimum timestamp.",
+        "clusters.MinFullDateTime",
+        "Dashboard cluster earliest timestamp.",
         FieldType::Datetime
     ),
     field!(
-        "clusters.MaxDateTime",
-        "Dashboard cluster maximum timestamp.",
+        "clusters.MaxFullDateTime",
+        "Dashboard cluster latest timestamp.",
         FieldType::Datetime
     ),
     field!(
-        "clusters.MinTime",
-        "Dashboard cluster minimum time.",
+        "clusters.MinFullTimeString24",
+        "Dashboard cluster earliest time.",
         FieldType::String
     ),
     field!(
-        "clusters.MaxTime",
-        "Dashboard cluster maximum time.",
+        "clusters.MaxFullTimeString24",
+        "Dashboard cluster latest time.",
         FieldType::String
     ),
     field!(
@@ -663,6 +724,31 @@ const DASHBOARD_FIELDS: &[FieldMetadata] = &[
         FieldType::Date
     ),
     field!(
+        "clusters.EOM",
+        "Dashboard cluster end-of-month flag.",
+        FieldType::Boolean
+    ),
+    field!(
+        "clusters.EOQ",
+        "Dashboard cluster end-of-quarter flag.",
+        FieldType::Boolean
+    ),
+    field!(
+        "clusters.EOY",
+        "Dashboard cluster end-of-year flag.",
+        FieldType::Boolean
+    ),
+    field!(
+        "clusters.OPEX",
+        "Dashboard cluster options-expiration flag.",
+        FieldType::Boolean
+    ),
+    field!(
+        "clusters.VOLEX",
+        "Dashboard cluster volatility-expiration flag.",
+        FieldType::Boolean
+    ),
+    field!(
         "clusters.InsideBar",
         "Whether the dashboard cluster is inside bar activity.",
         FieldType::Boolean
@@ -681,11 +767,6 @@ const DASHBOARD_FIELDS: &[FieldMetadata] = &[
         "clusters.ExternalFeed",
         "Whether the dashboard cluster came from an external feed.",
         FieldType::Boolean
-    ),
-    field!(
-        "clusters.window",
-        "Collapsed min and max dashboard cluster time window.",
-        FieldType::String
     ),
     field!(
         "levels.Ticker",
@@ -815,23 +896,23 @@ const DASHBOARD_FIELDS: &[FieldMetadata] = &[
         FieldType::String
     ),
     field!(
-        "cluster_bombs.MinDateTime",
-        "Dashboard cluster-bomb minimum timestamp.",
+        "cluster_bombs.MinFullDateTime",
+        "Dashboard cluster-bomb earliest timestamp.",
         FieldType::Datetime
     ),
     field!(
-        "cluster_bombs.MaxDateTime",
-        "Dashboard cluster-bomb maximum timestamp.",
+        "cluster_bombs.MaxFullDateTime",
+        "Dashboard cluster-bomb latest timestamp.",
         FieldType::Datetime
     ),
     field!(
-        "cluster_bombs.MinTime",
-        "Dashboard cluster-bomb minimum time.",
+        "cluster_bombs.MinFullTimeString24",
+        "Dashboard cluster-bomb earliest time.",
         FieldType::String
     ),
     field!(
-        "cluster_bombs.MaxTime",
-        "Dashboard cluster-bomb maximum time.",
+        "cluster_bombs.MaxFullTimeString24",
+        "Dashboard cluster-bomb latest time.",
         FieldType::String
     ),
     field!(
@@ -890,6 +971,31 @@ const DASHBOARD_FIELDS: &[FieldMetadata] = &[
         FieldType::Date
     ),
     field!(
+        "cluster_bombs.EOM",
+        "Dashboard cluster-bomb end-of-month flag.",
+        FieldType::Boolean
+    ),
+    field!(
+        "cluster_bombs.EOQ",
+        "Dashboard cluster-bomb end-of-quarter flag.",
+        FieldType::Boolean
+    ),
+    field!(
+        "cluster_bombs.EOY",
+        "Dashboard cluster-bomb end-of-year flag.",
+        FieldType::Boolean
+    ),
+    field!(
+        "cluster_bombs.OPEX",
+        "Dashboard cluster-bomb options-expiration flag.",
+        FieldType::Boolean
+    ),
+    field!(
+        "cluster_bombs.VOLEX",
+        "Dashboard cluster-bomb volatility-expiration flag.",
+        FieldType::Boolean
+    ),
+    field!(
         "cluster_bombs.InsideBar",
         "Whether the dashboard cluster bomb is inside bar activity.",
         FieldType::Boolean
@@ -908,11 +1014,6 @@ const DASHBOARD_FIELDS: &[FieldMetadata] = &[
         "cluster_bombs.ExternalFeed",
         "Whether the dashboard cluster bomb came from an external feed.",
         FieldType::Boolean
-    ),
-    field!(
-        "cluster_bombs.window",
-        "Collapsed min and max dashboard cluster-bomb time window.",
-        FieldType::String
     ),
 ];
 
@@ -942,9 +1043,14 @@ const CLUSTER_FIELDS: &[FieldMetadata] = &[
         FieldType::Number
     ),
     field!(
-        "window",
-        "Collapsed min and max cluster time window.",
+        "MinFullTimeString24",
+        "Earliest trade time in the cluster.",
         FieldType::String
+    ),
+    field!(
+        "LastComparibleTradeClusterDate",
+        "Last date when a comparable cluster was seen.",
+        FieldType::Date
     ),
 ];
 
@@ -952,6 +1058,7 @@ const LEVEL_FIELDS: &[FieldMetadata] = &[
     field!("Ticker", "Ticker symbol.", FieldType::String),
     field!("Price", "Significant level price.", FieldType::Number),
     field!("Dollars", "Level notional value.", FieldType::Number),
+    field!("Volume", "Total shares at the level.", FieldType::Number),
     field!(
         "Trades",
         "Number of trades at the level.",
@@ -968,11 +1075,18 @@ const LEVEL_FIELDS: &[FieldMetadata] = &[
         "Level rank from VolumeLeaders.",
         FieldType::Number
     ),
+    field!("Dates", "Dates when the level existed.", FieldType::String),
 ];
 
 const BOMB_FIELDS: &[FieldMetadata] = &[
     field!("Date", "Cluster-bomb date.", FieldType::Date),
     field!("Ticker", "Ticker symbol.", FieldType::String),
+    field!(
+        "MinFullTimeString24",
+        "Earliest trade time in the cluster bomb.",
+        FieldType::String
+    ),
+    field!("Volume", "Cluster-bomb share volume.", FieldType::Number),
     field!("Dollars", "Cluster-bomb notional value.", FieldType::Number),
     field!(
         "TradeCount",
@@ -995,16 +1109,16 @@ const BOMB_FIELDS: &[FieldMetadata] = &[
         FieldType::Number
     ),
     field!(
-        "window",
-        "Collapsed min and max cluster-bomb time window.",
-        FieldType::String
+        "LastComparableTradeClusterBombDate",
+        "Last date when a comparable cluster bomb was seen.",
+        FieldType::Date
     ),
 ];
 
 const TRADE_ALERT_FIELDS: &[FieldMetadata] = &[
     field!("Ticker", "Ticker symbol.", FieldType::String),
     field!("Date", "Alert date.", FieldType::Date),
-    field!("Time", "Alert time.", FieldType::String),
+    field!("FullTimeString24", "Alert trade time.", FieldType::String),
     field!(
         "AlertType",
         "VolumeLeaders alert category.",
@@ -1015,19 +1129,29 @@ const TRADE_ALERT_FIELDS: &[FieldMetadata] = &[
     field!("Volume", "Alert trade share volume.", FieldType::Number),
     field!("Dollars", "Alert trade notional value.", FieldType::Number),
     field!(
+        "DollarsMultiplier",
+        "Alert trade relative dollar-size multiplier.",
+        FieldType::Number
+    ),
+    field!(
         "TradeRank",
         "Trade rank from VolumeLeaders.",
         FieldType::Number
     ),
     field!(
-        "type",
-        "Opening or closing trade classification.",
-        FieldType::String
+        "LastComparibleTradeDate",
+        "Last comparable trade date.",
+        FieldType::Date
     ),
     field!(
-        "venue",
-        "Dark-pool or sweep venue classification.",
-        FieldType::String
+        "DarkPool",
+        "Whether the alert trade was dark-pool volume.",
+        FieldType::Boolean
+    ),
+    field!(
+        "Sweep",
+        "Whether the alert trade was a sweep.",
+        FieldType::Boolean
     ),
 ];
 
@@ -1055,15 +1179,21 @@ const VOLUME_FIELDS: &[FieldMetadata] = &[
         FieldType::Number
     ),
     field!(
-        "type",
-        "Opening or closing trade classification.",
-        FieldType::String
+        "OpeningTrade",
+        "Whether the row is opening flow.",
+        FieldType::Boolean
     ),
     field!(
-        "venue",
-        "Dark-pool or sweep venue classification.",
-        FieldType::String
+        "ClosingTrade",
+        "Whether the row is closing flow.",
+        FieldType::Boolean
     ),
+    field!(
+        "DarkPool",
+        "Whether the row is dark-pool volume.",
+        FieldType::Boolean
+    ),
+    field!("Sweep", "Whether the row is a sweep.", FieldType::Boolean),
     field!(
         "LatePrint",
         "Whether the row is a late print.",
@@ -1181,7 +1311,7 @@ const ALERT_CONFIG_FIELDS: &[FieldMetadata] = &[
 mod tests {
     use super::{discover, field_names, fields_for_path, fields_for_trade_record_kind};
     use crate::cli::commands::report::REPORT_PRESETS;
-    use crate::cli::common::trade_transforms::TradeRecordKind;
+    use crate::cli::common::trade_record_kind::TradeRecordKind;
 
     #[test]
     fn discovers_required_issue_command_paths() {

@@ -58,11 +58,11 @@ Schema argument metadata includes known custom validation constraints, such as `
 
 Mutating alert and watchlist commands support `--dry-run` so automation can inspect the planned request without sending it. Delete commands also require `--yes` for live deletion; use `--dry-run` first to inspect the delete request.
 
-Use `fields <command path>` for machine-readable output field discovery before using `--fields`. It emits compact JSON with the preferred command path, exact case-sensitive field names accepted by `--fields`, short descriptions, and type hints. Nested dashboard fields are section-qualified, such as `trades.TradeRank`, `clusters.window`, `levels.TradeLevelRank`, and `cluster_bombs.TradeCount`. It does not need a live API response or non-empty result rows. Unknown projected fields fail with exit code `2` and structured `usage_error` JSON on stderr.
+Use `fields <command path>` for machine-readable output field discovery before using `--fields`. It emits compact JSON with the preferred command path, exact case-sensitive raw API field names accepted by `--fields`, short descriptions, and type hints. Nested dashboard fields are section-qualified, such as `trades.TradeRank`, `clusters.MinFullTimeString24`, `levels.TradeLevelRank`, and `cluster_bombs.TradeCount`. It does not need a live API response or non-empty result rows. Unknown projected fields fail with exit code `2` and structured `usage_error` JSON on stderr.
 
 `trade dashboard` returns `sections` metadata with per-section `count` and `empty` values for `trades`, `clusters`, `levels`, and `cluster_bombs`. Use it to distinguish a genuinely empty dashboard section from a populated sibling section without treating the whole object as an empty result.
 
-The CLI intentionally does not embed a jq expression engine. Built-in output shaping stays focused on `--fields` and `--all-fields`; use external `jq` after projection when automation needs filters or derived objects. For example: `volumeleaders-agent trade list NVDA --fields Ticker,Dollars | jq '.[] | select(.Dollars > 1000000)'`.
+The CLI intentionally does not embed a jq expression engine. Built-in output shaping stays focused on `--fields` and `--all-fields`; use external `jq` after projection when automation needs filters or derived objects. For example: `volumeleaders-agent trade list NVDA --fields FullTimeString24,Dollars | jq '.[] | select(.Dollars > 1000000)'`.
 
 Top-level aliases are available for the highest-frequency trade commands: `trades` for `trade list`, `dashboard` for `trade dashboard`, and `levels` for `trade levels`. The schema keeps the canonical `trade ...` preferred paths, marks alias entries with `is_alias` and `alias_for`, and lists each alias on its canonical command so automation can normalize either form.
 
@@ -107,7 +107,7 @@ volumeleaders-agent doctor --live
 volumeleaders-agent commands
 volumeleaders-agent fields trade list
 volumeleaders-agent fields volume institutional | jq '.fields[].name'
-volumeleaders-agent trade list NVDA --fields Ticker,Dollars | jq '.[] | select(.Dollars > 1000000)'
+volumeleaders-agent trade list NVDA --fields FullTimeString24,Dollars | jq '.[] | select(.Dollars > 1000000)'
 volumeleaders-agent help agent
 volumeleaders-agent help examples
 volumeleaders-agent alert create --name BigTechSweeps --tickers AAPL,MSFT --dry-run
@@ -124,7 +124,7 @@ volumeleaders-agent completions zsh > _volumeleaders-agent
 
 `trade list` defaults mirror the browser `/Trades/GetTrades` request captured from the VolumeLeaders trades page: today's trades, 1000 requested rows, empty table search, `FullTimeString24` descending order, `MinVolume=10000`, `MaxVolume=2000000000`, `MinPrice=0`, `MaxPrice=100000`, `MinDollars=500000`, `MaxDollars=100000000000`, `Conditions=0`, `VCD=0`, `SecurityTypeKey=-1`, `RelativeSize=0`, `DarkPools=-1`, `Sweeps=-1`, `LatePrints=-1`, `SignaturePrints=-1`, `EvenShared=-1`, `TradeRank=100`, `TradeRankSnapshot=-1`, `MarketCap=0`, and all session toggles enabled. Pass date, range, or filter flags to override those browser defaults.
 
-Trade-shaped outputs intentionally omit the upstream `PercentDailyVolume` field. Live report data returns that value as `0.0` for current and prior trading days, so returning it would suggest a meaningful percentage where the source data does not provide one. Compact defaults also omit `TradeConditions`, `Name`, `Volume`, calendar marker flags (`EOM`, `EOQ`, `EOY`, `OPEX`, `VOLEX`), and RSI fields on trade-shaped rows to avoid surfacing fields that are consistently null, noisy, or not useful in those surfaces. For trade/report rows, the browser's visible RS value is returned by the API as `DollarsMultiplier`; transformed CLI output exposes that value only as `RelativeSize` and omits the raw `DollarsMultiplier` field. Level-centric data still uses the upstream `RelativeSize` field directly.
+Trade-shaped CLI outputs use raw VolumeLeaders field names. When `--fields` is omitted, compact defaults are returned: trades/reports use `FullTimeString24`, `Volume`, `Price`, `Dollars`, `DollarsMultiplier`, `TradeRank`, and `LastComparibleTradeDate`; clusters use `MinFullTimeString24`, `TradeCount`, `Price`, `Dollars`, `DollarsMultiplier`, `TradeClusterRank`, and `LastComparibleTradeClusterDate`; cluster bombs use `MinFullTimeString24`, `TradeCount`, `Volume`, `Dollars`, `DollarsMultiplier`, `CumulativeDistribution`, `TradeClusterBombRank`, and `LastComparableTradeClusterBombDate`; levels use `Price`, `Dollars`, `Volume`, `Trades`, `RelativeSize`, `CumulativeDistribution`, `TradeLevelRank`, and `Dates`. Use `--all-fields` to emit every raw serialized field.
 
 ## Using as a library
 

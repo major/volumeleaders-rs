@@ -4,7 +4,6 @@ use std::sync::{LazyLock, Mutex};
 use serde::Serialize;
 use serde_json::Value;
 
-use crate::cli::common::trade_transforms::{TradeRecordKind, transformed_trade_values};
 use crate::cli::error::CliExit;
 
 static STRICT_EMPTY_CONTEXT: LazyLock<Mutex<Option<EmptyResultContext>>> =
@@ -72,8 +71,7 @@ pub fn print_json<T: Serialize>(value: &T) -> io::Result<()> {
 /// Parses a comma-separated output field list.
 ///
 /// Empty input and `all` both mean no filtering. Field names are case-sensitive.
-/// Raw record output uses VolumeLeaders JSON keys; transformed output may expose
-/// semantic keys such as `type`, `venue`, and `window` instead.
+/// Record output uses VolumeLeaders JSON keys.
 pub fn selected_fields(fields: Option<&str>) -> Option<Vec<String>> {
     let fields = fields?.trim();
     if fields.is_empty() || fields.eq_ignore_ascii_case("all") {
@@ -137,53 +135,6 @@ pub(crate) fn print_record_values_with_allowed_fields(
         all_fields,
         allowed_fields,
     )
-}
-
-/// Transforms trade-shaped records and outputs them with field filtering.
-pub fn print_transformed_record_values<T: Serialize>(
-    records: &[T],
-    kind: TradeRecordKind,
-    compact_headers: &[&str],
-    fields: Option<&str>,
-    all_fields: bool,
-) -> io::Result<()> {
-    print_transformed_record_values_with_allowed_fields(
-        records,
-        kind,
-        compact_headers,
-        fields,
-        all_fields,
-        None,
-    )
-}
-
-/// Transforms trade-shaped records and validates custom fields against command metadata.
-pub(crate) fn print_transformed_record_values_with_allowed_fields<T: Serialize>(
-    records: &[T],
-    kind: TradeRecordKind,
-    compact_headers: &[&str],
-    fields: Option<&str>,
-    all_fields: bool,
-    allowed_fields: Option<&[String]>,
-) -> io::Result<()> {
-    if let (Some(fields), Some(allowed_fields)) =
-        (selected_fields(fields).as_deref(), allowed_fields)
-    {
-        validate_selected_fields(allowed_fields.to_vec(), fields)?;
-    }
-
-    strict_empty_error_if_needed(records.is_empty())?;
-    transformed_trade_values(records, kind)
-        .map_err(|err| io::Error::new(io::ErrorKind::InvalidData, err))
-        .and_then(|values| {
-            print_record_values_with_allowed_fields(
-                &values,
-                compact_headers,
-                fields,
-                all_fields,
-                allowed_fields,
-            )
-        })
 }
 
 /// Writes pre-serialized record values to `writer`.

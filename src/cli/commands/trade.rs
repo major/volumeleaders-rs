@@ -20,15 +20,13 @@ use crate::cli::common::DATE_FMT;
 use crate::cli::common::auth::make_client;
 use crate::cli::common::dates::resolve_date_range;
 use crate::cli::common::tickers::{parse_single_ticker, parse_tickers};
-use crate::cli::common::trade_transforms::TradeRecordKind;
+use crate::cli::common::trade_record_kind::TradeRecordKind;
 use crate::cli::common::types::{OrderDirection, SummaryGroup, TriStateFilter};
 use crate::cli::error::{CliExit, usage_error};
 use crate::cli::field_metadata::{
     self, ALERT_HEADERS, BOMB_HEADERS, CLUSTER_HEADERS, LEVEL_HEADERS, TRADE_HEADERS,
 };
-use crate::cli::output::{
-    finish_output, print_json, print_transformed_record_values_with_allowed_fields,
-};
+use crate::cli::output::{finish_output, print_json, print_records_with_allowed_fields};
 
 use self::dashboard::{TradeDashboard, dashboard_output_value};
 use self::filters::{
@@ -72,7 +70,7 @@ struct DateRange {
 pub enum TradeCommand {
     /// Query institutional trades.
     #[command(
-        long_about = "Query institutional trades with optional ticker, date, range, and output filters.\n\nExamples:\n  volumeleaders-agent trade list NVDA\n  volumeleaders-agent trade list NVDA --start-date 2026-05-01 --end-date 2026-05-27 --fields Ticker,DateTime,Price,Dollars,venue"
+        long_about = "Query institutional trades with optional ticker, date, range, and output filters.\n\nExamples:\n  volumeleaders-agent trade list NVDA\n  volumeleaders-agent trade list NVDA --start-date 2026-05-01 --end-date 2026-05-27 --fields FullTimeString24,Volume,Price,Dollars,DollarsMultiplier"
     )]
     List(ListArgs),
     /// Query a ticker institutional dashboard.
@@ -149,7 +147,7 @@ pub struct ListArgs {
     /// Exact, case-sensitive output fields to keep, comma-separated; discover with `fields trade list`.
     #[arg(long, conflicts_with = "all_fields")]
     pub fields: Option<String>,
-    /// Return every field after semantic trade transforms.
+    /// Return every raw API field.
     #[arg(long)]
     pub all_fields: bool,
 }
@@ -175,7 +173,7 @@ pub struct DashboardArgs {
     /// Unqualified fields are applied to every row section.
     #[arg(long, conflicts_with = "all_fields")]
     pub fields: Option<String>,
-    /// Return every field (semantic transforms still apply).
+    /// Return every raw API field.
     #[arg(long)]
     pub all_fields: bool,
 }
@@ -222,7 +220,7 @@ pub struct ClustersArgs {
     /// Exact, case-sensitive output fields to keep, comma-separated; discover with `fields trade clusters`.
     #[arg(long, conflicts_with = "all_fields")]
     pub fields: Option<String>,
-    /// Return every field after semantic trade transforms.
+    /// Return every raw API field.
     #[arg(long)]
     pub all_fields: bool,
 }
@@ -257,7 +255,7 @@ pub struct ClusterBombsArgs {
     /// Exact, case-sensitive output fields to keep, comma-separated; discover with `fields trade cluster-bombs`.
     #[arg(long, conflicts_with = "all_fields")]
     pub fields: Option<String>,
-    /// Return every field after semantic trade transforms.
+    /// Return every raw API field.
     #[arg(long)]
     pub all_fields: bool,
 }
@@ -274,7 +272,7 @@ pub struct AlertsArgs {
     /// Exact, case-sensitive output fields to keep, comma-separated; discover with `fields trade alerts` or `fields trade clusters`.
     #[arg(long, conflicts_with = "all_fields")]
     pub fields: Option<String>,
-    /// Return every field after semantic trade transforms.
+    /// Return every raw API field.
     #[arg(long)]
     pub all_fields: bool,
 }
@@ -293,7 +291,7 @@ pub struct LevelsArgs {
     /// Exact, case-sensitive output fields to keep, comma-separated; discover with `fields trade levels`.
     #[arg(long, conflicts_with = "all_fields")]
     pub fields: Option<String>,
-    /// Return every field after semantic trade transforms.
+    /// Return every raw API field.
     #[arg(long)]
     pub all_fields: bool,
 }
@@ -325,7 +323,7 @@ pub struct LevelTouchesArgs {
     /// Exact, case-sensitive output fields to keep, comma-separated; discover with `fields trade levels`.
     #[arg(long, conflicts_with = "all_fields")]
     pub fields: Option<String>,
-    /// Return every field after semantic trade transforms.
+    /// Return every raw API field.
     #[arg(long)]
     pub all_fields: bool,
 }
@@ -906,9 +904,8 @@ fn print_trade_records<T: Serialize>(
     command_path: &str,
 ) -> std::io::Result<()> {
     let allowed_fields = trade_output_field_names(kind, command_path);
-    print_transformed_record_values_with_allowed_fields(
+    print_records_with_allowed_fields(
         records,
-        kind,
         headers,
         fields,
         all_fields,
