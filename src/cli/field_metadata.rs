@@ -88,6 +88,7 @@ fn trade_record_kind_for_path(path: &str) -> Option<TradeRecordKind> {
         "trade list" => Some(TradeRecordKind::Trade),
         "trade levels" => Some(TradeRecordKind::Level),
         "trade clusters" => Some(TradeRecordKind::Cluster),
+        "trade cluster-alerts" => Some(TradeRecordKind::Cluster),
         "trade cluster-bombs" => Some(TradeRecordKind::ClusterBomb),
         _ => None,
     }
@@ -123,6 +124,7 @@ mod tests {
             "trade levels",
             "trade clusters",
             "trade cluster-bombs",
+            "trade cluster-alerts",
             "trade alerts",
             "report top-100-rank",
             "report top-10-rank",
@@ -181,5 +183,16 @@ mod tests {
 
         assert!(names.iter().any(|name| name == "Ticker"));
         assert!(!names.iter().any(|name| name == "ticker"));
+    }
+
+    #[test]
+    fn cluster_alert_fields_use_cluster_metadata_under_canonical_path() {
+        let parts = ["trade".to_string(), "cluster-alerts".to_string()];
+        let discovery = discover(&parts).expect("cluster-alerts fields exist");
+        let names = field_names("trade cluster-alerts").expect("cluster-alerts fields exist");
+
+        assert_eq!(discovery.preferred_path, "trade cluster-alerts");
+        assert!(names.iter().any(|name| name == "MinFullTimeString24"));
+        assert!(names.iter().any(|name| name == "TradeClusterRank"));
     }
 }
