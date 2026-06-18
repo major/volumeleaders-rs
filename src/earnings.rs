@@ -1,5 +1,6 @@
 //! Earnings endpoint for `/Earnings/GetEarnings` DataTables API.
 
+use crate::client::FormPairs;
 use crate::datatables::{
     DataTablesColumn, DataTablesRequest, impl_datatables_client_methods,
     impl_datatables_request_methods,
@@ -39,7 +40,7 @@ impl EarningsRequest {
     }
 
     /// Return raw key-value pairs for form submission.
-    pub(crate) fn to_pairs(&self) -> Vec<(String, String)> {
+    pub(crate) fn to_pairs(&self) -> FormPairs {
         self.0.to_pairs()
     }
 }

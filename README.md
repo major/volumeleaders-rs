@@ -52,7 +52,7 @@ Use global `--strict-empty` when an empty record array should fail automation in
 
 Use global `-v`, `-vv`, or `-vvv` to enable info, debug, or trace diagnostics on stderr. Without `-v`, the CLI logs warnings and errors only. stdout remains reserved for command output so JSON pipelines stay clean, and sensitive cookie material is never logged.
 
-Use `schema` for machine-readable CLI discovery. It emits compact JSON generated from the live clap command tree with the binary version, credential-based auth model, leaf command paths, help text, explicit alias metadata, auth requirements, mutating and dry-run safety metadata, argument metadata with stable names and semantic types, boolean flag versus value-taking option shape, and structured command examples.
+Use `schema` for machine-readable CLI discovery. It emits compact JSON generated from the live clap command tree with the binary version, credential-based auth model, leaf command paths, help text, explicit alias metadata, auth requirements, mutating and dry-run safety metadata, argument metadata with stable names and semantic types, boolean flag versus value-taking option shape, and structured command examples parsed from command help.
 
 Schema argument metadata includes known custom validation constraints, such as `trade levels --trade-level-count` accepting only `5`, `10`, `20`, or `50`. Invalid values still fail with structured `usage_error` JSON on stderr and exit code `2`.
 
@@ -74,7 +74,7 @@ Use `help <topic>` for built-in operational guidance when README access is unava
 
 Use `SKILL.md` as the concise LLM-facing contract for tool-calling agents. It focuses on self-discovery commands, stdout/stderr behavior, auth recovery, global flags, argument shapes, command catalog entries, examples, and CLI development checks.
 
-Every leaf command also includes an `Examples:` section in its command-specific `--help` output, and schema command entries expose structured examples for machine-readable discovery. Use those examples for copy-pasteable minimal and filtered invocations.
+Every leaf command also includes an `Examples:` section in its command-specific `--help` output, and schema command entries expose those examples as structured machine-readable discovery. Use those examples for copy-pasteable minimal and filtered invocations.
 
 ```bash
 cargo run -- --help

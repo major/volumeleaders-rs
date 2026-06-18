@@ -8,7 +8,7 @@
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Deserializer, Serialize};
 
-use crate::client::{Client, encode_form_value};
+use crate::client::{Client, FormPairs, encode_form_value, form_pair};
 use crate::error::Result;
 
 const DEFAULT_DATATABLES_LENGTH: i32 = 25;
@@ -92,7 +92,7 @@ pub struct DataTablesRequest {
     /// Whether to include global `search[...]` form fields.
     pub(crate) include_search: bool,
     /// Extra endpoint-specific form values appended after DataTables fields.
-    pub(crate) extra_values: Vec<(String, String)>,
+    pub(crate) extra_values: FormPairs,
 }
 
 impl DataTablesRequest {
@@ -146,13 +146,13 @@ impl DataTablesRequest {
         key: impl Into<String>,
         value: impl Into<String>,
     ) -> Self {
-        self.extra_values.push((key.into(), value.into()));
+        self.extra_values.push(form_pair(key, value));
         self
     }
 
     /// Replace endpoint-specific form values.
     #[must_use]
-    pub(crate) fn with_extra_values(mut self, values: Vec<(String, String)>) -> Self {
+    pub(crate) fn with_extra_values(mut self, values: FormPairs) -> Self {
         self.extra_values = values;
         self
     }
@@ -174,7 +174,7 @@ impl DataTablesRequest {
     }
 
     /// Return raw key-value pairs for use with [`Client::post_form`].
-    pub(crate) fn to_pairs(&self) -> Vec<(String, String)> {
+    pub(crate) fn to_pairs(&self) -> FormPairs {
         raw_pairs(self)
     }
 }
@@ -245,7 +245,7 @@ pub(crate) use impl_datatables_request_methods;
 /// Implement paired one-page and paginated DataTables client methods.
 ///
 /// `$request_type` must be a tuple struct whose field 0 is a
-/// [`DataTablesRequest`] and must expose `to_pairs() -> Vec<(String, String)>`.
+/// [`DataTablesRequest`] and must expose `to_pairs() -> FormPairs`.
 macro_rules! impl_datatables_client_methods {
     ($post_name:ident, $limit_name:ident, $request_type:ty, $response_type:ty, $path:expr) => {
         impl $crate::client::Client {
@@ -295,7 +295,7 @@ pub struct DataTablesResponse<T> {
     pub error: Option<String>,
 }
 
-fn raw_pairs(req: &DataTablesRequest) -> Vec<(String, String)> {
+fn raw_pairs(req: &DataTablesRequest) -> FormPairs {
     let mut pairs = Vec::new();
     let draw = if req.draw == 0 { 1 } else { req.draw };
     let length = if req.length == 0 {
@@ -364,13 +364,7 @@ where
     Ok(Option::<Vec<T>>::deserialize(deserializer)?.unwrap_or_default())
 }
 
-fn push_order_raw(
-    pairs: &mut Vec<(String, String)>,
-    index: usize,
-    column: i32,
-    dir: &str,
-    name: &str,
-) {
+fn push_order_raw(pairs: &mut FormPairs, index: usize, column: i32, dir: &str, name: &str) {
     let prefix = format!("order[{index}]");
     pairs.push((format!("{prefix}[column]"), column.to_string()));
     pairs.push((format!("{prefix}[dir]"), dir.to_string()));
@@ -388,7 +382,7 @@ impl Client {
     pub(crate) async fn post_datatables<T>(
         &self,
         path: &str,
-        pairs: Vec<(String, String)>,
+        pairs: FormPairs,
     ) -> Result<DataTablesResponse<T>>
     where
         T: DeserializeOwned,

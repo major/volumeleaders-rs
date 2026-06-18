@@ -3,7 +3,7 @@
 use serde::Serialize;
 use tracing::instrument;
 
-use crate::client::{Client, multipart_form_from_fields, push_bool_field};
+use crate::client::{Client, FormPairs, multipart_form_from_fields, push_bool_field};
 use crate::datatables::{
     DataTablesColumn, DataTablesRequest, impl_datatables_client_methods,
     impl_datatables_request_methods,
@@ -47,7 +47,7 @@ impl AlertConfigsRequest {
     }
 
     /// Return raw key-value pairs for form submission.
-    pub(crate) fn to_pairs(&self) -> Vec<(String, String)> {
+    pub(crate) fn to_pairs(&self) -> FormPairs {
         self.0.to_pairs()
     }
 }
@@ -82,7 +82,7 @@ impl TradeAlertsRequest {
     }
 
     /// Return raw key-value pairs for form submission.
-    pub(crate) fn to_pairs(&self) -> Vec<(String, String)> {
+    pub(crate) fn to_pairs(&self) -> FormPairs {
         self.0.to_pairs()
     }
 }
@@ -117,7 +117,7 @@ impl TradeClusterAlertsRequest {
     }
 
     /// Return raw key-value pairs for form submission.
-    pub(crate) fn to_pairs(&self) -> Vec<(String, String)> {
+    pub(crate) fn to_pairs(&self) -> FormPairs {
         self.0.to_pairs()
     }
 }
@@ -132,7 +132,7 @@ impl Default for TradeClusterAlertsRequest {
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct SaveAlertConfigRequest {
     /// Raw browser field names and values accepted by VolumeLeaders.
-    fields: Vec<(String, String)>,
+    fields: FormPairs,
 }
 
 /// Typed values for creating or editing an alert configuration.
@@ -176,7 +176,7 @@ impl SaveAlertConfigRequest {
     /// Create a save request from captured browser form fields in client tests.
     #[must_use]
     #[cfg(test)]
-    pub(crate) fn new(fields: Vec<(String, String)>) -> Self {
+    pub(crate) fn new(fields: FormPairs) -> Self {
         Self { fields }
     }
 
