@@ -3,7 +3,7 @@
 use serde::{Deserialize, Serialize};
 use tracing::instrument;
 
-use crate::client::{Client, FormPairs, multipart_form_from_fields, push_bool_field};
+use crate::client::{Client, FormPairs, config_to_form_pairs, multipart_form_from_fields};
 use crate::datatables::{
     DataTablesColumn, DataTablesRequest, define_datatables_request, impl_datatables_client_methods,
 };
@@ -60,8 +60,13 @@ pub struct SaveWatchListConfigRequest {
 }
 
 /// Typed values for creating or editing a watchlist configuration.
+///
+/// Field renames match the VolumeLeaders browser form key names. Serde
+/// serialization drives the form-pair conversion with ASP.NET checkbox
+/// handling for booleans.
 #[allow(missing_docs)]
-#[derive(Clone, Debug, Default, PartialEq)]
+#[derive(Clone, Debug, Default, PartialEq, Serialize)]
+#[serde(rename_all = "PascalCase")]
 pub struct SaveWatchListConfigFields {
     pub search_template_key: i64,
     pub name: String,
@@ -72,6 +77,7 @@ pub struct SaveWatchListConfigFields {
     pub max_dollars: f64,
     pub min_price: f64,
     pub max_price: f64,
+    #[serde(rename = "MinVCD")]
     pub min_vcd: f64,
     pub sector_industry: String,
     pub security_type_key: i64,
@@ -86,15 +92,21 @@ pub struct SaveWatchListConfigFields {
     pub sweeps_selected: bool,
     pub blocks_selected: bool,
     pub premarket_trades_selected: bool,
+    #[serde(rename = "RTHTradesSelected")]
     pub rth_trades_selected: bool,
+    #[serde(rename = "AHTradesSelected")]
     pub ah_trades_selected: bool,
     pub opening_trades_selected: bool,
     pub closing_trades_selected: bool,
     pub phantom_trades_selected: bool,
     pub offsetting_trades_selected: bool,
+    #[serde(rename = "RSIOverboughtDailySelected")]
     pub rsi_overbought_daily_selected: i64,
+    #[serde(rename = "RSIOverboughtHourlySelected")]
     pub rsi_overbought_hourly_selected: i64,
+    #[serde(rename = "RSIOversoldDailySelected")]
     pub rsi_oversold_daily_selected: i64,
+    #[serde(rename = "RSIOversoldHourlySelected")]
     pub rsi_oversold_hourly_selected: i64,
 }
 
@@ -113,111 +125,15 @@ impl SaveWatchListConfigRequest {
     }
 
     /// Create a save request from typed watchlist configuration values.
+    ///
+    /// Field names and boolean handling are driven by the serde `Serialize`
+    /// derive on [`SaveWatchListConfigFields`], so adding a new field to
+    /// the struct is all that is needed — no manual mapping to update.
     #[must_use]
     pub fn from_config(config: SaveWatchListConfigFields) -> Self {
-        let mut fields = vec![
-            (
-                "SearchTemplateKey".into(),
-                config.search_template_key.to_string(),
-            ),
-            ("Name".into(), config.name),
-            ("Tickers".into(), config.tickers),
-            ("MinVolume".into(), config.min_volume.to_string()),
-            ("MaxVolume".into(), config.max_volume.to_string()),
-            ("MinDollars".into(), config.min_dollars.to_string()),
-            ("MaxDollars".into(), config.max_dollars.to_string()),
-            ("MinPrice".into(), config.min_price.to_string()),
-            ("MaxPrice".into(), config.max_price.to_string()),
-            ("MinVCD".into(), config.min_vcd.to_string()),
-            ("SectorIndustry".into(), config.sector_industry),
-            (
-                "SecurityTypeKey".into(),
-                config.security_type_key.to_string(),
-            ),
-            (
-                "MinRelativeSizeSelected".into(),
-                config.min_relative_size_selected.to_string(),
-            ),
-            (
-                "MaxTradeRankSelected".into(),
-                config.max_trade_rank_selected.to_string(),
-            ),
-        ];
-
-        push_bool_field(
-            &mut fields,
-            "NormalPrintsSelected",
-            config.normal_prints_selected,
-        );
-        push_bool_field(
-            &mut fields,
-            "SignaturePrintsSelected",
-            config.signature_prints_selected,
-        );
-        push_bool_field(
-            &mut fields,
-            "LatePrintsSelected",
-            config.late_prints_selected,
-        );
-        push_bool_field(
-            &mut fields,
-            "TimelyPrintsSelected",
-            config.timely_prints_selected,
-        );
-        push_bool_field(&mut fields, "DarkPoolsSelected", config.dark_pools_selected);
-        push_bool_field(
-            &mut fields,
-            "LitExchangesSelected",
-            config.lit_exchanges_selected,
-        );
-        push_bool_field(&mut fields, "SweepsSelected", config.sweeps_selected);
-        push_bool_field(&mut fields, "BlocksSelected", config.blocks_selected);
-        push_bool_field(
-            &mut fields,
-            "PremarketTradesSelected",
-            config.premarket_trades_selected,
-        );
-        push_bool_field(&mut fields, "RTHTradesSelected", config.rth_trades_selected);
-        push_bool_field(&mut fields, "AHTradesSelected", config.ah_trades_selected);
-        push_bool_field(
-            &mut fields,
-            "OpeningTradesSelected",
-            config.opening_trades_selected,
-        );
-        push_bool_field(
-            &mut fields,
-            "ClosingTradesSelected",
-            config.closing_trades_selected,
-        );
-        push_bool_field(
-            &mut fields,
-            "PhantomTradesSelected",
-            config.phantom_trades_selected,
-        );
-        push_bool_field(
-            &mut fields,
-            "OffsettingTradesSelected",
-            config.offsetting_trades_selected,
-        );
-
-        fields.push((
-            "RSIOverboughtDailySelected".into(),
-            config.rsi_overbought_daily_selected.to_string(),
-        ));
-        fields.push((
-            "RSIOverboughtHourlySelected".into(),
-            config.rsi_overbought_hourly_selected.to_string(),
-        ));
-        fields.push((
-            "RSIOversoldDailySelected".into(),
-            config.rsi_oversold_daily_selected.to_string(),
-        ));
-        fields.push((
-            "RSIOversoldHourlySelected".into(),
-            config.rsi_oversold_hourly_selected.to_string(),
-        ));
-
-        Self { fields }
+        Self {
+            fields: config_to_form_pairs(&config),
+        }
     }
 }
 

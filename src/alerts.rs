@@ -3,7 +3,7 @@
 use serde::Serialize;
 use tracing::instrument;
 
-use crate::client::{Client, FormPairs, multipart_form_from_fields, push_bool_field};
+use crate::client::{Client, FormPairs, config_to_form_pairs, multipart_form_from_fields};
 use crate::datatables::{
     DataTablesColumn, DataTablesRequest, define_datatables_request, impl_datatables_client_methods,
 };
@@ -73,37 +73,63 @@ pub struct SaveAlertConfigRequest {
 }
 
 /// Typed values for creating or editing an alert configuration.
+///
+/// Field renames match the VolumeLeaders browser form key names. Serde
+/// serialization drives the form-pair conversion with ASP.NET checkbox
+/// handling for booleans.
 #[allow(missing_docs)]
-#[derive(Clone, Debug, Default, Eq, PartialEq)]
+#[derive(Clone, Debug, Default, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "PascalCase")]
 pub struct SaveAlertConfigFields {
     pub alert_config_key: i64,
     pub name: String,
     pub ticker_group: String,
     pub tickers: String,
+    #[serde(rename = "TradeRankLTE")]
     pub trade_rank_lte: i64,
+    #[serde(rename = "TradeVCDGTE")]
     pub trade_vcd_gte: i64,
+    #[serde(rename = "TradeMultGTE")]
     pub trade_mult_gte: i64,
+    #[serde(rename = "TradeVolumeGTE")]
     pub trade_volume_gte: i64,
+    #[serde(rename = "TradeDollarsGTE")]
     pub trade_dollars_gte: i64,
     pub trade_conditions: String,
     pub dark_pool: bool,
     pub sweep: bool,
+    #[serde(rename = "ClosingTradeRankLTE")]
     pub closing_trade_rank_lte: i64,
+    #[serde(rename = "ClosingTradeVCDGTE")]
     pub closing_trade_vcd_gte: i64,
+    #[serde(rename = "ClosingTradeMultGTE")]
     pub closing_trade_mult_gte: i64,
+    #[serde(rename = "ClosingTradeVolumeGTE")]
     pub closing_trade_volume_gte: i64,
+    #[serde(rename = "ClosingTradeDollarsGTE")]
     pub closing_trade_dollars_gte: i64,
     pub closing_trade_conditions: String,
+    #[serde(rename = "TradeClusterRankLTE")]
     pub cluster_rank_lte: i64,
+    #[serde(rename = "TradeClusterVCDGTE")]
     pub cluster_vcd_gte: i64,
+    #[serde(rename = "TradeClusterMultGTE")]
     pub cluster_mult_gte: i64,
+    #[serde(rename = "TradeClusterVolumeGTE")]
     pub cluster_volume_gte: i64,
+    #[serde(rename = "TradeClusterDollarsGTE")]
     pub cluster_dollars_gte: i64,
+    #[serde(rename = "TotalRankLTE")]
     pub total_rank_lte: i64,
+    #[serde(rename = "TotalVolumeGTE")]
     pub total_volume_gte: i64,
+    #[serde(rename = "TotalDollarsGTE")]
     pub total_dollars_gte: i64,
+    #[serde(rename = "AHRankLTE")]
     pub ah_rank_lte: i64,
+    #[serde(rename = "AHVolumeGTE")]
     pub ah_volume_gte: i64,
+    #[serde(rename = "AHDollarsGTE")]
     pub ah_dollars_gte: i64,
     pub offsetting_print: bool,
     pub phantom_print: bool,
@@ -124,81 +150,15 @@ impl SaveAlertConfigRequest {
     }
 
     /// Create a save request from typed alert configuration values.
+    ///
+    /// Field names and boolean handling are driven by the serde `Serialize`
+    /// derive on [`SaveAlertConfigFields`], so adding a new field to the
+    /// struct is all that is needed — no manual mapping to update.
     #[must_use]
     pub fn from_config(config: SaveAlertConfigFields) -> Self {
-        let mut fields = vec![
-            ("AlertConfigKey".into(), config.alert_config_key.to_string()),
-            ("Name".into(), config.name),
-            ("TickerGroup".into(), config.ticker_group),
-            ("Tickers".into(), config.tickers),
-            ("TradeRankLTE".into(), config.trade_rank_lte.to_string()),
-            ("TradeVCDGTE".into(), config.trade_vcd_gte.to_string()),
-            ("TradeMultGTE".into(), config.trade_mult_gte.to_string()),
-            ("TradeVolumeGTE".into(), config.trade_volume_gte.to_string()),
-            (
-                "TradeDollarsGTE".into(),
-                config.trade_dollars_gte.to_string(),
-            ),
-            ("TradeConditions".into(), config.trade_conditions),
-            (
-                "ClosingTradeRankLTE".into(),
-                config.closing_trade_rank_lte.to_string(),
-            ),
-            (
-                "ClosingTradeVCDGTE".into(),
-                config.closing_trade_vcd_gte.to_string(),
-            ),
-            (
-                "ClosingTradeMultGTE".into(),
-                config.closing_trade_mult_gte.to_string(),
-            ),
-            (
-                "ClosingTradeVolumeGTE".into(),
-                config.closing_trade_volume_gte.to_string(),
-            ),
-            (
-                "ClosingTradeDollarsGTE".into(),
-                config.closing_trade_dollars_gte.to_string(),
-            ),
-            (
-                "ClosingTradeConditions".into(),
-                config.closing_trade_conditions,
-            ),
-            (
-                "TradeClusterRankLTE".into(),
-                config.cluster_rank_lte.to_string(),
-            ),
-            (
-                "TradeClusterVCDGTE".into(),
-                config.cluster_vcd_gte.to_string(),
-            ),
-            (
-                "TradeClusterMultGTE".into(),
-                config.cluster_mult_gte.to_string(),
-            ),
-            (
-                "TradeClusterVolumeGTE".into(),
-                config.cluster_volume_gte.to_string(),
-            ),
-            (
-                "TradeClusterDollarsGTE".into(),
-                config.cluster_dollars_gte.to_string(),
-            ),
-            ("TotalRankLTE".into(), config.total_rank_lte.to_string()),
-            ("TotalVolumeGTE".into(), config.total_volume_gte.to_string()),
-            (
-                "TotalDollarsGTE".into(),
-                config.total_dollars_gte.to_string(),
-            ),
-            ("AHRankLTE".into(), config.ah_rank_lte.to_string()),
-            ("AHVolumeGTE".into(), config.ah_volume_gte.to_string()),
-            ("AHDollarsGTE".into(), config.ah_dollars_gte.to_string()),
-        ];
-        push_bool_field(&mut fields, "DarkPool", config.dark_pool);
-        push_bool_field(&mut fields, "Sweep", config.sweep);
-        push_bool_field(&mut fields, "OffsettingPrint", config.offsetting_print);
-        push_bool_field(&mut fields, "PhantomPrint", config.phantom_print);
-        Self { fields }
+        Self {
+            fields: config_to_form_pairs(&config),
+        }
     }
 }
 

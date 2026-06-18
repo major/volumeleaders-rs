@@ -374,16 +374,37 @@ pub(crate) fn hex_digit(value: u8) -> char {
     }
 }
 
-/// Push a boolean form field using the VolumeLeaders duplicate-key convention.
+/// Serialize a [`serde::Serialize`] struct into ASP.NET-compatible form pairs.
 ///
-/// When `value` is true, two entries are pushed (`"true"` then `"false"`);
-/// when false, only `"false"` is pushed. This matches browser form behavior
-/// for checkbox + hidden input pairs.
-pub(crate) fn push_bool_field(fields: &mut FormPairs, name: &str, value: bool) {
-    if value {
-        fields.push(form_pair(name, "true"));
+/// String and numeric fields produce a single `(key, value)` pair. Boolean
+/// fields follow the ASP.NET checkbox+hidden convention: checked fields emit
+/// `("key", "true")` then `("key", "false")`; unchecked fields emit only
+/// `("key", "false")`.
+///
+/// Field names come from the serde rename attributes on the struct (typically
+/// `#[serde(rename_all = "PascalCase")]` plus per-field overrides).
+pub(crate) fn config_to_form_pairs<T: serde::Serialize>(config: &T) -> FormPairs {
+    let value = serde_json::to_value(config).expect("config serialization is infallible");
+    let map = value.as_object().expect("config serializes to JSON object");
+    let mut pairs = Vec::with_capacity(map.len());
+    for (key, val) in map {
+        match val {
+            serde_json::Value::Bool(b) => {
+                if *b {
+                    pairs.push(form_pair(key, "true"));
+                }
+                pairs.push(form_pair(key, "false"));
+            }
+            serde_json::Value::String(s) => {
+                pairs.push((key.clone(), s.clone()));
+            }
+            serde_json::Value::Number(n) => {
+                pairs.push((key.clone(), n.to_string()));
+            }
+            _ => pairs.push((key.clone(), val.to_string())),
+        }
     }
-    fields.push(form_pair(name, "false"));
+    pairs
 }
 
 /// Build a `reqwest::multipart::Form` from key-value field pairs.
